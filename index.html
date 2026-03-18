@@ -15,8 +15,8 @@
 <!-- Open Graph / Facebook -->
 <meta property="og:type"             content="website">
 <meta property="og:url"              content="https://aiworksuite.pro">
-<meta property="og:title"            content="AIWorkSuite — Suite IA para freelances">
-<meta property="og:description"      content="CRM, propuestas, equipos IA y biblioteca de prompts en una sola app. Sin servidor. Con tu propia API key. Gratis para empezar.">
+<meta property="og:title"            content="AIWorkSuite — Suite IA para freelances | MolvicStudios">
+<meta property="og:description"      content="CRM, propuestas, equipos IA y biblioteca de prompts en una sola app. BYOK · 100% local · Gratis para empezar. by MolvicStudios">
 <meta property="og:image"            content="https://aiworksuite.pro/og-image.png">
 <meta property="og:image:width"      content="1200">
 <meta property="og:image:height"     content="630">
@@ -239,6 +239,121 @@ select.inp option{background:var(--bg3)}
 .land-footer-links{display:flex;gap:16px}
 .land-footer-links a{font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;text-decoration:none;transition:color .15s}
 .land-footer-links a:hover{color:var(--text2)}
+
+.land-feat-desc{font-size:12px;color:var(--text3);line-height:1.5}
+.land-pricing{padding:48px 24px;max-width:900px;margin:0 auto;width:100%;text-align:center}
+.land-section-title{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;margin-bottom:8px}
+.land-section-sub{font-size:14px;color:var(--text3);margin-bottom:32px}
+.pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:600px;margin:0 auto;text-align:left}
+.price-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:20px;display:flex;flex-direction:column;gap:8px}
+.price-card.featured{border:2px solid var(--accent)}
+.price-name{font-family:'Syne',sans-serif;font-size:15px;font-weight:700}
+.price-amount{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--accent);line-height:1}
+.price-amount span{font-size:13px;color:var(--text3);font-weight:400}
+.price-feat{font-size:12px;color:var(--text2);padding:3px 0;display:flex;align-items:flex-start;gap:7px;line-height:1.4}
+.pf-ok{width:5px;height:5px;border-radius:50%;background:var(--green);flex-shrink:0;margin-top:4px}
+.pf-no{width:5px;height:5px;border-radius:50%;background:var(--border2);flex-shrink:0;margin-top:4px}
+.land-footer{padding:24px 32px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.land-footer-logo{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--accent)}
+.land-footer-links{display:flex;gap:16px}
+.land-footer-links a{font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;text-decoration:none;transition:color .15s}
+.land-footer-links a:hover{color:var(--text2)}
+
+/* ═══════════════════════════════════════════════
+   LANDING — NUEVAS SECCIONES v4
+═══════════════════════════════════════════════ */
+/* Para quién es */
+.land-forwhom{padding:48px 24px;max-width:1000px;margin:0 auto;width:100%;text-align:center}
+.forwhom-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:0;text-align:left}
+.forwhom-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:20px;transition:border-color .2s,transform .2s,box-shadow .2s;cursor:default}
+.forwhom-card:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.forwhom-icon{width:44px;height:44px;border-radius:var(--r2);background:var(--abg);border:1px solid rgba(240,165,0,.2);display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.forwhom-icon svg{width:22px;height:22px;fill:none;stroke:var(--accent);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.forwhom-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:6px}
+.forwhom-desc{font-size:12px;color:var(--text3);line-height:1.65}
+
+/* Arquitectura de módulos */
+.land-arch{padding:48px 24px;max-width:1000px;margin:0 auto;width:100%}
+.arch-svg-wrap{display:block;margin:0 auto}
+.arch-mobile-grid{display:none;grid-template-columns:repeat(2,1fr);gap:12px}
+.arch-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:14px;transition:border-color .15s}
+.arch-card:hover{border-color:var(--border2)}
+.arch-card-icon{width:32px;height:32px;border-radius:var(--r);background:var(--abg);border:1px solid rgba(240,165,0,.2);display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.arch-card-icon svg{width:16px;height:16px;fill:none;stroke:var(--accent);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.arch-card-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;margin-bottom:3px}
+.arch-card-desc{font-size:11px;color:var(--text3);line-height:1.5}
+
+/* Cómo funciona */
+.land-howto{padding:48px 24px;max-width:1000px;margin:0 auto;width:100%;text-align:center}
+.howto-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;position:relative;margin-top:0}
+.howto-step{position:relative;padding:0 16px;text-align:center}
+.howto-step:not(:last-child)::after{content:'';position:absolute;top:28px;right:-1px;width:calc(100% - 60px);height:1px;background:linear-gradient(90deg,var(--accent),var(--border));left:calc(50% + 22px);width:calc(50% - 22px + 50% - 22px)}
+.howto-num{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--accent);opacity:.18;line-height:1;margin-bottom:4px}
+.howto-icon{width:48px;height:48px;border-radius:50%;background:var(--bg2);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;position:relative;z-index:1}
+.howto-icon svg{width:22px;height:22px;fill:none;stroke:var(--accent);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.howto-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:6px}
+.howto-desc{font-size:11px;color:var(--text3);line-height:1.6}
+.howto-connector{display:flex;align-items:center;justify-content:center;padding-top:28px}
+.howto-connector svg{width:20px;height:20px;fill:none;stroke:var(--border2);stroke-width:1.5}
+
+/* BYOK / Comparativa */
+.land-byok{padding:48px 24px;max-width:900px;margin:0 auto;width:100%;text-align:center}
+.byok-table-wrap{overflow-x:auto;margin:0 auto 32px;max-width:760px}
+.byok-table{width:100%;border-collapse:collapse;font-size:12px;text-align:left}
+.byok-table th{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;padding:10px 14px;border-bottom:2px solid var(--border2)}
+.byok-table th:first-child{color:var(--accent)}
+.byok-table th:last-child{color:var(--text3)}
+.byok-table td{padding:9px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;line-height:1.5}
+.byok-table td:first-child{color:var(--text)}
+.byok-table tr:last-child td{border-bottom:none}
+.byok-table .ok{color:var(--green)}
+.byok-table .no{color:var(--red)}
+.byok-providers{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:8px}
+.byok-provider-pill{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r2);padding:8px 14px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text)}
+.byok-provider-pill svg{width:16px;height:16px;fill:none;stroke:var(--accent);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+
+/* Contadores animados */
+.land-stats{padding:32px 24px 0;max-width:900px;margin:0 auto;width:100%}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.stat-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:18px;text-align:center}
+.stat-num{font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:var(--accent);line-height:1;margin-bottom:4px}
+.stat-lbl{font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;line-height:1.4}
+
+/* MolvicStudios */
+.land-molvic{padding:48px 24px;background:var(--bg2);border-top:1px solid var(--border)}
+.molvic-inner{max-width:900px;margin:0 auto;display:grid;grid-template-columns:auto 1fr;gap:28px;align-items:start}
+.molvic-badge{width:56px;height:56px;background:linear-gradient(135deg,var(--accent),#d98c00);border-radius:var(--r2);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:#0c0d0f;flex-shrink:0}
+.molvic-content h3{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin-bottom:4px}
+.molvic-content p{font-size:13px;color:var(--text2);line-height:1.7;max-width:600px;margin-bottom:14px}
+.molvic-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--accent);text-decoration:none;font-weight:500;margin-bottom:16px}
+.molvic-link:hover{color:var(--accent2)}
+.molvic-services{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px}
+.molvic-service-pill{font-size:11px;padding:4px 10px;border-radius:20px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-family:'JetBrains Mono',monospace}
+.molvic-contacts{display:flex;flex-wrap:wrap;gap:14px}
+.molvic-contact{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2);text-decoration:none;transition:color .15s}
+.molvic-contact:hover{color:var(--text)}
+.molvic-contact svg{width:14px;height:14px;fill:none;stroke:var(--accent);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+
+/* Responsive nuevas secciones */
+@media(max-width:768px){
+  .forwhom-grid{grid-template-columns:1fr}
+  .howto-steps{grid-template-columns:1fr;gap:24px}
+  .howto-step:not(:last-child)::after{display:none}
+  .howto-step{display:flex;gap:16px;text-align:left;padding:0}
+  .howto-icon{flex-shrink:0;margin:0}
+  .howto-connector{display:none}
+  .arch-svg-wrap{display:none}
+  .arch-mobile-grid{display:grid}
+  .stats-row{grid-template-columns:repeat(2,1fr)}
+  .molvic-inner{grid-template-columns:1fr}
+  .molvic-contacts{flex-direction:column;gap:10px}
+  .byok-table td,.byok-table th{padding:8px 10px;font-size:11px}
+}
+@media(max-width:480px){
+  .land-h1{font-size:32px}
+  .stats-row{grid-template-columns:repeat(2,1fr)}
+  .pricing-grid{grid-template-columns:1fr}
+}
 
 /* ═══════════════════════════════════════════════
    AUTH SCREEN
@@ -678,42 +793,304 @@ select.inp option{background:var(--bg3)}
       <div class="land-proof" data-i18n="land_proof">BYOK · 100% local · Sin suscripción para empezar</div>
     </div>
 
-    <!-- FEATURES -->
-    <div class="land-features">
-      <div class="land-feat-grid">
-        <div class="land-feat-card">
-          <div class="land-feat-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
-          <div class="land-feat-title" data-i18n="land_feat_crm_title">CRM con IA</div>
-          <div class="land-feat-desc" data-i18n="land_feat_crm_desc">Pipeline de 7 etapas con chat IA especializado por fase. Del primer contacto al onboarding.</div>
+    <!-- LANDING START -->
+
+    <!-- PARA QUIÉN ES -->
+    <section class="land-forwhom" aria-label="Para quién es AIWorkSuite">
+      <h2 class="land-section-title">Hecho para ti si eres…</h2>
+      <p class="land-section-sub">AIWorkSuite está diseñado para profesionales que trabajan con IA y necesitan estructura, no fricción.</p>
+      <div class="forwhom-grid">
+        <div class="forwhom-card">
+          <div class="forwhom-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 0 1 5 5v2a5 5 0 0 1-10 0V7a5 5 0 0 1 5-5z"/><path d="M3 21v-1a7 7 0 0 1 7-7h.014"/><circle cx="17" cy="17" r="4"/><path d="M17 15v2l1 1"/></svg>
+          </div>
+          <div class="forwhom-title">Freelance IA</div>
+          <div class="forwhom-desc">Gestionas clientes, propuestas y proyectos de IA de forma independiente. Necesitas un sistema que escale contigo sin depender de infraestructura de terceros.</div>
         </div>
-        <div class="land-feat-card">
-          <div class="land-feat-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
-          <div class="land-feat-title" data-i18n="land_feat_prop_title">Propuestas IA</div>
-          <div class="land-feat-desc" data-i18n="land_feat_prop_desc">Genera propuestas comerciales profesionales en segundos. Conectado con tu CRM.</div>
+        <div class="forwhom-card">
+          <div class="forwhom-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+          </div>
+          <div class="forwhom-title">Consultor de automatización</div>
+          <div class="forwhom-desc">Diseñas flujos y entregas soluciones IA a empresas. Necesitas herramientas profesionales sin depender de plataformas de terceros que puedan fallar o cambiar de precios.</div>
         </div>
-        <div class="land-feat-card">
-          <div class="land-feat-icon"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
-          <div class="land-feat-title" data-i18n="land_feat_teams_title">Lanzador de Equipos IA</div>
-          <div class="land-feat-desc" data-i18n="land_feat_teams_desc">Configura equipos con roles detectados automáticamente y lanza el workspace en un clic.</div>
+        <div class="forwhom-card">
+          <div class="forwhom-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div class="forwhom-title">Agencia pequeña</div>
+          <div class="forwhom-desc">Coordinais varios freelances IA en proyectos para múltiples clientes. El CRM con pipeline y los equipos IA os dan visibilidad y control sin complejidad innecesaria.</div>
         </div>
-        <div class="land-feat-card">
-          <div class="land-feat-icon"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
-          <div class="land-feat-title" data-i18n="land_feat_lib_title">Biblioteca de Prompts</div>
-          <div class="land-feat-desc" data-i18n="land_feat_lib_desc">Guarda y reutiliza tus mejores prompts. Insértalos en cualquier proyecto con un clic.</div>
-        </div>
-        <div class="land-feat-card">
-          <div class="land-feat-icon"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-          <div class="land-feat-title" data-i18n="land_feat_byok_title">BYOK — Tu API key</div>
-          <div class="land-feat-desc" data-i18n="land_feat_byok_desc">Compatible con Anthropic, OpenAI, Groq y OpenRouter. Tu key nunca sale de tu dispositivo.</div>
-        </div>
-        <div class="land-feat-card">
-          <div class="land-feat-icon"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
-          <div class="land-feat-title" data-i18n="land_feat_local_title">100% local</div>
-          <div class="land-feat-desc" data-i18n="land_feat_local_desc">Tus datos en tu navegador. Export/import JSON. Sin servidores que fallen, sin dependencias.</div>
+        <div class="forwhom-card">
+          <div class="forwhom-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          </div>
+          <div class="forwhom-title">Mediador IA</div>
+          <div class="forwhom-desc">Actúas de puente entre clientes no técnicos y soluciones de IA. Necesitas estructura, propuestas profesionales y la capacidad de lanzar equipos IA con un clic.</div>
         </div>
       </div>
+    </section>
 
-      <!-- PRICING -->
+    <!-- ARQUITECTURA DE MÓDULOS -->
+    <section class="land-arch" aria-label="Módulos de AIWorkSuite">
+      <div style="text-align:center;margin-bottom:32px">
+        <h2 class="land-section-title">Todo conectado. Nada redundante.</h2>
+        <p class="land-section-sub">Seis módulos que se alimentan entre sí para que trabajes más rápido con IA.</p>
+      </div>
+
+      <!-- Desktop: SVG infographic -->
+      <svg class="arch-svg-wrap" viewBox="0 0 860 480" width="100%" role="img" aria-label="Diagrama de arquitectura de módulos de AIWorkSuite">
+        <title>Arquitectura de módulos AIWorkSuite</title>
+        <defs>
+          <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="rgba(240,165,0,0.5)"/>
+          </marker>
+        </defs>
+
+        <!-- BIBLIOTECA (top center) -->
+        <g transform="translate(295,20)">
+          <rect x="0" y="0" width="270" height="80" rx="10" fill="var(--bg2)" stroke="rgba(240,165,0,0.4)" stroke-width="1.5"/>
+          <rect x="12" y="16" width="32" height="32" rx="6" fill="var(--abg)" stroke="rgba(240,165,0,0.25)" stroke-width="1"/>
+          <path d="M20 38.5A2.5 2.5 0 0 1 22.5 36H35M22.5 24H35v16H22.5A2.5 2.5 0 0 1 20 37.5v-11A2.5 2.5 0 0 1 22.5 24z" fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/>
+          <text x="54" y="37" font-family="Syne,sans-serif" font-size="12" font-weight="700" fill="var(--text)">Biblioteca de Prompts</text>
+          <text x="54" y="52" font-family="DM Sans,sans-serif" font-size="10" fill="var(--text3)">Guarda y reutiliza tus mejores prompts</text>
+          <text x="12" y="74" font-family="JetBrains Mono,monospace" font-size="9" fill="var(--accent)" opacity="0.7">alimenta ↓</text>
+        </g>
+
+        <!-- Arrow BIBLIOTECA → CRM/PROPUESTAS -->
+        <line x1="430" y1="100" x2="430" y2="155" stroke="rgba(240,165,0,0.4)" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="4,3"/>
+
+        <!-- CRM (middle left) -->
+        <g transform="translate(40,160)">
+          <rect x="0" y="0" width="240" height="90" rx="10" fill="var(--bg2)" stroke="var(--tb)" stroke-width="1.5"/>
+          <rect x="12" y="18" width="32" height="32" rx="6" fill="var(--tbg)" stroke="var(--tb)" stroke-width="1"/>
+          <path d="M30 38v-2a4 4 0 0 0-4-4h-8a4 4 0 0 0-4 4v2M22 28a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" fill="none" stroke="var(--teal)" stroke-width="1.4" stroke-linecap="round" transform="translate(2,2) scale(0.85)"/>
+          <text x="54" y="37" font-family="Syne,sans-serif" font-size="12" font-weight="700" fill="var(--text)">CRM con IA</text>
+          <text x="54" y="51" font-family="DM Sans,sans-serif" font-size="10" fill="var(--text3)">Pipeline de 7 etapas con</text>
+          <text x="54" y="63" font-family="DM Sans,sans-serif" font-size="10" fill="var(--text3)">chat IA por fase</text>
+          <text x="12" y="82" font-family="JetBrains Mono,monospace" font-size="9" fill="var(--teal)" opacity="0.8">→ propuestas</text>
+        </g>
+
+        <!-- Arrow CRM → PROPUESTAS -->
+        <line x1="280" y1="205" x2="350" y2="205" stroke="rgba(240,165,0,0.4)" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- PROPUESTAS IA (middle center — highlighted) -->
+        <g transform="translate(350,155)">
+          <rect x="0" y="0" width="260" height="100" rx="10" fill="var(--bg2)" stroke="var(--accent)" stroke-width="2"/>
+          <rect x="12" y="20" width="32" height="32" rx="6" fill="var(--abg)" stroke="rgba(240,165,0,0.3)" stroke-width="1"/>
+          <path d="M22 30h8v2a4 4 0 0 1-4 4H22V30zM22 30v-4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v4" fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/>
+          <text x="54" y="39" font-family="Syne,sans-serif" font-size="12" font-weight="700" fill="var(--text)">Propuestas IA</text>
+          <text x="54" y="53" font-family="DM Sans,sans-serif" font-size="10" fill="var(--text3)">Genera propuestas comerciales</text>
+          <text x="54" y="65" font-family="DM Sans,sans-serif" font-size="10" fill="var(--text3)">profesionales en segundos</text>
+          <text x="12" y="90" font-family="JetBrains Mono,monospace" font-size="9" fill="var(--accent)" opacity="0.7">módulo central ✦</text>
+        </g>
+
+        <!-- Arrow PROPUESTAS → EQUIPOS IA -->
+        <line x1="480" y1="255" x2="480" y2="320" stroke="rgba(240,165,0,0.4)" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="4,3"/>
+
+        <!-- EQUIPOS IA (middle right) -->
+        <g transform="translate(580,160)">
+          <rect x="0" y="0" width="240" height="90" rx="10" fill="var(--bg2)" stroke="var(--pb)" stroke-width="1.5"/>
+          <rect x="12" y="18" width="32" height="32" rx="6" fill="var(--pbg)" stroke="var(--pb)" stroke-width="1"/>
+          <path d="M4 4h16a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2z" fill="none" stroke="var(--purple)" stroke-width="1.4" stroke-linecap="round" transform="translate(14,19) scale(0.75)"/>
+          <text x="54" y="37" font-family="Syne,sans-serif" font-size="12" font-weight="700" fill="var(--text)">Equipos IA</text>
+          <text x="54" y="51" font-family="DM Sans,sans-serif" font-size="10" fill="var(--text3)">Configura equipos con roles</text>
+          <text x="54" y="63" font-family="DM Sans,sans-serif" font-size="10" fill="var(--text3)">detectados automáticamente</text>
+          <text x="12" y="82" font-family="JetBrains Mono,monospace" font-size="9" fill="var(--purple)" opacity="0.8">→ workspace</text>
+        </g>
+
+        <!-- Arrow EQUIPOS → PROPUESTAS (feedback arrow, curved visually) -->
+        <path d="M580 205 Q530 205 520 205" fill="none" stroke="rgba(139,124,248,0.35)" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="3,3"/>
+
+        <!-- WORKSPACE (bottom center) -->
+        <g transform="translate(295,330)">
+          <rect x="0" y="0" width="270" height="90" rx="10" fill="var(--bg2)" stroke="var(--bbb)" stroke-width="1.5"/>
+          <rect x="12" y="18" width="32" height="32" rx="6" fill="var(--bbg)" stroke="var(--bbb)" stroke-width="1"/>
+          <path d="M5 7l6 5-6 5M13 19h8" fill="none" stroke="var(--blue)" stroke-width="1.4" stroke-linecap="round" transform="translate(15,16) scale(1)"/>
+          <text x="54" y="37" font-family="Syne,sans-serif" font-size="12" font-weight="700" fill="var(--text)">Workspace</text>
+          <text x="54" y="51" font-family="DM Sans,sans-serif" font-size="10" fill="var(--text3)">Chats de equipo con contexto,</text>
+          <text x="54" y="63" font-family="DM Sans,sans-serif" font-size="10" fill="var(--text3)">modos y system prompts</text>
+          <text x="12" y="82" font-family="JetBrains Mono,monospace" font-size="9" fill="var(--blue)" opacity="0.8">multi-chat · multi-modo</text>
+        </g>
+
+        <!-- BYOK / LOCAL pill (bottom) -->
+        <g transform="translate(155,430)">
+          <rect x="0" y="0" width="550" height="40" rx="20" fill="var(--bg3)" stroke="var(--border2)" stroke-width="1.5"/>
+          <text x="30" y="25" font-family="JetBrains Mono,monospace" font-size="10" fill="var(--text3)">🔒</text>
+          <text x="50" y="25" font-family="JetBrains Mono,monospace" font-size="10" fill="var(--accent)" font-weight="600">BYOK</text>
+          <text x="92" y="25" font-family="JetBrains Mono,monospace" font-size="10" fill="var(--text3)">· Tu API key nunca sale de tu dispositivo</text>
+          <text x="348" y="25" font-family="JetBrains Mono,monospace" font-size="10" fill="var(--border2)">  |  </text>
+          <text x="368" y="25" font-family="JetBrains Mono,monospace" font-size="10" fill="var(--accent)" font-weight="600">Local-first</text>
+          <text x="448" y="25" font-family="JetBrains Mono,monospace" font-size="10" fill="var(--text3)">· Sin servidor</text>
+        </g>
+      </svg>
+
+      <!-- Mobile: grid 2x3 with cards -->
+      <div class="arch-mobile-grid" aria-hidden="true">
+        <div class="arch-card">
+          <div class="arch-card-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+          <div class="arch-card-title">CRM con IA</div>
+          <div class="arch-card-desc">Pipeline de 7 etapas con chat IA especializado por fase</div>
+        </div>
+        <div class="arch-card">
+          <div class="arch-card-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+          <div class="arch-card-title">Propuestas IA</div>
+          <div class="arch-card-desc">Genera propuestas comerciales profesionales en segundos</div>
+        </div>
+        <div class="arch-card">
+          <div class="arch-card-icon"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+          <div class="arch-card-title">Equipos IA</div>
+          <div class="arch-card-desc">Configura equipos con roles detectados automáticamente</div>
+        </div>
+        <div class="arch-card">
+          <div class="arch-card-icon"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+          <div class="arch-card-title">Biblioteca</div>
+          <div class="arch-card-desc">Guarda y reutiliza tus mejores prompts</div>
+        </div>
+        <div class="arch-card">
+          <div class="arch-card-icon"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+          <div class="arch-card-title">BYOK</div>
+          <div class="arch-card-desc">Tu API key nunca sale de tu dispositivo</div>
+        </div>
+        <div class="arch-card">
+          <div class="arch-card-icon"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
+          <div class="arch-card-title">100% local</div>
+          <div class="arch-card-desc">Tus datos en tu navegador. Export/import JSON</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CÓMO FUNCIONA -->
+    <section class="land-howto" aria-label="Cómo funciona AIWorkSuite">
+      <h2 class="land-section-title">Cómo funciona</h2>
+      <p class="land-section-sub">En cuatro pasos, de cero a freelance IA operativo.</p>
+      <div class="howto-steps">
+        <div class="howto-step">
+          <div class="howto-num" aria-hidden="true">01</div>
+          <div class="howto-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <div>
+            <div class="howto-title">Configura tu API key</div>
+            <div class="howto-desc">BYOK: conecta Anthropic, OpenAI, Groq u OpenRouter. Tu key nunca sale de tu dispositivo.</div>
+          </div>
+        </div>
+        <div class="howto-step">
+          <div class="howto-num" aria-hidden="true">02</div>
+          <div class="howto-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div>
+            <div class="howto-title">Añade tus clientes</div>
+            <div class="howto-desc">Pipeline de 7 etapas con chat IA especializado para cada fase. Del primer contacto al onboarding.</div>
+          </div>
+        </div>
+        <div class="howto-step">
+          <div class="howto-num" aria-hidden="true">03</div>
+          <div class="howto-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <div>
+            <div class="howto-title">Genera propuestas</div>
+            <div class="howto-desc">Propuestas comerciales profesionales en segundos con los datos del cliente pre-cargados desde el CRM.</div>
+          </div>
+        </div>
+        <div class="howto-step">
+          <div class="howto-num" aria-hidden="true">04</div>
+          <div class="howto-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <div>
+            <div class="howto-title">Lanza tu equipo IA</div>
+            <div class="howto-desc">Roles IA detectados automáticamente. Lanza el workspace y empieza a trabajar con tu equipo de agentes en un clic.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BYOK / PRIVACIDAD / COMPARATIVA -->
+    <section class="land-byok" aria-label="Tu privacidad, tu control — comparativa BYOK">
+      <h2 class="land-section-title">Tu privacidad, tu control</h2>
+      <p class="land-section-sub">Porque tus claves y tus datos son tuyos, punto.</p>
+
+      <div class="byok-table-wrap">
+        <table class="byok-table" role="table">
+          <thead>
+            <tr>
+              <th scope="col">AIWorkSuite</th>
+              <th scope="col">SaaS tradicional</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="ok" aria-label="sí">✓</span> Tu API key nunca sale de tu dispositivo</td>
+              <td><span class="no" aria-label="no">✗</span> Tu key pasa por servidores de terceros</td>
+            </tr>
+            <tr>
+              <td><span class="ok" aria-label="sí">✓</span> Datos en tu navegador (localStorage)</td>
+              <td><span class="no" aria-label="no">✗</span> Datos en la nube de otra empresa</td>
+            </tr>
+            <tr>
+              <td><span class="ok" aria-label="sí">✓</span> Export/import JSON en cualquier momento</td>
+              <td><span class="no" aria-label="no">✗</span> Dependes de la continuidad del servicio</td>
+            </tr>
+            <tr>
+              <td><span class="ok" aria-label="sí">✓</span> Sin servidor que falle</td>
+              <td><span class="no" aria-label="no">✗</span> Downtime ajeno a ti</td>
+            </tr>
+            <tr>
+              <td><span class="ok" aria-label="sí">✓</span> Pagas solo al proveedor IA que eliges</td>
+              <td><span class="no" aria-label="no">✗</span> Margen oculto sobre tus llamadas IA</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p style="font-size:12px;color:var(--text3);margin-bottom:16px;font-family:'JetBrains Mono',monospace">Proveedores compatibles</p>
+      <div class="byok-providers">
+        <div class="byok-provider-pill">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          Anthropic Claude
+        </div>
+        <div class="byok-provider-pill">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+          OpenAI GPT-4o
+        </div>
+        <div class="byok-provider-pill">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          Groq Llama 3.3
+        </div>
+        <div class="byok-provider-pill">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          OpenRouter
+        </div>
+      </div>
+    </section>
+
+    <!-- STATS COUNTER -->
+    <div class="land-stats" id="land-stats-section">
+      <div class="stats-row">
+        <div class="stat-item">
+          <div class="stat-num" data-target="4" data-suffix="">4</div>
+          <div class="stat-lbl">Proveedores<br>IA compatibles</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" data-target="7" data-suffix="">7</div>
+          <div class="stat-lbl">Etapas CRM<br>de pipeline</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" data-static="true">∞</div>
+          <div class="stat-lbl">Propuestas<br>generables</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" data-target="100" data-suffix="%">100%</div>
+          <div class="stat-lbl">Local-first<br>sin servidor</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRICING -->
+    <div class="land-features">
       <div class="land-pricing" id="pricing">
         <h2 class="land-section-title" data-i18n="land_pricing_title">Simple y transparente</h2>
         <p class="land-section-sub" data-i18n="land_pricing_sub">Empieza gratis. Cuando crezcas, Pro te acompaña.</p>
@@ -735,7 +1112,7 @@ select.inp option{background:var(--bg3)}
           <div class="price-card featured">
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div class="price-name">Pro</div>
-              <span class="tag-pro">Próximamente</span>
+              <span style="background:linear-gradient(135deg,var(--accent),#e87c00);color:#0c0d0f;font-size:9px;padding:2px 8px;border-radius:20px;font-family:'JetBrains Mono',monospace;font-weight:600">Lanzamiento Q3 2026</span>
             </div>
             <div class="price-amount">€9 <span>/ mes</span></div>
             <div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin:2px 0 8px">Para freelances activos</div>
@@ -746,11 +1123,49 @@ select.inp option{background:var(--bg3)}
             <div class="price-feat"><div class="pf-ok"></div>Detección IA de roles</div>
             <div class="price-feat"><div class="pf-ok"></div>Prompts ilimitados</div>
             <div class="price-feat"><div class="pf-ok"></div>Branding personalizable</div>
-            <div style="margin-top:12px"><button class="btn btn-accent" style="width:100%" onclick="showUpgradeInterest()" data-i18n="plan_pro_notify">Notificarme al lanzar</button></div>
+            <div style="margin-top:12px"><button class="btn btn-accent" style="width:100%" onclick="showUpgradeInterest()" data-i18n="plan_pro_notify">Early access — Notificarme con descuento</button></div>
+            <div style="margin-top:6px;font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;text-align:center">Lanzamiento previsto Q3 2026 · Lista de espera con descuento de lanzamiento</div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- MOLVICSTUDIOS -->
+    <section class="land-molvic" aria-label="Creado por MolvicStudios">
+      <div class="molvic-inner">
+        <div class="molvic-badge" aria-label="MolvicStudios">MS</div>
+        <div class="molvic-content">
+          <h3>Creado por MolvicStudios</h3>
+          <p>AIWorkSuite es un producto de MolvicStudios, estudio digital especializado en servicios IA, automatización y desarrollo web para profesionales y el mercado LATAM.</p>
+          <a href="https://molvicstudios.pro" target="_blank" rel="noopener noreferrer" class="molvic-link">
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            molvicstudios.pro
+          </a>
+          <div class="molvic-services" role="list" aria-label="Servicios">
+            <span class="molvic-service-pill" role="listitem">Automatización IA</span>
+            <span class="molvic-service-pill" role="listitem">Ingeniería de Prompts</span>
+            <span class="molvic-service-pill" role="listitem">Desarrollo Web</span>
+            <span class="molvic-service-pill" role="listitem">Forense IA</span>
+          </div>
+          <nav class="molvic-contacts" aria-label="Contacto MolvicStudios">
+            <a href="mailto:molvicstudios@outlook.com" class="molvic-contact">
+              <svg viewBox="0 0 24 24" role="img" aria-label="Email"><title>Email</title><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              molvicstudios@outlook.com
+            </a>
+            <a href="https://wa.me/34600055882" target="_blank" rel="noopener noreferrer" class="molvic-contact">
+              <svg viewBox="0 0 24 24" role="img" aria-label="WhatsApp"><title>WhatsApp</title><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+              WhatsApp: +34 600 055 882
+            </a>
+            <a href="https://t.me/molvicstudios" target="_blank" rel="noopener noreferrer" class="molvic-contact">
+              <svg viewBox="0 0 24 24" role="img" aria-label="Telegram"><title>Telegram</title><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
+              Telegram: @molvicstudios
+            </a>
+          </nav>
+        </div>
+      </div>
+    </section>
+
+    <!-- LANDING END -->
 
     <footer class="land-footer">
       <div class="land-footer-logo">
@@ -878,7 +1293,7 @@ select.inp option{background:var(--bg3)}
 
 <!-- DASHBOARD -->
 <div class="view active" id="view-dash">
-  <div class="topbar"><div class="topbar-title" id="dash-title">AIWorkSuite</div><div class="topbar-badge">v3 · Free</div><div class="topbar-meta" id="dash-date"></div></div>
+  <div class="topbar"><div class="topbar-title" id="dash-title">AIWorkSuite</div><div class="topbar-badge" id="dash-plan-badge">Free</div><div class="topbar-meta" id="dash-date"></div></div>
   <div class="dash-body">
     <div class="dash-greeting" style="margin-bottom:14px">
       <h1 id="dash-h1">Hola 👋</h1>
@@ -1265,6 +1680,7 @@ select.inp option{background:var(--bg3)}
       <a href="https://molvicstudios.pro" target="_blank" rel="noopener noreferrer"
          style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace;text-decoration:none">MolvicStudios ↗</a>
     </div>
+    <div style="text-align:center;padding:0 0 20px;font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace">AIWorkSuite v4 · by MolvicStudios</div>
   </div></div>
 </div>
 
@@ -1651,6 +2067,9 @@ function updatePlanBadge() {
   } else {
     el.innerHTML = 'Plan: <strong style="color:var(--accent)">Free</strong> · <span style="cursor:pointer;color:var(--purple)" onclick="showUpgradeModal()">Upgrade a Pro</span>';
   }
+  // Update dashboard topbar badge
+  const badge = document.getElementById('dash-plan-badge');
+  if (badge) badge.textContent = USER_PLAN === 'pro' ? '✦ Pro' : 'Free';
   // Update upgrade modal CTA text
   const cta = document.getElementById('btn-upgrade-cta');
   if (cta && LEMON_CONFIG.checkoutUrl) {
@@ -2968,6 +3387,41 @@ loadTheme();
 loadLang();
 applyTranslations();
 checkSession();
+</script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// STATS COUNTER — IntersectionObserver + easing animation
+// ═══════════════════════════════════════════════════════════════════════
+(function(){
+  var observed = false;
+  function easeOut(t){ return 1 - Math.pow(1 - t, 3); }
+  function animateCounter(el, target, suffix, duration){
+    var start = null;
+    function step(ts){
+      if(!start) start = ts;
+      var progress = Math.min((ts - start) / duration, 1);
+      el.textContent = Math.floor(easeOut(progress) * target) + suffix;
+      if(progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  function runCounters(){
+    if(observed) return;
+    observed = true;
+    document.querySelectorAll('[data-target]').forEach(function(el){
+      var target = parseInt(el.getAttribute('data-target'), 10);
+      var suffix = el.getAttribute('data-suffix') || '';
+      animateCounter(el, target, suffix, 1500);
+    });
+  }
+  var section = document.getElementById('land-stats-section');
+  if(section && 'IntersectionObserver' in window){
+    new IntersectionObserver(function(entries, obs){
+      if(entries[0].isIntersecting){ runCounters(); obs.disconnect(); }
+    }, {threshold: 0.3}).observe(section);
+  }
+})();
 </script>
 <script src="/aiws-assistant.js" defer></script>
 </body>
