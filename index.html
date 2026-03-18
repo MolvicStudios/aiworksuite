@@ -263,18 +263,18 @@ select.inp option{background:var(--bg3)}
    APP SHELL
 ═══════════════════════════════════════════════ */
 .app-shell{flex:1;display:flex;overflow:hidden}
-.sidenav{width:48px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:2px;flex-shrink:0;z-index:100}
-.nav-logo-btn{width:32px;height:32px;border-radius:var(--r);background:var(--abg);border:1px solid rgba(240,165,0,.25);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:11px;color:var(--accent);margin-bottom:8px;cursor:pointer;transition:all .15s;letter-spacing:.05em;user-select:none}
+.sidenav{width:48px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:2px;flex-shrink:0;z-index:100;overflow:hidden}
+.nav-logo-btn{width:32px;height:32px;border-radius:var(--r);background:var(--abg);border:1px solid rgba(240,165,0,.25);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:11px;color:var(--accent);margin-bottom:8px;cursor:pointer;transition:all .15s;letter-spacing:.05em;user-select:none;flex-shrink:0}
 .nav-logo-btn:hover{background:var(--abg2)}
 .nav-item{width:34px;height:34px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid transparent;transition:all .15s;position:relative;flex-shrink:0}
-.nav-item svg{width:16px;height:16px;fill:none;stroke:var(--text3);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
-.nav-item:hover{background:var(--bg3);border-color:var(--border)}.nav-item:hover svg{stroke:var(--text2)}
+.nav-item svg{width:16px;height:16px;fill:none;stroke:var(--text2);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
+.nav-item:hover{background:var(--bg3);border-color:var(--border)}.nav-item:hover svg{stroke:var(--text)}
 .nav-item.active{background:var(--abg);border-color:rgba(240,165,0,.25)}.nav-item.active svg{stroke:var(--accent)}
 .nav-badge{position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--red);border:1.5px solid var(--bg2)}
-.nav-sep{width:24px;height:1px;background:var(--border);margin:4px 0}
+.nav-sep{width:24px;height:1px;background:var(--border2);margin:4px 0}
 .nav-tip{position:absolute;left:44px;top:50%;transform:translateY(-50%);background:var(--bg4);border:1px solid var(--border2);color:var(--text);font-size:10px;padding:3px 8px;border-radius:4px;white-space:nowrap;font-family:'JetBrains Mono',monospace;pointer-events:none;opacity:0;transition:opacity .15s;z-index:300}
 .nav-item:hover .nav-tip{opacity:1}
-.nav-bottom{margin-top:auto}
+.nav-bottom{margin-top:auto;flex-shrink:0}
 .content-area{flex:1;overflow:hidden;display:flex;flex-direction:column;min-width:0}
 .view{display:none;flex:1;overflow:hidden;flex-direction:column;animation:fadein .15s ease}
 .view.active{display:flex}
@@ -843,8 +843,8 @@ select.inp option{background:var(--bg3)}
   </div>
   <div class="nav-bottom">
     <div class="nav-sep"></div>
-    <div class="nav-item" id="nav-settings" onclick="goTo('settings')">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    <div class="nav-item" id="nav-settings" onclick="goTo('settings')" style="background:var(--bg3);border-color:var(--border2)">
+      <svg viewBox="0 0 24 24" style="stroke:var(--text)!important"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       <div class="nav-tip">Configuración</div>
     </div>
   </div>
