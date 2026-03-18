@@ -61,7 +61,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 /* ═══════════════════════════════════════════════
@@ -1120,7 +1120,7 @@ select.inp option{background:var(--bg3)}
         <div class="user-avatar" id="user-avatar-initials">?</div>
         <div>
           <div class="user-email" id="user-email-display">—</div>
-          <div class="user-plan">Plan: <strong style="color:var(--accent)">Free</strong> · <span style="cursor:pointer;color:var(--purple)" onclick="showUpgradeModal()">Upgrade a Pro</span></div>
+          <div class="user-plan" id="user-plan-display">Plan: <strong style="color:var(--accent)">Free</strong> · <span style="cursor:pointer;color:var(--purple)" onclick="showUpgradeModal()">Upgrade a Pro</span></div>
         </div>
         <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="doLogout()">Cerrar sesión</button>
       </div>
@@ -1282,7 +1282,7 @@ select.inp option{background:var(--bg3)}
     </div>
     <input class="inp" id="upgrade-email" placeholder="tu@email.com" style="margin-bottom:10px">
     <div style="display:flex;gap:8px">
-      <button class="btn btn-accent" style="flex:1" onclick="submitUpgradeInterest()">Notificarme — descuento early</button>
+      <button class="btn btn-accent" style="flex:1" id="btn-upgrade-cta" onclick="openProCheckout()">Notificarme — descuento early</button>
       <button class="btn btn-ghost" onclick="closeModal('modal-upgrade')">Ahora no</button>
     </div>
   </div>
@@ -1340,7 +1340,13 @@ const PLANS = {
   free: { clients: 5, teams: 3, prompts: 10, chatsPerTeam: 1, aiRoles: false },
   pro:  { clients: Infinity, teams: Infinity, prompts: Infinity, chatsPerTeam: 3, aiRoles: true }
 };
-let USER_PLAN = 'free'; // en producción esto vendría de Supabase
+let USER_PLAN = 'free'; // se actualiza en fetchAndApplyPlan() tras login
+
+// ── LEMONSQUEEZY — rellena estas constantes cuando lances Pro ───────────
+const LEMON_CONFIG = {
+  checkoutUrl: '', // ej: https://molvicstudios.lemonsqueezy.com/checkout/buy/VARIANT_ID
+  portalUrl:   '', // ej: https://molvicstudios.lemonsqueezy.com/billing
+};
 
 // ═══════════════════════════════════════════════════════════════════════
 // SUPABASE INIT
@@ -1496,6 +1502,7 @@ function launchApp() {
   renderLib();
   refreshDash();
   updateLimitLabels();
+  fetchAndApplyPlan(); // async — actualiza plan desde Supabase en background
   handleDeepLink();
   // Show onboarding on first launch
   if (!S.get('onboarded')) {
@@ -1566,6 +1573,62 @@ function updateLimitLabels() {
   const cl = document.getElementById('crm-limit-label'); if(cl) cl.textContent = `${clients}/${plan.clients === Infinity ? '∞' : plan.clients} clientes`;
   const tl = document.getElementById('teams-limit-label'); if(tl) tl.textContent = `${teams}/${plan.teams === Infinity ? '∞' : plan.teams} equipos`;
   const ll = document.getElementById('lib-limit-label'); if(ll) ll.textContent = `${prompts}/${plan.prompts === Infinity ? '∞' : plan.prompts} prompts`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PRO PLAN — fetch desde Supabase + badge + checkout
+// ═══════════════════════════════════════════════════════════════════════
+function updatePlanBadge() {
+  const el = document.getElementById('user-plan-display');
+  if (!el) return;
+  if (USER_PLAN === 'pro') {
+    el.innerHTML = 'Plan: <strong style="background:linear-gradient(135deg,#8b7cf8,#5b8dee);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700">✦ Pro</strong>' +
+      (LEMON_CONFIG.portalUrl ? ' · <a href="' + LEMON_CONFIG.portalUrl + '" target="_blank" rel="noopener" style="color:var(--text3);font-size:10px">Gestionar suscripción</a>' : '');
+  } else {
+    el.innerHTML = 'Plan: <strong style="color:var(--accent)">Free</strong> · <span style="cursor:pointer;color:var(--purple)" onclick="showUpgradeModal()">Upgrade a Pro</span>';
+  }
+  // Update upgrade modal CTA text
+  const cta = document.getElementById('btn-upgrade-cta');
+  if (cta && LEMON_CONFIG.checkoutUrl) {
+    cta.textContent = 'Suscribirme — €9/mes';
+  }
+}
+
+async function fetchAndApplyPlan() {
+  if (!supabase || !CURRENT_USER || CURRENT_USER.id === 'demo') return;
+  try {
+    const { data } = await supabase
+      .from('subscriptions')
+      .select('plan, status, valid_until')
+      .eq('user_id', CURRENT_USER.id)
+      .eq('status', 'active')
+      .maybeSingle();
+    if (data?.plan === 'pro') {
+      const validUntil = data.valid_until ? new Date(data.valid_until) : null;
+      if (!validUntil || validUntil > new Date()) {
+        USER_PLAN = 'pro';
+        updateLimitLabels();
+        updatePlanBadge();
+        renderTeamsView();
+      }
+    } else {
+      updatePlanBadge(); // ensure badge is correct even if free
+    }
+  } catch(_e) {
+    // tabla no existe aún o sin conexión — plan free por defecto
+  }
+}
+
+function openProCheckout() {
+  if (!LEMON_CONFIG.checkoutUrl) {
+    // Pro no lanzado aún — recoger email de interés
+    submitUpgradeInterest();
+    return;
+  }
+  const email  = encodeURIComponent(CURRENT_USER?.email || '');
+  const userId = encodeURIComponent(CURRENT_USER?.id   || '');
+  const url = `${LEMON_CONFIG.checkoutUrl}?checkout[email]=${email}&checkout[custom][user_id]=${userId}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 // ═══════════════════════════════════════════════════════════════════════
