@@ -97,10 +97,8 @@ REGLAS DE COMPORTAMIENTO:
   /* ── CSS ── */
   const CSS = `
 #${NS}-w *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif}
-#${NS}-btn{position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:#1a1a2e;border:none;cursor:pointer;z-index:9999;display:flex;align-items:center;justify-content:center;transition:transform .2s,background .2s;box-shadow:0 4px 20px rgba(124,58,237,.35)}
-#${NS}-btn:hover{background:#16213e;transform:scale(1.07)}
-#${NS}-btn svg{width:24px;height:24px}
-#${NS}-box{position:fixed;bottom:88px;right:24px;width:365px;max-height:610px;background:#fff;border-radius:16px;border:1px solid #e2e8f0;z-index:9998;display:flex;flex-direction:column;overflow:hidden;transition:opacity .2s,transform .2s;opacity:0;transform:translateY(12px) scale(.97);pointer-events:none;box-shadow:0 8px 40px rgba(0,0,0,.15)}
+#${NS}-btn{display:none!important}
+#${NS}-box{position:fixed;bottom:12px;left:56px;width:365px;max-height:610px;background:#fff;border-radius:16px;border:1px solid #e2e8f0;z-index:9998;display:flex;flex-direction:column;overflow:hidden;transition:opacity .2s,transform .2s;opacity:0;transform:translateX(-8px) scale(.97);pointer-events:none;box-shadow:0 8px 40px rgba(0,0,0,.18)}
 #${NS}-box.on{opacity:1;transform:none;pointer-events:all}
 #${NS}-hd{background:linear-gradient(135deg,#1a1a2e 0%,#0f3460 100%);padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
 #${NS}-hd .av{width:34px;height:34px;border-radius:50%;background:#7c3aed;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;border:2px solid #a78bfa}
@@ -504,4 +502,6 @@ REGLAS DE COMPORTAMIENTO:
   } else {
     init();
   }
+
+  window.aiwsToggle = function(force) { toggle(force); };
 })();

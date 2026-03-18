@@ -299,8 +299,10 @@ select.inp option{background:var(--bg3)}
 .dash-greeting h1{font-family:'Syne',sans-serif;font-size:18px;font-weight:700}
 .dash-greeting p{font-size:12px;color:var(--text3);margin-top:2px;font-family:'JetBrains Mono',monospace}
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
-.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:14px;cursor:pointer;transition:border-color .15s}
+.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:14px;cursor:pointer;transition:border-color .15s;position:relative}
 .kpi:hover{border-color:var(--border2)}
+.kpi .dtip,.dash-mod .dtip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--bg4);border:1px solid var(--border2);color:var(--text2);font-size:10px;padding:4px 10px;border-radius:5px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:200;font-family:'JetBrains Mono',monospace;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.kpi:hover .dtip,.dash-mod:hover .dtip{opacity:1}
 .kpi-label{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
 .kpi-val{font-family:'Syne',sans-serif;font-size:24px;font-weight:700;color:var(--accent);line-height:1}
 .kpi-sub{font-size:10px;color:var(--text3);margin-top:4px}
@@ -855,6 +857,11 @@ select.inp option{background:var(--bg3)}
     <div class="nav-tip">Workspace</div>
   </div>
   <div class="nav-bottom">
+    <div class="nav-sep"></div>
+    <div class="nav-item" id="nav-aiden" onclick="typeof aiwsToggle==='function'&&aiwsToggle()" title="Aiden · Asistente IA">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <div class="nav-tip">Aiden · Asistente</div>
+    </div>
     <div class="nav-sep"></div>
     <div class="nav-item" id="nav-settings" onclick="goTo('settings')" style="background:var(--bg3);border-color:var(--border2)">
       <svg viewBox="0 0 24 24" style="stroke:var(--text)!important"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -1923,17 +1930,17 @@ function refreshDash() {
   const teams = getTeams(); const libItems = getLib();
   document.getElementById('dash-sub').textContent = `${cids.length} clientes · ${captados} captados · ${teams.length} equipos activos`;
   document.getElementById('kpi-grid').innerHTML = [
-    {label:t('dash_kpi_clients'),val:cids.length,sub:captados+' '+t('dash_kpi_won'),view:'crm'},
-    {label:t('dash_kpi_proposals'),val:pendientes,sub:allProps.length+' '+t('dash_kpi_total'),view:'prop'},
-    {label:t('dash_kpi_teams'),val:teams.length,sub:t('dash_kpi_active'),view:'teams'},
-    {label:t('dash_kpi_prompts'),val:libItems.length,sub:t('dash_kpi_reusable'),view:'lib'},
-  ].map(k => `<div class="kpi" onclick="goTo('${k.view}')"><div class="kpi-label">${k.label}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
+    {label:t('dash_kpi_clients'),val:cids.length,sub:captados+' '+t('dash_kpi_won'),view:'crm',tip:'Ir al CRM · gestiona tu pipeline'},
+    {label:t('dash_kpi_proposals'),val:pendientes,sub:allProps.length+' '+t('dash_kpi_total'),view:'prop',tip:'Propuestas enviadas pendientes de respuesta'},
+    {label:t('dash_kpi_teams'),val:teams.length,sub:t('dash_kpi_active'),view:'teams',tip:'Equipos IA activos · haz clic para gestionar'},
+    {label:t('dash_kpi_prompts'),val:libItems.length,sub:t('dash_kpi_reusable'),view:'lib',tip:'Prompts guardados en tu biblioteca'},
+  ].map(k => `<div class="kpi" onclick="goTo('${k.view}')"><div class="dtip">${k.tip}</div><div class="kpi-label">${k.label}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
   document.getElementById('dash-modules').innerHTML = [
-    {icon:'◈',name:t('nav_crm'),desc:t('dash_mod_crm_desc'),cta:cids.length+' '+t('dash_mod_crm_cta'),view:'crm'},
-    {icon:'◇',name:t('nav_proposals'),desc:t('dash_mod_prop_desc'),cta:t('prop_generate'),view:'prop'},
-    {icon:'▣',name:t('nav_teams'),desc:t('dash_mod_teams_desc'),cta:teams.length+' '+t('dash_mod_teams_cta'),view:'teams'},
-    {icon:'◉',name:t('nav_library'),desc:t('dash_mod_lib_desc'),cta:libItems.length+' prompts →',view:'lib'},
-  ].map(m => `<div class="dash-mod" onclick="goTo('${m.view}')" style="cursor:pointer;border:1px solid var(--border);border-radius:var(--r2);padding:14px 16px;background:var(--bg2);transition:all .15s"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px;color:var(--accent);opacity:.7">${m.icon}</span><div class="dash-mod-name">${m.name}</div></div><div class="dash-mod-desc">${m.desc}</div><div class="dash-mod-cta">${m.cta}</div></div>`).join('');
+    {icon:'◈',name:t('nav_crm'),desc:t('dash_mod_crm_desc'),cta:cids.length+' '+t('dash_mod_crm_cta'),view:'crm',tip:'Pipeline de ventas · '+cids.length+' clientes · '+captados+' captados'},
+    {icon:'◇',name:t('nav_proposals'),desc:t('dash_mod_prop_desc'),cta:t('prop_generate'),view:'prop',tip:'Genera propuestas profesionales con IA en segundos'},
+    {icon:'▣',name:t('nav_teams'),desc:t('dash_mod_teams_desc'),cta:teams.length+' '+t('dash_mod_teams_cta'),view:'teams',tip:'Configura agentes IA especializados para cada proyecto'},
+    {icon:'◉',name:t('nav_library'),desc:t('dash_mod_lib_desc'),cta:libItems.length+' prompts →',view:'lib',tip:'Guarda y reutiliza tus mejores prompts en cualquier módulo'},
+  ].map(m => `<div class="dash-mod" onclick="goTo('${m.view}')" style="cursor:pointer;border:1px solid var(--border);border-radius:var(--r2);padding:14px 16px;background:var(--bg2);transition:all .15s;position:relative"><div class="dtip">${m.tip}</div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px;color:var(--accent);opacity:.7">${m.icon}</span><div class="dash-mod-name">${m.name}</div></div><div class="dash-mod-desc">${m.desc}</div><div class="dash-mod-cta">${m.cta}</div></div>`).join('');
   const stages = ['CONTACTO','CALIF','DISCOVERY','PROPUESTA','PRESENTACIÓN','NEGOC','ONBOARDING'];
   const sc = Array(7).fill(0); cids.forEach(id => { sc[clients[id].activeStage||0]++; });
   const colors = ['#f0a500','#e8950a','#d08010','#1d9e75','#5b8dee','#8b7cf8','#4caf7d'];
