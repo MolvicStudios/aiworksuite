@@ -1287,7 +1287,7 @@ let USER_PLAN = 'free'; // en producción esto vendría de Supabase
 // ═══════════════════════════════════════════════════════════════════════
 // SUPABASE INIT
 // ═══════════════════════════════════════════════════════════════════════
-let supabase;
+var supabase;
 try {
   supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 } catch(e) {
