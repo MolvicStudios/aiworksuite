@@ -872,10 +872,10 @@ select.inp option{background:var(--bg3)}
         </g>
 
         <!-- Arrow CRM → PROPUESTAS -->
-        <line x1="280" y1="205" x2="350" y2="205" stroke="rgba(240,165,0,0.4)" stroke-width="1.5" marker-end="url(#arr)"/>
+        <line x1="280" y1="205" x2="300" y2="205" stroke="rgba(240,165,0,0.4)" stroke-width="1.5" marker-end="url(#arr)"/>
 
         <!-- PROPUESTAS IA (middle center — highlighted) -->
-        <g transform="translate(350,155)">
+        <g transform="translate(300,155)">
           <rect x="0" y="0" width="260" height="100" rx="10" fill="var(--bg2)" stroke="var(--accent)" stroke-width="2"/>
           <rect x="12" y="20" width="32" height="32" rx="6" fill="var(--abg)" stroke="rgba(240,165,0,0.3)" stroke-width="1"/>
           <path d="M22 30h8v2a4 4 0 0 1-4 4H22V30zM22 30v-4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v4" fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/>
@@ -886,7 +886,7 @@ select.inp option{background:var(--bg3)}
         </g>
 
         <!-- Arrow PROPUESTAS → EQUIPOS IA -->
-        <line x1="480" y1="255" x2="480" y2="320" stroke="rgba(240,165,0,0.4)" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="4,3"/>
+        <line x1="430" y1="255" x2="430" y2="320" stroke="rgba(240,165,0,0.4)" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="4,3"/>
 
         <!-- EQUIPOS IA (middle right) -->
         <g transform="translate(580,160)">
@@ -900,7 +900,7 @@ select.inp option{background:var(--bg3)}
         </g>
 
         <!-- Arrow EQUIPOS → PROPUESTAS (feedback arrow, curved visually) -->
-        <path d="M580 205 Q530 205 520 205" fill="none" stroke="rgba(139,124,248,0.35)" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="3,3"/>
+        <path d="M580 205 Q570 205 558 205" fill="none" stroke="rgba(139,124,248,0.35)" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="3,3"/>
 
         <!-- WORKSPACE (bottom center) -->
         <g transform="translate(295,330)">
@@ -1115,7 +1115,8 @@ select.inp option{background:var(--bg3)}
               <span style="background:linear-gradient(135deg,var(--accent),#e87c00);color:#0c0d0f;font-size:9px;padding:2px 8px;border-radius:20px;font-family:'JetBrains Mono',monospace;font-weight:600">Lanzamiento Q3 2026</span>
             </div>
             <div class="price-amount">€9 <span>/ mes</span></div>
-            <div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin:2px 0 8px">Para freelances activos</div>
+            <div style="font-size:10px;color:var(--accent);font-family:'JetBrains Mono',monospace;margin:2px 0 2px;font-weight:600">o €99/año — ahorra 2 meses</div>
+            <div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin:0 0 8px">Para freelances activos</div>
             <div class="sep" style="margin:8px 0"></div>
             <div class="price-feat"><div class="pf-ok"></div>Clientes ilimitados</div>
             <div class="price-feat"><div class="pf-ok"></div>Equipos ilimitados</div>
@@ -1756,7 +1757,7 @@ select.inp option{background:var(--bg3)}
       <div class="uf"><div class="uf-dot"></div>Branding personalizable</div>
     </div>
     <div style="background:var(--pbg);border:1px solid var(--pb);border-radius:var(--r);padding:12px;margin-bottom:16px">
-      <div style="font-size:13px;font-weight:500;color:var(--purple);margin-bottom:4px">🚀 Próximamente — €9/mes</div>
+      <div style="font-size:13px;font-weight:500;color:var(--purple);margin-bottom:4px">🚀 Lanzamiento Q3 2026 — €9/mes · €99/año</div>
       <div style="font-size:11px;color:var(--text3)">Déjanos tu email y te avisamos cuando Pro esté disponible con descuento de lanzamiento.</div>
     </div>
     <input class="inp" id="upgrade-email" placeholder="tu@email.com" style="margin-bottom:10px">
@@ -3074,14 +3075,14 @@ const TRANSLATIONS={
     settings_import_label:'Importar datos',settings_import_sub:'Restaurar desde backup JSON',
     settings_reset_label:'Restablecer aplicación',settings_reset_sub:'Elimina todos los datos locales. Irreversible.',
     settings_save:'Guardar',settings_logout:'Cerrar sesión',settings_account:'Tu cuenta',
-    upgrade_title:'Actualiza a Pro',upgrade_coming:'🚀 Próximamente — €9/mes',
+    upgrade_title:'Actualiza a Pro',upgrade_coming:'🚀 Lanzamiento Q3 2026 — €9/mes · €99/año',
     upgrade_coming_sub:'Déjanos tu email y te avisamos cuando Pro esté disponible con descuento de lanzamiento.',
     upgrade_notify:'Notificarme — descuento early',upgrade_dismiss:'Ahora no',
     btn_save:'Guardar',btn_cancel:'Cancelar',btn_edit:'Editar',btn_delete:'Eliminar',
     btn_copy:'Copiar',btn_copied:'✓ Copiado',btn_continue:'Continuar →',btn_back:'←',btn_confirm:'Confirmar',
     cookie_text:'Usamos cookies esenciales para el funcionamiento de la app y recordar tu sesión.',
     cookie_learn:'Política de cookies',cookie_accept:'Aceptar todo',cookie_essential:'Solo esenciales',
-    plan_free_tag:'Gratis para siempre',plan_pro_badge:'Próximamente',
+    plan_free_tag:'Gratis para siempre',plan_pro_badge:'Q3 2026',
     plan_free_start:'Empezar gratis',plan_pro_notify:'Notificarme al lanzar',
     footer_tagline:'BYOK · Tus datos, tu navegador',
     footer_privacy:'Privacidad',footer_cookies:'Cookies',footer_terms:'Términos',footer_contact:'Contacto',footer_by:'by',
@@ -3154,14 +3155,14 @@ const TRANSLATIONS={
     settings_import_label:'Import data',settings_import_sub:'Restore from previously exported JSON backup',
     settings_reset_label:'Reset app',settings_reset_sub:'Deletes all local data. Irreversible.',
     settings_save:'Save',settings_logout:'Sign out',settings_account:'Your account',
-    upgrade_title:'Upgrade to Pro',upgrade_coming:'🚀 Coming soon — €9/month',
+    upgrade_title:'Upgrade to Pro',upgrade_coming:'🚀 Launch Q3 2026 — €9/mo · €99/yr',
     upgrade_coming_sub:"Leave your email and we'll notify you when Pro launches with an early discount.",
     upgrade_notify:'Notify me — early discount',upgrade_dismiss:'Maybe later',
     btn_save:'Save',btn_cancel:'Cancel',btn_edit:'Edit',btn_delete:'Delete',
     btn_copy:'Copy',btn_copied:'✓ Copied',btn_continue:'Continue →',btn_back:'←',btn_confirm:'Confirm',
     cookie_text:'We use essential cookies to keep the app working and remember your session.',
     cookie_learn:'Cookie policy',cookie_accept:'Accept all',cookie_essential:'Essential only',
-    plan_free_tag:'Always free',plan_pro_badge:'Coming soon',
+    plan_free_tag:'Always free',plan_pro_badge:'Q3 2026',
     plan_free_start:'Start free',plan_pro_notify:'Notify me at launch',
     footer_tagline:'BYOK · Your data, your browser',
     footer_privacy:'Privacy',footer_cookies:'Cookies',footer_terms:'Terms',footer_contact:'Contact',footer_by:'by',
