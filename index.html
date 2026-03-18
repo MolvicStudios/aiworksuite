@@ -58,8 +58,10 @@
 </script>
 
 <!-- Fuentes y SDK -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 
 <style>
 /* ═══════════════════════════════════════════════
@@ -82,7 +84,7 @@
 [data-theme="light"] {
   --bg:#f4f3ef;   --bg2:#ffffff;  --bg3:#eceae3; --bg4:#e0ddd4;
   --border:rgba(0,0,0,.08);  --border2:rgba(0,0,0,.16);
-  --text:#181715; --text2:#484640; --text3:#8a8880;
+  --text:#181715; --text2:#484640; --text3:#6c6a67;
   --abg:rgba(240,165,0,.12);  --abg2:rgba(240,165,0,.22);
   --tbg:rgba(29,158,117,.10); --tb:rgba(29,158,117,.28);
   --pbg:rgba(139,124,248,.10); --pb:rgba(139,124,248,.28);
@@ -539,6 +541,18 @@ select.inp option{background:var(--bg3)}
 .upgrade-features{text-align:left;background:var(--bg3);border-radius:var(--r);padding:14px;margin-bottom:20px;display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .uf{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px}
 .uf-dot{width:5px;height:5px;border-radius:50%;background:var(--purple);flex-shrink:0}
+
+/* TOAST SYSTEM */
+#toast-container{position:fixed;bottom:24px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;max-width:340px}
+.toast{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r2);padding:10px 16px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text);transform:translateX(20px);opacity:0;transition:transform .25s ease,opacity .25s ease;pointer-events:all;box-shadow:0 4px 16px rgba(0,0,0,.35);line-height:1.5}
+.toast.show{transform:translateX(0);opacity:1}
+.toast-success{border-color:var(--green)}
+.toast-error{border-color:var(--red)}
+.toast-warn{border-color:var(--accent)}
+
+/* CONFIRM MODAL */
+.confirm-box{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r2);padding:24px 22px;width:340px;max-width:96vw;text-align:center}
+.confirm-msg{font-size:13px;color:var(--text);line-height:1.6;margin-bottom:18px}
 </style>
 <!-- Tema temprano: evita flash al cargar -->
 <script>!function(){try{var k=Object.keys(localStorage).find(function(x){return x.endsWith('_theme')});var s=k?JSON.parse(localStorage.getItem(k)):null;var p=s||'system';var r=p==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r)}catch(e){}}()</script>
@@ -575,9 +589,23 @@ select.inp option{background:var(--bg3)}
   <button class="btn btn-ghost btn-xs" onclick="dismissPWABanner()">×</button>
 </div>
 
-<!-- ══════════════════════════════════════════════════════
+<!-- ── TOAST CONTAINER ──────────────────────────────────────────────── -->
+<div id="toast-container" aria-live="polite" aria-atomic="false"></div>
+
+<!-- ── CONFIRM MODAL ────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-confirm" style="display:none" role="dialog" aria-modal="true" aria-labelledby="confirm-msg">
+  <div class="confirm-box">
+    <div class="confirm-msg" id="confirm-msg"></div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-ghost" id="confirm-cancel">Cancelar</button>
+      <button class="btn btn-accent" id="confirm-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════
      SCREEN: LANDING
-══════════════════════════════════════════════════════ -->
+════════════════════════════════════════════════════════════════════ -->
 <div class="screen active" id="screen-landing">
 
   <nav class="land-nav">
@@ -736,7 +764,7 @@ select.inp option{background:var(--bg3)}
         <div class="auth-title">Recuperar contraseña</div>
         <div id="auth-error-reset" class="auth-error" style="display:none"></div>
         <div id="auth-success-reset" class="auth-success" style="display:none"></div>
-        <div class="frow"><span class="lbl">Tu email de registro</span><input class="inp" type="email" id="reset-email" placeholder="tu@email.com"></div>
+        <div class="frow"><label class="lbl" for="reset-email">Tu email de registro</label><input class="inp" type="email" id="reset-email" placeholder="tu@email.com"></div>
         <div style="margin-top:12px"><button class="btn btn-accent" style="width:100%" onclick="doReset()">Enviar enlace</button></div>
         <div class="auth-switch"><a onclick="toggleAuth('login')">← Volver al login</a></div>
       </div>
@@ -1121,17 +1149,23 @@ select.inp option{background:var(--bg3)}
     <!-- API -->
     <div class="settings-sec">
       <div class="settings-sec-title">Proveedor IA (BYOK)</div>
-      <div class="frow"><span class="lbl">Proveedor</span>
+      <div class="frow"><label class="lbl" for="s-provider">Proveedor</label>
         <select class="inp" id="s-provider" onchange="updateProviderLabel()"><option value="anthropic">Anthropic — Claude</option><option value="openai">OpenAI — GPT-4o</option><option value="groq">Groq — Llama 3.3</option><option value="openrouter">OpenRouter — Multi-model</option></select>
       </div>
-      <div class="frow" style="margin-top:8px"><span class="lbl" id="s-key-label">API Key (Anthropic)</span>
+      <div class="frow" style="margin-top:8px"><label class="lbl" id="s-key-label" for="s-api-key">API Key (Anthropic)</label>
         <div style="display:flex;gap:7px"><input class="inp" type="password" id="s-api-key" placeholder="sk-ant-..." autocomplete="off" style="flex:1"><button class="btn btn-ghost btn-sm" onclick="toggleKeyVis()">👁</button><button class="btn btn-teal btn-sm" onclick="testApiKey()">Probar</button></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
         <div class="api-status api-no" id="api-status-badge">● Sin configurar</div>
-        <div style="font-size:11px;color:var(--text3)" id="s-model-label">Modelo: claude-sonnet-4-20250514</div>
       </div>
-      <div class="frow" style="margin-top:10px"><span class="lbl">Modelo personalizado (opcional)</span><input class="inp" id="s-custom-model" placeholder="Deja vacío para el modelo por defecto"></div>
+      <div class="frow" style="margin-top:10px">
+        <label class="lbl" for="s-model-select">Modelo</label>
+        <select class="inp" id="s-model-select" onchange="onModelSelectChange()"></select>
+      </div>
+      <div class="frow" id="s-custom-model-row" style="margin-top:8px;display:none">
+        <label class="lbl" for="s-custom-model">Modelo personalizado</label>
+        <input class="inp" id="s-custom-model" placeholder="proveedor/nombre-del-modelo">
+      </div>
       <div style="margin-top:10px"><button class="btn btn-accent btn-sm" onclick="saveApiSettings()">Guardar</button></div>
     </div>
 
@@ -1139,11 +1173,11 @@ select.inp option{background:var(--bg3)}
     <div class="settings-sec">
       <div class="settings-sec-title">Perfil profesional</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="frow"><span class="lbl">Tu nombre / marca</span><input class="inp" id="s-user-name" placeholder="Jose / MolvicStudios"></div>
-        <div class="frow"><span class="lbl">Email de contacto</span><input class="inp" id="s-email" placeholder="tu@email.com"></div>
-        <div class="frow"><span class="lbl">WhatsApp / Teléfono</span><input class="inp" id="s-phone" placeholder="+34 600 000 000"></div>
-        <div class="frow"><span class="lbl">Telegram</span><input class="inp" id="s-telegram" placeholder="@usuario"></div>
-        <div class="frow" style="grid-column:1/-1"><span class="lbl">Web / Portfolio</span><input class="inp" id="s-web" placeholder="molvicstudios.pro"></div>
+        <div class="frow"><label class="lbl" for="s-user-name">Tu nombre / marca</label><input class="inp" id="s-user-name" placeholder="Jose / MolvicStudios"></div>
+        <div class="frow"><label class="lbl" for="s-email">Email de contacto</label><input class="inp" id="s-email" placeholder="tu@email.com"></div>
+        <div class="frow"><label class="lbl" for="s-phone">WhatsApp / Teléfono</label><input class="inp" id="s-phone" placeholder="+34 600 000 000"></div>
+        <div class="frow"><label class="lbl" for="s-telegram">Telegram</label><input class="inp" id="s-telegram" placeholder="@usuario"></div>
+        <div class="frow" style="grid-column:1/-1"><label class="lbl" for="s-web">Web / Portfolio</label><input class="inp" id="s-web" placeholder="molvicstudios.pro"></div>
       </div>
       <div style="margin-top:4px"><button class="btn btn-accent btn-sm" onclick="saveProfileSettings()">Guardar perfil</button></div>
     </div>
@@ -1187,41 +1221,41 @@ select.inp option{background:var(--bg3)}
      MODALES
 ══════════════════════════════════════════════════════ -->
 <!-- CRM modales -->
-<div class="modal-overlay" id="modal-client" style="display:none">
+<div class="modal-overlay" id="modal-client" style="display:none" role="dialog" aria-modal="true" aria-labelledby="modal-client-title">
   <div class="modal"><h3 id="modal-client-title">Nuevo cliente</h3>
-    <div class="fgrid"><div class="frow"><span class="lbl">Nombre *</span><input class="inp" id="m-name" placeholder="Juan García"></div><div class="frow"><span class="lbl">Empresa</span><input class="inp" id="m-co" placeholder="Acme S.L."></div></div>
-    <div class="frow" style="margin-top:4px"><span class="lbl">Email / WhatsApp</span><input class="inp" id="m-contact" placeholder="juan@acme.com"></div>
-    <div class="frow" style="margin-top:8px"><span class="lbl">Servicio / interés</span><input class="inp" id="m-service" placeholder="Web IA, PlanoBase..."></div>
-    <div class="frow" style="margin-top:8px"><span class="lbl">Presupuesto</span><input class="inp" id="m-budget" placeholder="€ 1.500 – 3.000"></div>
+    <div class="fgrid"><div class="frow"><label class="lbl" for="m-name">Nombre *</label><input class="inp" id="m-name" placeholder="Juan García"></div><div class="frow"><label class="lbl" for="m-co">Empresa</label><input class="inp" id="m-co" placeholder="Acme S.L."></div></div>
+    <div class="frow" style="margin-top:4px"><label class="lbl" for="m-contact">Email / WhatsApp</label><input class="inp" id="m-contact" placeholder="juan@acme.com"></div>
+    <div class="frow" style="margin-top:8px"><label class="lbl" for="m-service">Servicio / interés</label><input class="inp" id="m-service" placeholder="Web IA, PlanoBase..."></div>
+    <div class="frow" style="margin-top:8px"><label class="lbl" for="m-budget">Presupuesto</label><input class="inp" id="m-budget" placeholder="€ 1.500 – 3.000"></div>
     <div class="modal-actions"><button class="btn btn-ghost btn-sm" onclick="closeModal('modal-client')">Cancelar</button><button class="btn btn-accent btn-sm" onclick="saveClient()">Guardar</button></div>
   </div>
 </div>
-<div class="modal-overlay" id="modal-captado" style="display:none">
-  <div class="modal"><h3>✅ Marcar cliente captado</h3>
+<div class="modal-overlay" id="modal-captado" style="display:none" role="dialog" aria-modal="true" aria-labelledby="modal-captado-title">
+  <div class="modal"><h3 id="modal-captado-title">✅ Marcar cliente captado</h3>
     <p style="font-size:12px;color:var(--text2);margin-bottom:12px">El cliente avanzará a Onboarding.</p>
-    <div class="frow"><span class="lbl">Precio final cerrado</span><input class="inp" id="captado-precio" placeholder="€ 2.000"></div>
-    <div class="frow" style="margin-top:8px"><span class="lbl">Notas del cierre</span><input class="inp" id="captado-notas" placeholder="Condiciones pactadas..."></div>
+    <div class="frow"><label class="lbl" for="captado-precio">Precio final cerrado</label><input class="inp" id="captado-precio" placeholder="€ 2.000"></div>
+    <div class="frow" style="margin-top:8px"><label class="lbl" for="captado-notas">Notas del cierre</label><input class="inp" id="captado-notas" placeholder="Condiciones pactadas..."></div>
     <div class="modal-actions"><button class="btn btn-ghost btn-sm" onclick="closeModal('modal-captado')">Cancelar</button><button class="btn btn-teal btn-sm" onclick="confirmarCaptado()">Confirmar</button></div>
   </div>
 </div>
-<div class="modal-overlay" id="modal-nota" style="display:none">
+<div class="modal-overlay" id="modal-nota" style="display:none" role="dialog" aria-modal="true" aria-labelledby="nota-title">
   <div class="modal" style="width:360px"><h3 id="nota-title">Nota</h3>
     <textarea class="inp" id="nota-txt" rows="4" placeholder="Escribe tus notas..."></textarea>
     <div class="modal-actions"><button class="btn btn-ghost btn-sm" onclick="closeModal('modal-nota')">Cancelar</button><button class="btn btn-accent btn-sm" onclick="saveNota()">Guardar</button></div>
   </div>
 </div>
 <!-- Biblioteca modal -->
-<div class="modal-overlay" id="modal-prompt" style="display:none">
+<div class="modal-overlay" id="modal-prompt" style="display:none" role="dialog" aria-modal="true" aria-labelledby="modal-prompt-title">
   <div class="modal" style="width:500px"><h3 id="modal-prompt-title">Nuevo prompt</h3>
-    <div class="frow"><span class="lbl">Título *</span><input class="inp" id="np-title" placeholder="Ej: System prompt para proyectos TI"></div>
-    <div class="frow" style="margin-top:8px"><span class="lbl">Categoría</span><select class="inp" id="np-cat"><option value="system">System prompt</option><option value="tarea">Prompt de tarea</option><option value="crm">CRM / ventas</option><option value="contenido">Contenido</option><option value="codigo">Código</option><option value="estrategia">Estrategia</option><option value="otro">Otro</option></select></div>
-    <div class="frow" style="margin-top:8px"><span class="lbl">Contenido *</span><textarea class="inp" id="np-content" rows="6" placeholder="Escribe o pega el contenido..."></textarea></div>
-    <div class="frow" style="margin-top:8px"><span class="lbl">Tags (separados por coma)</span><input class="inp" id="np-tags" placeholder="IA, diseño..."></div>
+    <div class="frow"><label class="lbl" for="np-title">Título *</label><input class="inp" id="np-title" placeholder="Ej: System prompt para proyectos TI"></div>
+    <div class="frow" style="margin-top:8px"><label class="lbl" for="np-cat">Categoría</label><select class="inp" id="np-cat"><option value="system">System prompt</option><option value="tarea">Prompt de tarea</option><option value="crm">CRM / ventas</option><option value="contenido">Contenido</option><option value="codigo">Código</option><option value="estrategia">Estrategia</option><option value="otro">Otro</option></select></div>
+    <div class="frow" style="margin-top:8px"><label class="lbl" for="np-content">Contenido *</label><textarea class="inp" id="np-content" rows="6" placeholder="Escribe o pega el contenido..."></textarea></div>
+    <div class="frow" style="margin-top:8px"><label class="lbl" for="np-tags">Tags (separados por coma)</label><input class="inp" id="np-tags" placeholder="IA, diseño..."></div>
     <div class="modal-actions"><button class="btn btn-ghost btn-sm" onclick="closeModal('modal-prompt')">Cancelar</button><button class="btn btn-accent btn-sm" onclick="savePrompt()">Guardar</button></div>
   </div>
 </div>
 <!-- Lib picker -->
-<div class="modal-overlay" id="modal-lib-picker" style="display:none">
+<div class="modal-overlay" id="modal-lib-picker" style="display:none" role="dialog" aria-modal="true">
   <div class="modal" style="width:500px"><h3>Insertar desde Biblioteca</h3>
     <input class="inp" id="lib-picker-search" placeholder="Buscar..." oninput="renderLibPicker()" style="margin-bottom:10px">
     <div id="lib-picker-list" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
@@ -1229,7 +1263,7 @@ select.inp option{background:var(--bg3)}
   </div>
 </div>
 <!-- Upgrade modal -->
-<div class="modal-overlay" id="modal-upgrade" style="display:none">
+<div class="modal-overlay" id="modal-upgrade" style="display:none" role="dialog" aria-modal="true">
   <div class="upgrade-modal">
     <div style="font-size:28px;margin-bottom:8px">⚡</div>
     <h3>Actualiza a Pro</h3>
@@ -1255,7 +1289,7 @@ select.inp option{background:var(--bg3)}
 </div>
 
 <!-- ── MODAL LEGAL (Privacidad / Cookies / Términos) ──────────────────────── -->
-<div class="modal-overlay" id="modal-legal" style="display:none">
+<div class="modal-overlay" id="modal-legal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="legal-modal-title">
   <div class="modal" style="width:580px;max-height:80vh">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
       <h3 id="legal-modal-title" style="margin:0">Política de Privacidad</h3>
@@ -1265,6 +1299,30 @@ select.inp option{background:var(--bg3)}
          style="font-size:12px;line-height:1.8;color:var(--text2);overflow-y:auto;
                 max-height:calc(80vh - 80px);padding-right:6px">
     </div>
+  </div>
+</div>
+
+<!-- ── MODAL ONBOARDING (primera vez) ──────────────────────────────────── -->
+<div class="modal-overlay" id="modal-onboarding" style="display:none" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
+  <div class="modal" style="width:480px;text-align:center">
+    <div style="font-size:32px;margin-bottom:8px">🎉</div>
+    <h3 id="onboarding-title" style="margin-bottom:6px">¡Bienvenido a AIWorkSuite!</h3>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:18px;line-height:1.7">Empieza en 3 pasos y empieza a generar valor con IA.</p>
+    <div style="display:flex;flex-direction:column;gap:10px;text-align:left;margin-bottom:20px">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px;display:flex;gap:12px;align-items:flex-start">
+        <div style="width:24px;height:24px;background:var(--abg);border:1px solid rgba(240,165,0,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--accent);flex-shrink:0">1</div>
+        <div><div style="font-size:12px;font-weight:600;color:var(--text)">Configura tu API key</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Ve a <strong>Configuración → Proveedor IA</strong> y añade tu key de Anthropic, OpenAI, Groq u OpenRouter.</div></div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px;display:flex;gap:12px;align-items:flex-start">
+        <div style="width:24px;height:24px;background:var(--abg);border:1px solid rgba(240,165,0,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--accent);flex-shrink:0">2</div>
+        <div><div style="font-size:12px;font-weight:600;color:var(--text)">Añade tu primer cliente al CRM</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Crea un cliente en el <strong>CRM</strong> y usa el chat IA para cada etapa de tu pipeline de ventas.</div></div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px;display:flex;gap:12px;align-items:flex-start">
+        <div style="width:24px;height:24px;background:var(--abg);border:1px solid rgba(240,165,0,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--accent);flex-shrink:0">3</div>
+        <div><div style="font-size:12px;font-weight:600;color:var(--text)">Genera tu primer propuesta</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Ve a <strong>Propuestas</strong>, rellena los datos del cliente y pulsa "Generar" para obtener una propuesta profesional en segundos.</div></div>
+      </div>
+    </div>
+    <button class="btn btn-accent" style="width:100%" onclick="dismissOnboarding()">¡Empezar ahora →</button>
   </div>
 </div>
 
@@ -1307,10 +1365,10 @@ const S = {
 };
 
 const PROVIDERS = {
-  anthropic: { label:'Anthropic', model:'claude-sonnet-4-20250514', endpoint:'https://api.anthropic.com/v1/messages', hint:'sk-ant-...' },
-  openai:    { label:'OpenAI',    model:'gpt-4o',                   endpoint:'https://api.openai.com/v1/chat/completions', hint:'sk-...' },
-  groq:      { label:'Groq',      model:'llama-3.3-70b-versatile',  endpoint:'https://api.groq.com/openai/v1/chat/completions', hint:'gsk_...' },
-  openrouter:{ label:'OpenRouter',model:'anthropic/claude-3.5-sonnet',endpoint:'https://openrouter.ai/api/v1/chat/completions', hint:'sk-or-...' }
+  anthropic: { label:'Anthropic', model:'claude-sonnet-4-20250514', models:['claude-opus-4-5','claude-sonnet-4-5','claude-sonnet-4-20250514','claude-3-5-haiku-20241022'], endpoint:'https://api.anthropic.com/v1/messages', hint:'sk-ant-...' },
+  openai:    { label:'OpenAI',    model:'gpt-4o',                   models:['gpt-4o','gpt-4o-mini','gpt-4-turbo','o1-mini'],             endpoint:'https://api.openai.com/v1/chat/completions', hint:'sk-...' },
+  groq:      { label:'Groq',      model:'llama-3.3-70b-versatile',  models:['llama-3.3-70b-versatile','llama-3.1-8b-instant','mixtral-8x7b-32768','gemma2-9b-it'], endpoint:'https://api.groq.com/openai/v1/chat/completions', hint:'gsk_...' },
+  openrouter:{ label:'OpenRouter',model:'anthropic/claude-3.5-sonnet',models:['anthropic/claude-3.5-sonnet','openai/gpt-4o','meta-llama/llama-3.3-70b-instruct','google/gemini-flash-1.5'], endpoint:'https://openrouter.ai/api/v1/chat/completions', hint:'sk-or-...' }
 };
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1353,7 +1411,8 @@ async function doRegister() {
   const errEl = document.getElementById('auth-error-reg');
   const okEl  = document.getElementById('auth-success-reg');
   errEl.style.display = 'none'; okEl.style.display = 'none';
-  if (!email || pass.length < 6) { errEl.textContent = 'Email válido y contraseña de al menos 6 caracteres.'; errEl.style.display = 'block'; return; }
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRe.test(email) || pass.length < 6) { errEl.textContent = 'Introduce un email válido y contraseña de al menos 6 caracteres.'; errEl.style.display = 'block'; return; }
   document.getElementById('btn-register').disabled = true;
   document.getElementById('btn-register').textContent = 'Creando cuenta...';
   try {
@@ -1438,6 +1497,14 @@ function launchApp() {
   refreshDash();
   updateLimitLabels();
   handleDeepLink();
+  // Show onboarding on first launch
+  if (!S.get('onboarded')) {
+    setTimeout(() => { document.getElementById('modal-onboarding').style.display = 'flex'; }, 600);
+  }
+}
+function dismissOnboarding() {
+  S.set('onboarded', true);
+  closeModal('modal-onboarding');
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1448,7 +1515,7 @@ function showUpgradeInterest() { showUpgradeModal(); }
 
 async function submitUpgradeInterest() {
   const email = document.getElementById('upgrade-email').value.trim();
-  if (!email) { alert(t('auth_email') + ' requerido'); return; }
+  if (!email) { showToast(t('auth_email') + ' requerido.', 'warn'); return; }
   const payload = {
     email,
     plan: 'pro',
@@ -1466,7 +1533,7 @@ async function submitUpgradeInterest() {
     interests.push({ email, date: new Date().toISOString() });
     S.set('upgrade_interests', interests);
   }
-  alert('\u2705 ' + t('upgrade_notify') + ' — ' + email);
+  showToast('✅ ' + t('upgrade_notify') + ' — ' + email, 'success');
   closeModal('modal-upgrade');
 }
 
@@ -1527,8 +1594,58 @@ function logActivity(text, color='var(--accent)') {
   acts.unshift({ text, color, time: new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}) });
   S.set('activity', acts.slice(0,20));
 }
-function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-['modal-client','modal-captado','modal-nota','modal-prompt','modal-lib-picker','modal-upgrade','modal-legal'].forEach(id => {
+
+function showToast(msg, type='info', duration=3500) {
+  const c = document.getElementById('toast-container');
+  if (!c) return;
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  requestAnimationFrame(() => { requestAnimationFrame(() => t.classList.add('show')); });
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, duration);
+}
+
+function showConfirm(msg, onOk, onCancel) {
+  const modal = document.getElementById('modal-confirm');
+  const msgEl = document.getElementById('confirm-msg');
+  const okBtn = document.getElementById('confirm-ok');
+  const cancelBtn = document.getElementById('confirm-cancel');
+  msgEl.textContent = msg;
+  const close = () => { modal.style.display = 'none'; };
+  okBtn.onclick = () => { close(); onOk(); };
+  cancelBtn.onclick = () => { close(); if (onCancel) onCancel(); };
+  modal.style.display = 'flex';
+  okBtn.focus();
+}
+
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = 'none';
+  if (el._trapFn) { el.removeEventListener('keydown', el._trapFn); delete el._trapFn; }
+  if (el._openerEl) { try { el._openerEl.focus(); } catch(e){} delete el._openerEl; }
+}
+function openModal(id, openerEl) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (openerEl) el._openerEl = openerEl;
+  el.style.display = 'flex';
+  // Focus first focusable element inside
+  const focusable = el.querySelectorAll('button,input,select,textarea,[tabindex]:not([tabindex="-1"])');
+  if (focusable.length) setTimeout(() => focusable[0].focus(), 60);
+  // Trap Tab focus within modal
+  el._trapFn = function(e) {
+    if (e.key !== 'Tab') return;
+    const items = Array.from(el.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'));
+    if (!items.length) return;
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last)  { e.preventDefault(); first.focus(); }
+  };
+  el.addEventListener('keydown', el._trapFn);
+}
+['modal-client','modal-captado','modal-nota','modal-prompt','modal-lib-picker','modal-upgrade','modal-legal','modal-confirm'].forEach(id => {
   const el = document.getElementById(id);
   if(el) el.addEventListener('click', function(e) { if(e.target===this) closeModal(id); });
 });
@@ -1555,8 +1672,21 @@ function applyUserSettings() {
   const ph   = document.getElementById('s-phone');    if(ph)   ph.value   = cfg.phone || '';
   const tg   = document.getElementById('s-telegram'); if(tg)   tg.value   = cfg.telegram || '';
   const wb   = document.getElementById('s-web');      if(wb)   wb.value   = cfg.web || '';
-  const cm   = document.getElementById('s-custom-model'); if(cm) cm.value = cfg.model || '';
+  const cm   = document.getElementById('s-custom-model'); if(cm) cm.value = '';
   updateProviderLabel();
+  // Set custom model field if current model is custom
+  if(cfg.model) {
+    const sel = document.getElementById('s-model-select');
+    if(sel) {
+      const pSelect = cfg.provider || 'anthropic';
+      const models = PROVIDERS[pSelect]?.models || [];
+      if(!models.includes(cfg.model)) {
+        sel.value = '__custom';
+        const cm2 = document.getElementById('s-custom-model'); if(cm2) cm2.value = cfg.model;
+        _onModelSelectChange();
+      } else { sel.value = cfg.model; }
+    }
+  }
   updateApiStatusBadge(cfg.apiKey ? 'ok' : 'no');
 }
 
@@ -1577,22 +1707,27 @@ function toggleKeyVis() { const el = document.getElementById('s-api-key'); if(el
 async function testApiKey() {
   const key = document.getElementById('s-api-key').value.trim();
   const prov = document.getElementById('s-provider').value;
-  if (!key) { alert('Introduce una API key primero.'); return; }
+  if (!key) { showToast('Introduce una API key primero.', 'warn'); return; }
   updateApiStatusBadge('testing');
   const orig = getCFG(); saveCFG({...orig, provider:prov, apiKey:key, model:''});
   try {
     await callAI('Di solo la palabra OK.', [{role:'user',content:'Test'}], 10);
-    updateApiStatusBadge('ok'); alert('✅ Conexión exitosa.');
-  } catch(e) { updateApiStatusBadge('no'); alert('❌ Error: ' + e.message); }
+    updateApiStatusBadge('ok'); showToast('✅ Conexión exitosa.', 'success');
+  } catch(e) { updateApiStatusBadge('no'); showToast('❌ Error: ' + e.message, 'error', 5000); }
   saveCFG(orig);
 }
 function saveApiSettings() {
   const cfg = getCFG();
+  const sel = document.getElementById('s-model-select');
   cfg.provider = document.getElementById('s-provider').value;
   cfg.apiKey   = document.getElementById('s-api-key').value.trim();
-  cfg.model    = document.getElementById('s-custom-model').value.trim();
+  if(sel && sel.value === '__custom') {
+    cfg.model = (document.getElementById('s-custom-model')?.value || '').trim();
+  } else {
+    cfg.model = sel ? sel.value : '';
+  }
   saveCFG(cfg); updateApiStatusBadge(cfg.apiKey ? 'ok' : 'no');
-  alert('✅ Guardado.');
+  showToast('✅ Ajustes de API guardados.', 'success');
 }
 function saveProfileSettings() {
   const cfg = getCFG();
@@ -1602,12 +1737,19 @@ function saveProfileSettings() {
   cfg.telegram = document.getElementById('s-telegram').value.trim();
   cfg.web      = document.getElementById('s-web').value.trim();
   saveCFG(cfg); applyUserSettings(); refreshDash();
-  alert('✅ Perfil guardado.');
+  showToast('✅ Perfil guardado.', 'success');
 }
 
 // ═══════════════════════════════════════════════════════════════════════
 // AI API CALL — multi-provider
 // ═══════════════════════════════════════════════════════════════════════
+function _aiHttpError(status) {
+  if (status === 401) throw new Error('API key inválida (401). Revisa tu configuración en Ajustes.');
+  if (status === 429) throw new Error('Límite de peticiones alcanzado (429). Espera un momento o cambia de proveedor.');
+  if (status === 500) throw new Error('Error interno del servidor IA (500). Inténtalo de nuevo.');
+  if (status === 503) throw new Error('Servicio IA no disponible (503). Inténtalo más tarde.');
+  throw new Error(`Error HTTP ${status} del proveedor IA.`);
+}
 async function callAI(systemPrompt, messages, maxTokens=1200) {
   const cfg = getCFG();
   const prov = PROVIDERS[cfg.provider] || PROVIDERS.anthropic;
@@ -1615,14 +1757,16 @@ async function callAI(systemPrompt, messages, maxTokens=1200) {
   const key = cfg.apiKey;
   if (!key) throw new Error('API key no configurada. Ve a Configuración → Proveedor IA.');
   if (cfg.provider === 'anthropic') {
-    const r = await fetch(prov.endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({model, max_tokens:maxTokens, system:systemPrompt, messages}) });
+    const r = await fetch(prov.endpoint, { method:'POST', headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'}, body: JSON.stringify({model, max_tokens:maxTokens, system:systemPrompt, messages}) });
+    if (!r.ok) _aiHttpError(r.status);
     const d = await r.json(); if(d.error) throw new Error(d.error.message);
     return d.content[0].text;
   }
   const msgs = [{role:'system', content:systemPrompt}, ...messages];
   const hdrs = {'Content-Type':'application/json', 'Authorization':'Bearer '+key};
-  if (cfg.provider === 'openrouter') { hdrs['HTTP-Referer'] = 'https://aiworksuite.app'; hdrs['X-Title'] = 'AIWorkSuite'; }
+  if (cfg.provider === 'openrouter') { hdrs['HTTP-Referer'] = 'https://aiworksuite.pro'; hdrs['X-Title'] = 'AIWorkSuite'; }
   const r = await fetch(prov.endpoint, { method:'POST', headers:hdrs, body: JSON.stringify({model, max_tokens:maxTokens, messages:msgs}) });
+  if (!r.ok) _aiHttpError(r.status);
   const d = await r.json(); if(d.error) throw new Error(d.error.message || JSON.stringify(d.error));
   return d.choices[0].message.content;
 }
@@ -1740,14 +1884,20 @@ function confirmarCaptado(){
   c.captado=true;c.captadoFecha=fmtDate();if(precio)c.precioCerrado=precio;if(notas){if(!c.notes)c.notes={};c.notes[6]=(c.notes[6]?c.notes[6]+'\n':'')+notas;}
   c.activeStage=6;if(!c.dates)c.dates={};c.dates[6]=fmtDate();saveCRMData();closeModal('modal-captado');renderClientList();renderClientView();
   logActivity(c.name+' captado ✅','var(--green)');
-  if(confirm(`✅ Captado. ¿Crear equipo IA para "${c.name}"?`)){crmToTeams();}
+  showToast('✅ '+c.name+' marcado como captado.','success');
+  showConfirm(`¿Crear equipo IA para "${esc(c.name)}"?`,()=>{crmToTeams();});
 }
 
 function renderCRMChatHead(){const c=CRM.clients[CRM.activeId];if(!c)return;const s=STAGES[c.activeStage||0];document.getElementById('chat-stage-tag').textContent=s.tag;document.getElementById('chat-stage-lbl').textContent=s.name;document.getElementById('chat-client-tag').textContent=c.name;}
 function renderCRMChatMsgs(){
   const c=CRM.clients[CRM.activeId];if(!c)return;const stage=c.activeStage||0;const hist=(c.chatHistory&&c.chatHistory[stage])||[];const cont=document.getElementById('chat-messages');
   if(!hist.length){cont.innerHTML=`<div class="cmsg snote">Etapa: ${STAGES[stage].name}<br>Escribe para iniciar</div>`;return;}
-  cont.innerHTML=hist.map(m=>{if(m.role==='error')return`<div class="cmsg err">${esc(m.content)}</div>`;return`<div class="cmsg ${m.role}">${esc(m.content).replace(/\n/g,'<br>')}</div>`;}).join('');
+  cont.innerHTML=hist.map(m=>{
+    if(m.role==='error')return`<div class="cmsg err">${esc(m.content)}</div>`;
+    const cls=m.role==='assistant'?'assistant':'user';
+    const safeContent=esc(m.content).replace(/\n/g,'<br>');
+    return`<div class="cmsg ${cls}">${safeContent}</div>`;
+  }).join('');
   cont.scrollTop=cont.scrollHeight;
 }
 async function crmSend(){
@@ -1758,7 +1908,7 @@ async function crmSend(){
   document.getElementById('btn-send').disabled=true;renderCRMChatMsgs();
   const cont=document.getElementById('chat-messages');const typ=document.createElement('div');typ.className='crm-typing-ind';typ.id='crm-typ';typ.innerHTML='<span></span><span></span><span></span>';cont.appendChild(typ);cont.scrollTop=cont.scrollHeight;
   const cfg=getCFG(); const sys=CRM_SYS[stage]+`\n\nProfesional: ${cfg.userName||'Jose'}\nCLIENTE: ${c.name} | Empresa: ${c.company||'—'} | Servicio: ${c.service||'—'} | Presupuesto: ${c.budget||'—'}`;
-  const msgs=c.chatHistory[stage].map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content}));
+  const msgs=c.chatHistory[stage].slice(-20).map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content}));
   try{const reply=await callAI(sys,msgs,1000);c.chatHistory[stage].push({role:'assistant',content:reply});saveCRMData();}
   catch(e){c.chatHistory[stage].push({role:'error',content:e.message});saveCRMData();}
   CRM.loading=false;document.getElementById('btn-send').disabled=false;const t=document.getElementById('crm-typ');if(t)t.remove();renderCRMChatMsgs();
@@ -1771,13 +1921,13 @@ function openNewClientModal(){
 }
 function openEditModal(){if(!CRM.activeId)return;const c=CRM.clients[CRM.activeId];CRM.editId=CRM.activeId;document.getElementById('modal-client-title').textContent='Editar cliente';document.getElementById('m-name').value=c.name||'';document.getElementById('m-co').value=c.company||'';document.getElementById('m-contact').value=c.contact||'';document.getElementById('m-service').value=c.service||'';document.getElementById('m-budget').value=c.budget||'';document.getElementById('modal-client').style.display='flex';}
 function saveClient(){
-  const name=document.getElementById('m-name').value.trim();if(!name){alert('El nombre es obligatorio');return;}
+  const name=document.getElementById('m-name').value.trim();if(!name){showToast('El nombre es obligatorio.', 'warn');return;}
   if(!CRM.editId&&!checkPlanLimit('clients')){showLimitWarning('clients');return;}
   if(CRM.editId){const c=CRM.clients[CRM.editId];c.name=name;c.company=document.getElementById('m-co').value.trim();c.contact=document.getElementById('m-contact').value.trim();c.service=document.getElementById('m-service').value.trim();c.budget=document.getElementById('m-budget').value.trim();}
   else{const id=genId();CRM.clients[id]={name,company:document.getElementById('m-co').value.trim(),contact:document.getElementById('m-contact').value.trim(),service:document.getElementById('m-service').value.trim(),budget:document.getElementById('m-budget').value.trim(),activeStage:0,notes:{},dates:{},chatHistory:{},propuestas:[]};CRM.activeId=id;logActivity('Nuevo cliente: '+name,'var(--blue)');}
   saveCRMData();closeModal('modal-client');renderClientList();if(CRM.editId){renderClientView();}else{selectClient(CRM.activeId);}CRM.editId=null;
 }
-function deleteClient(){if(!CRM.activeId)return;const c=CRM.clients[CRM.activeId];if(!confirm(`¿Eliminar a "${c.name}"?`))return;delete CRM.clients[CRM.activeId];CRM.activeId=null;saveCRMData();renderClientList();document.getElementById('crm-welcome').style.display='flex';document.getElementById('crm-client-view').style.display='none';}
+function deleteClient(){if(!CRM.activeId)return;const c=CRM.clients[CRM.activeId];showConfirm(`¿Eliminar a "${esc(c.name)}"?`,()=>{delete CRM.clients[CRM.activeId];CRM.activeId=null;saveCRMData();renderClientList();document.getElementById('crm-welcome').style.display='flex';document.getElementById('crm-client-view').style.display='none';});}
 function openNota(i){const c=CRM.clients[CRM.activeId];CRM.notaIdx=i;document.getElementById('nota-title').textContent='Nota · '+STAGES[i].name;document.getElementById('nota-txt').value=(c.notes&&c.notes[i])||'';document.getElementById('modal-nota').style.display='flex';setTimeout(()=>document.getElementById('nota-txt').focus(),80);}
 function saveNota(){const c=CRM.clients[CRM.activeId];if(!c.notes)c.notes={};c.notes[CRM.notaIdx]=document.getElementById('nota-txt').value.trim();saveCRMData();closeModal('modal-nota');renderTimeline();}
 function crmToTeams(){const c=CRM.clients[CRM.activeId];if(!c)return;document.getElementById('c-proj-name').value=`Proyecto ${c.name}`;document.getElementById('c-brief').value=`Cliente: ${c.name}\nEmpresa: ${c.company||'—'}\nServicio: ${c.service||'—'}\nPresupuesto: ${c.budget||'—'}\nContacto: ${c.contact||'—'}`;document.getElementById('config-crm-label').textContent=`Datos de ${c.name} cargados`;document.getElementById('config-from-crm-banner').style.display='flex';evalCL();goTo('teams');showNewTeamConfig();}
@@ -1793,7 +1943,7 @@ function addEnt(){const r=document.createElement('div');r.className='ent-row';r.
 function remEnt(btn){const rows=document.querySelectorAll('.ent-row');if(rows.length>1)btn.parentElement.remove();}
 async function generarPropuesta(){
   const nombre=document.getElementById('p-nombre').value.trim();const servicio=document.getElementById('p-servicio').value.trim();
-  if(!nombre||!servicio){alert('Nombre y servicio son obligatorios.');return;}
+  if(!nombre||!servicio){showToast('Nombre del cliente y servicio son obligatorios.','warn');return;}
   const d={empresa:document.getElementById('p-empresa').value.trim(),contacto:document.getElementById('p-contacto').value.trim(),presupuesto:document.getElementById('p-presupuesto').value.trim(),desc:document.getElementById('p-desc').value.trim(),plazo:document.getElementById('p-plazo').value.trim(),precio:document.getElementById('p-precio').value.trim(),anticipo:document.getElementById('p-anticipo').value.trim(),final:document.getElementById('p-final').value.trim(),notas:document.getElementById('p-notas').value.trim(),ents:getEnts()};
   document.getElementById('result-sec').style.display='block';const box=document.getElementById('result-box');box.style.color='var(--text3)';box.style.fontStyle='italic';box.style.fontFamily="'JetBrains Mono',monospace";box.style.fontSize='11px';box.innerHTML='<span style="display:inline-flex;gap:4px;align-items:center"><span style="width:5px;height:5px;background:var(--accent);border-radius:50%;animation:blink 1.2s infinite;display:inline-block"></span><span style="width:5px;height:5px;background:var(--accent);border-radius:50%;animation:blink 1.2s infinite .2s;display:inline-block"></span><span style="width:5px;height:5px;background:var(--accent);border-radius:50%;animation:blink 1.2s infinite .4s;display:inline-block"></span> Generando...</span>';
   document.getElementById('btn-generar').disabled=true;
@@ -1803,9 +1953,9 @@ async function generarPropuesta(){
   document.getElementById('btn-generar').disabled=false;
 }
 function copyProp(){if(!PROP.generada)return;navigator.clipboard.writeText(PROP.generada).then(()=>{const b=document.querySelector('#result-sec .btn');if(b){b.textContent='✓ Copiado';setTimeout(()=>b.textContent='Copiar',1800);}});}
-function limpiarProp(){if(!confirm('¿Limpiar?'))return;['p-nombre','p-empresa','p-contacto','p-presupuesto','p-servicio','p-plazo','p-desc','p-precio','p-notas'].forEach(id=>{const el=document.getElementById(id);el.value='';el.classList.remove('prefilled');});document.getElementById('p-anticipo').value='50% al inicio';document.getElementById('p-final').value='50% en entrega';document.getElementById('ent-list').innerHTML=`<div class="ent-row"><input class="inp" placeholder="Entregable..."><button class="btn-rem" onclick="remEnt(this)">×</button></div>`;document.getElementById('result-sec').style.display='none';PROP.generada='';clearPropCRM();}
+function limpiarProp(){showConfirm('¿Limpiar el generador de propuestas?',()=>{['p-nombre','p-empresa','p-contacto','p-presupuesto','p-servicio','p-plazo','p-desc','p-precio','p-notas'].forEach(id=>{const el=document.getElementById(id);el.value='';el.classList.remove('prefilled');});document.getElementById('p-anticipo').value='50% al inicio';document.getElementById('p-final').value='50% en entrega';document.getElementById('ent-list').innerHTML=`<div class="ent-row"><input class="inp" placeholder="Entregable..."><button class="btn-rem" onclick="remEnt(this)">×</button></div>`;document.getElementById('result-sec').style.display='none';PROP.generada='';clearPropCRM();});}
 function clearPropCRM(){PROP.clienteIdFromCRM=null;document.getElementById('prop-crm-badge').style.display='none';document.getElementById('prop-crm-banner').style.display='none';document.getElementById('btn-captado').style.display='none';}
-function marcarCaptado(){if(!PROP.clienteIdFromCRM){alert('Sin cliente vinculado.');return;}try{S.set('captado_signal',{clienteId:PROP.clienteIdFromCRM,precio:document.getElementById('p-precio').value.trim(),fecha:fmtDate()});alert('✅ Señal enviada al CRM.');}catch(e){}}
+function marcarCaptado(){if(!PROP.clienteIdFromCRM){showToast('Sin cliente vinculado al generador.','warn');return;}try{S.set('captado_signal',{clienteId:PROP.clienteIdFromCRM,precio:document.getElementById('p-precio').value.trim(),fecha:fmtDate()});showToast('✅ Señal enviada al CRM.','success');}catch(e){}}
 
 // ═══════════════════════════════════════════════════════════════════════
 // BIBLIOTECA
@@ -1836,7 +1986,7 @@ function openNewPromptModal(){
 }
 function editPrompt(idx){const p=getLib()[idx];document.getElementById('modal-prompt-title').textContent='Editar prompt';document.getElementById('np-title').value=p.title||'';document.getElementById('np-content').value=p.content||'';document.getElementById('np-cat').value=p.category||'system';document.getElementById('np-tags').value=(p.tags||[]).join(', ');document.getElementById('modal-prompt').dataset.editIdx=idx;document.getElementById('modal-prompt').style.display='flex';}
 function savePrompt(){
-  const title=document.getElementById('np-title').value.trim();const content=document.getElementById('np-content').value.trim();if(!title||!content){alert('Título y contenido son obligatorios.');return;}
+  const title=document.getElementById('np-title').value.trim();const content=document.getElementById('np-content').value.trim();if(!title||!content){showToast('Título y contenido son obligatorios.','warn');return;}
   const items=getLib();
   const editIdx=parseInt(document.getElementById('modal-prompt').dataset.editIdx);
   if(!isNaN(editIdx)&&editIdx>=0){/* editing, no limit check */}else if(!checkPlanLimit('prompts')){showLimitWarning('prompts');return;}
@@ -1844,7 +1994,7 @@ function savePrompt(){
   if(!isNaN(editIdx)&&editIdx>=0){items[editIdx]={...items[editIdx],...p};}else{items.unshift(p);}
   saveLib(items);closeModal('modal-prompt');renderLib();updateLimitLabels();logActivity('Prompt guardado: '+title,'var(--purple)');
 }
-function deletePrompt(idx){if(!confirm('¿Eliminar?'))return;const items=getLib();items.splice(idx,1);saveLib(items);renderLib();updateLimitLabels();}
+function deletePrompt(idx){showConfirm('¿Eliminar este prompt de la biblioteca?',()=>{const items=getLib();items.splice(idx,1);saveLib(items);renderLib();updateLimitLabels();});}
 function insertPromptToTeam(idx){const p=getLib()[idx];const el=document.getElementById('c-brief');if(el){el.value=(el.value?el.value+'\n\n':'')+p.content;goTo('teams');evalCL();}}
 function openLibPicker(target){LIB_PICKER_TARGET=target;document.getElementById('lib-picker-search').value='';renderLibPicker();document.getElementById('modal-lib-picker').style.display='flex';}
 function renderLibPicker(){const q=document.getElementById('lib-picker-search').value.toLowerCase();const items=getLib().filter(p=>!q||p.title?.toLowerCase().includes(q)||p.content?.toLowerCase().includes(q));const cont=document.getElementById('lib-picker-list');if(!items.length){cont.innerHTML=`<div style="color:var(--text3);font-size:12px;text-align:center;padding:16px">Sin prompts en la biblioteca</div>`;return;}cont.innerHTML=items.map((p,i)=>`<div style="border:1px solid var(--border);border-radius:var(--r);padding:10px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'" onclick="pickerInsert(${getLib().indexOf(p)})"><div style="font-size:12px;font-weight:500;margin-bottom:3px">${esc(p.title)}</div><div style="font-size:11px;color:var(--text3);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${esc(p.content)}</div></div>`).join('');}
@@ -1917,7 +2067,7 @@ function closeConfig() {
   document.getElementById('config-panel').classList.remove('active');
 }
 
-function deleteTeam(i){if(!confirm('¿Eliminar este equipo?'))return;const t=getTeams();t.splice(i,1);setTeams(t);renderTeamsView();updateLimitLabels();}
+function deleteTeam(i){showConfirm('\u00bfEliminar este equipo?',()=>{const t=getTeams();t.splice(i,1);setTeams(t);renderTeamsView();updateLimitLabels();});}
 function editTeam(i){const t=getTeams()[i];document.getElementById('c-proj-name').value=t.name;document.getElementById('c-brief').value=t.brief||'';evalCL();document.getElementById('config-panel').classList.add('active');document.getElementById('config-panel-title').textContent='Editar equipo';}
 function launchExistingTeam(i){const t=getTeams()[i];CONFIG.proj=t.name;openWorkspace(t.systemPrompt||buildSystemPrompt(t));}
 function buildSystemPrompt(t){return `## INICIO DE SESIÓN — ${t.name.toUpperCase()}\n\n### ROLES ACTIVOS\n${t.roles.map(r=>`- ${r}`).join('\n')}\n\n### BRIEF DEL PROYECTO\n${t.brief||'Sin brief específico'}\n\n### INSTRUCCIONES\n1. Operas desde todos los roles activos simultáneamente.\n2. Como Senior Prompt Engineer, optimiza cualquier prompt o flujo IA que surja.\n3. Sé directo y técnico. Presenta un plan breve antes de desarrollar cualquier entregable.\n4. Responde en español salvo que se cambie de idioma.\n\n---\nConfirma con: "Equipo activo para ${t.name}. ¿Empezamos?"`;}
@@ -1932,7 +2082,7 @@ function evalCL(){
 function csStep(n){[1,2,3,4].forEach(i=>{const e=document.getElementById('s'+i);if(e)e.className='cstep'+(i===n?' active':i<n?' done':'');});}
 function csPhase(p){['brief','client','cload','roles','launch'].forEach(x=>{const el=document.getElementById('ph-'+x);if(el)el.style.display=x===p?'block':'none';});}
 function cgB(to){const m={1:'brief',2:'client',3:'roles'};csPhase(m[to]);csStep(to);}
-function cs1to2(){CONFIG.brief=document.getElementById('c-brief').value.trim();CONFIG.proj=document.getElementById('c-proj-name').value.trim()||'Proyecto sin nombre';if(!CONFIG.brief){alert('Escribe el brief.');return;}csPhase('client');csStep(2);}
+function cs1to2(){CONFIG.brief=document.getElementById('c-brief').value.trim();CONFIG.proj=document.getElementById('c-proj-name').value.trim()||'Proyecto sin nombre';if(!CONFIG.brief){showToast('Escribe el brief antes de continuar.','warn');return;}csPhase('client');csStep(2);}
 function selTone(el){document.querySelectorAll('#tone-chips .chip').forEach(c=>c.classList.remove('sel'));el.classList.add('sel');}
 function togDel(el){el.classList.toggle('sel');}
 function getClientData(){const tone=document.querySelector('#tone-chips .chip.sel');const dels=[...document.querySelectorAll('#c-dels .dtag.sel')].map(d=>d.textContent.trim());return{sector:document.getElementById('c-sector').value,size:document.getElementById('c-size').value,tech:document.getElementById('c-tech').value,tone:tone?tone.textContent.trim():'Profesional',deliverables:dels};}
@@ -1963,7 +2113,7 @@ async function cs2to3_pro(){
     renderCx(p.complejidad);renderCRoles_ia(p);
     document.getElementById('manual-role-picker').style.display='none';document.getElementById('cx-box').style.display='flex';
     csPhase('roles');csStep(3);
-  }catch(e){csPhase('client');csStep(2);alert('Error: '+e.message);}
+  }catch(e){csPhase('client');csStep(2);showToast('❌ Error: '+e.message,'error',6000);}
 }
 
 function renderCx(cx){const cfg={simple:{cls:'cx-s',ch:'S',txt:'Proyecto simple'},medio:{cls:'cx-m',ch:'M',txt:'Complejidad media'},complejo:{cls:'cx-c',ch:'C',txt:'Proyecto complejo'}};const c=cfg[cx.nivel]||cfg.medio;const ic=document.getElementById('cx-icon');ic.className='cx-icon '+c.cls;ic.textContent=c.ch;document.getElementById('cx-lbl').textContent=`${c.txt} · ${cx.fases_estimadas} fases`;document.getElementById('cx-desc').textContent=cx.descripcion;const box=document.getElementById('cx-box');box.style.borderColor=cx.nivel==='simple'?'var(--tb)':cx.nivel==='complejo'?'var(--rb)':'rgba(240,165,0,.25)';box.style.background=cx.nivel==='simple'?'var(--tbg)':cx.nivel==='complejo'?'var(--rbg)':'var(--abg)';}
@@ -1980,7 +2130,7 @@ function cs3to4(){
     // Manual roles
     CONFIG.sel=[CFX];document.querySelectorAll('#manual-roles-list .rc:not(.fx).on').forEach(c=>{const idx=+c.dataset.mi;if(MANUAL_ROLES[idx])CONFIG.sel.push({...MANUAL_ROLES[idx],prioridad:'esencial'});});
   }
-  if(CONFIG.sel.length<2){alert('Selecciona al menos un rol adicional.');return;}
+  if(CONFIG.sel.length<2){showToast('Selecciona al menos un rol adicional.','warn');return;}
   const rv=document.getElementById('c-rev-list');rv.innerHTML='';
   CONFIG.sel.forEach(r=>{const d=document.createElement('div');d.className='cri';d.innerHTML=`<div class="crd"></div><span class="crnn">${r.nombre}</span><span class="rt ${CTC[r.prioridad||'esencial']}">${r.prioridad||'seleccionado'}</span>`;rv.appendChild(d);});
   csPhase('launch');csStep(4);
@@ -2001,7 +2151,7 @@ function saveTeamOnly(){
   if(teams.length>20)teams.length=20;setTeams(teams);
   closeConfig();renderTeamsView();updateLimitLabels();
   logActivity('Equipo guardado: '+CONFIG.proj,'var(--teal)');
-  alert('✅ Equipo guardado.');
+  showToast('✅ Equipo guardado.','success');
 }
 
 function launchTeam(){
@@ -2037,7 +2187,7 @@ const WS_MODES={
 let WS={chats:[],active:0,systemPrompt:''};
 
 function openWorkspace(customPrompt){
-  WS.systemPrompt=customPrompt||'';if(!WS.systemPrompt){alert('Sin system prompt definido.');return;}
+  WS.systemPrompt=customPrompt||'';if(!WS.systemPrompt){showToast('Sin system prompt definido.','warn');return;}
   WS.chats=[];document.getElementById('ws-tabs').innerHTML='';document.getElementById('ws-panels').innerHTML='';
   document.getElementById('ws-proj-label').textContent=CONFIG.proj||'Workspace';
   document.getElementById('nav-ws').style.display='flex';
@@ -2060,10 +2210,10 @@ function wsCreateTab(chat){const t=document.createElement('div');t.className='ws
 function wsCreatePanel(chat){const p=document.createElement('div');p.className='ws-panel';p.id=`wp-${chat.id}`;p.innerHTML=`<div class="ws-modebar"><span class="ws-mode-lbl">modo:</span>${Object.keys(WS_MODES).map(m=>`<button class="ws-mbtn${chat.mode===m?' am':''}" data-m="${m}" onclick="wsSetMode(${chat.id},'${m}')">${WS_MODES[m].label}</button>`).join('')}<input class="ws-chat-name" value="${chat.name}" onchange="wsRename(${chat.id},this.value)">${USER_PLAN==='free'&&WS.chats.length>=1?`<span style="font-size:10px;color:var(--purple);font-family:'JetBrains Mono',monospace;margin-left:8px;cursor:pointer" onclick="showUpgradeModal()">+2 chats en Pro</span>`:''}<button class="ws-clear-btn" onclick="wsClear(${chat.id})">Limpiar</button></div><div class="ws-msgs" id="wm-${chat.id}"><div class="ws-empty-state" id="we-${chat.id}"><div style="font-size:22px;opacity:.15">▣</div><div>Equipo activo · escribe tu primera instrucción</div><div style="color:var(--text3);font-size:10px;margin-top:2px">System prompt cargado · modo ${WS_MODES[chat.mode].label}</div></div></div><div class="ws-inp-area"><div class="ws-inp-row"><textarea class="ws-inp" id="wi-${chat.id}" placeholder="Mensaje al equipo..." rows="1" onkeydown="wsKey(event,${chat.id})" oninput="wsResize(this)"></textarea><button class="ws-send" id="wssend-${chat.id}" onclick="wsSend(${chat.id})">▶</button></div><div class="sys-prv-toggle" onclick="wsToggleSys(${chat.id})">▸ ver system prompt</div><div class="sys-prv" id="wsp-${chat.id}">${wsEsc(WS.systemPrompt)}</div></div>`;document.getElementById('ws-panels').appendChild(p);}
 
 function wsActivate(id){WS.active=id;document.querySelectorAll('.ws-tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.ws-panel').forEach(p=>p.classList.remove('active'));const t=document.getElementById(`wt-${id}`);const p=document.getElementById(`wp-${id}`);if(t)t.classList.add('active');if(p)p.classList.add('active');}
-function wsClose(id){if(WS.chats.length<=1){alert('Necesitas al menos un chat.');return;}WS.chats=WS.chats.filter(c=>c.id!==id);const t=document.getElementById(`wt-${id}`);const p=document.getElementById(`wp-${id}`);if(t)t.remove();if(p)p.remove();document.getElementById('ws-add-btn').style.opacity='1';document.getElementById('ws-add-btn').style.pointerEvents='auto';if(WS.active===id)wsActivate(WS.chats[WS.chats.length-1].id);}
+function wsClose(id){if(WS.chats.length<=1){showToast('Necesitas al menos un chat.','warn');return;}WS.chats=WS.chats.filter(c=>c.id!==id);const t=document.getElementById(`wt-${id}`);const p=document.getElementById(`wp-${id}`);if(t)t.remove();if(p)p.remove();document.getElementById('ws-add-btn').style.opacity='1';document.getElementById('ws-add-btn').style.pointerEvents='auto';if(WS.active===id)wsActivate(WS.chats[WS.chats.length-1].id);}
 function wsSetMode(chatId,mode){const chat=WS.chats.find(c=>c.id===chatId);if(!chat)return;chat.mode=mode;document.querySelectorAll(`#wp-${chatId} .ws-mbtn`).forEach(b=>b.classList.toggle('am',b.dataset.m===mode));const badge=document.getElementById(`wtb-${chatId}`);if(badge){badge.className=`tag ${WS_MODES[mode].cls}`;badge.textContent=WS_MODES[mode].label;badge.style.fontSize='9px';}const em=document.getElementById(`we-${chatId}`);if(em){const sub=em.querySelector('div:last-child');if(sub)sub.textContent=`System prompt cargado · modo ${WS_MODES[mode].label}`;}}
 function wsRename(chatId,name){const chat=WS.chats.find(c=>c.id===chatId);if(chat)chat.name=name.trim()||chat.name;const el=document.getElementById(`wtn-${chatId}`);if(el)el.textContent=chat.name;}
-function wsClear(chatId){if(!confirm('¿Limpiar historial?'))return;const chat=WS.chats.find(c=>c.id===chatId);if(chat)chat.history=[];const msgs=document.getElementById(`wm-${chatId}`);if(msgs)msgs.innerHTML=`<div class="ws-empty-state"><div style="font-size:22px;opacity:.15">▣</div><div>Chat limpiado · escribe para reiniciar</div></div>`;}
+function wsClear(chatId){showConfirm('¿Limpiar historial del chat?',()=>{const chat=WS.chats.find(c=>c.id===chatId);if(chat)chat.history=[];const msgs=document.getElementById(`wm-${chatId}`);if(msgs)msgs.innerHTML=`<div class="ws-empty-state"><div style="font-size:22px;opacity:.15">▣</div><div>Chat limpiado · escribe para reiniciar</div></div>`;});}
 function wsToggleSys(chatId){const el=document.getElementById(`wsp-${chatId}`);const tog=el?.previousElementSibling;if(!el)return;const open=el.style.display==='block';el.style.display=open?'none':'block';if(tog)tog.textContent=open?'▸ ver system prompt':'▾ ocultar system prompt';}
 function wsKey(e,chatId){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();wsSend(chatId);}}
 function wsResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,130)+'px';}
@@ -2076,7 +2226,7 @@ async function wsSend(chatId){
   wsAddBubble(chatId,'user',text);chat.history.push({role:'user',content:text});
   const msgs=document.getElementById(`wm-${chatId}`);const typ=document.createElement('div');typ.id=`wtyp-${chatId}`;typ.className='wm-typing';typ.innerHTML='<div class="tdot"></div><div class="tdot"></div><div class="tdot"></div>';if(msgs){msgs.appendChild(typ);msgs.scrollTop=msgs.scrollHeight;}
   const fullSys=WS.systemPrompt+'\n\n### MODO ACTIVO DE ESTE CHAT\n'+WS_MODES[chat.mode].extra;
-  try{const reply=await callAI(fullSys,chat.history,2000);chat.history.push({role:'assistant',content:reply});const t=document.getElementById(`wtyp-${chatId}`);if(t)t.remove();wsAddBubble(chatId,'assistant',reply);}
+  try{const reply=await callAI(fullSys,chat.history.slice(-20),2000);chat.history.push({role:'assistant',content:reply});const t=document.getElementById(`wtyp-${chatId}`);if(t)t.remove();wsAddBubble(chatId,'assistant',reply);}
   catch(e){const t=document.getElementById(`wtyp-${chatId}`);if(t)t.remove();wsAddBubble(chatId,'assistant','⚠ Error: '+e.message);}
   if(sbtn)sbtn.disabled=false;const i2=document.getElementById(`wi-${chatId}`);if(i2)i2.focus();
 }
@@ -2088,15 +2238,34 @@ function wsAddBubble(chatId,role,text){
   msgs.appendChild(wrap);msgs.scrollTop=msgs.scrollHeight;
 }
 function wsMd(text){
-  let h=wsEsc(text);
-  h=h.replace(/```(\w*)\n?([\s\S]*?)```/g,(_,l,c)=>`<pre><code>${c.trim()}</code></pre>`);
-  h=h.replace(/`([^`]+)`/g,'<code>$1</code>');
-  h=h.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
-  h=h.replace(/\*([^*\n]+)\*/g,'<em>$1</em>');
-  h=h.replace(/^### (.+)$/gm,'<h3>$1</h3>');h=h.replace(/^## (.+)$/gm,'<h2>$1</h2>');h=h.replace(/^# (.+)$/gm,'<h1>$1</h1>');
-  h=h.replace(/^- (.+)$/gm,'<li>$1</li>');h=h.replace(/(<li>.*<\/li>\n?)+/g,'<ul>$&</ul>');
-  h=h.replace(/\n\n/g,'</p><p>');h=h.replace(/\n/g,'<br>');
-  return`<p>${h}</p>`;
+  // Split on fenced code blocks first to handle them safely
+  const parts = text.split(/(```[\s\S]*?```)/g);
+  const frag = document.createDocumentFragment();
+  parts.forEach(part => {
+    const codeMatch = part.match(/^```(\w*)\n?([\s\S]*)```$/);
+    if (codeMatch) {
+      const pre = document.createElement('pre');
+      const code = document.createElement('code');
+      code.textContent = codeMatch[2].trim(); // safe: textContent
+      pre.appendChild(code);
+      frag.appendChild(pre);
+      return;
+    }
+    // Inline markdown on non-code parts (text already not HTML)
+    let h = wsEsc(part);
+    h = h.replace(/`([^`\n]+)`/g,'<code>$1</code>');
+    h = h.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+    h = h.replace(/\*([^*\n]+)\*/g,'<em>$1</em>');
+    h = h.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>');
+    h = h.replace(/^- (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g,'<ul>$&</ul>');
+    h = h.replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = `<p>${h}</p>`;
+    frag.appendChild(wrapper);
+  });
+  const out = document.createElement('div');
+  out.appendChild(frag);
+  return out.innerHTML;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2108,10 +2277,10 @@ function exportData(){
 }
 function importData(event){
   const file=event.target.files[0];if(!file)return;const reader=new FileReader();
-  reader.onload=e=>{try{const data=JSON.parse(e.target.result);if(!data.version){alert('Archivo no válido.');return;}if(!confirm('¿Importar? Reemplazará los datos actuales (excepto API key).'))return;const key=getCFG().apiKey;if(data.crm)S.set('crm',data.crm);if(data.lib)S.set('lib',data.lib);if(data.teams)S.set('teams',data.teams);if(data.activity)S.set('activity',data.activity);if(data.config){data.config.apiKey=key;saveCFG(data.config);}initCRM();renderLib();refreshDash();applyUserSettings();alert('✅ Datos importados.');}catch(err){alert('Error: '+err.message);}};
+  reader.onload=e=>{try{const data=JSON.parse(e.target.result);if(!data.version){showToast('Archivo no válido.','error');return;}showConfirm('¿Importar? Reemplazará los datos actuales (excepto API key).',()=>{const key=getCFG().apiKey;if(data.crm)S.set('crm',data.crm);if(data.lib)S.set('lib',data.lib);if(data.teams)S.set('teams',data.teams);if(data.activity)S.set('activity',data.activity);if(data.config){data.config.apiKey=key;saveCFG(data.config);}initCRM();renderLib();refreshDash();applyUserSettings();showToast('✅ Datos importados correctamente.','success');});}catch(err){showToast('Error al importar: '+err.message,'error',5000);}};  
   reader.readAsText(file);event.target.value='';
 }
-function resetApp(){if(!confirm('⚠️ ¿Eliminar TODOS los datos locales?'))return;if(!confirm('Confirma: se elimina todo.'))return;['crm','lib','teams','activity','config','demo_user'].forEach(k=>S.del(k));location.reload();}
+function resetApp(){showConfirm('⚠️ ¿Eliminar TODOS los datos locales? Esta acción es irreversible.',()=>{showConfirm('Confirma: se borrará todo tu CRM, equipos, prompts y configuración.',()=>{['crm','lib','teams','activity','config','demo_user'].forEach(k=>S.del(k));location.reload();});});}
 
 // ═══════════════════════════════════════════════════════════════════════
 // FUNCIONALIDAD 1 — MODO CLARO / OSCURO
@@ -2347,7 +2516,7 @@ function updateStageNames(){
 // ═══════════════════════════════════════════════════════════════════════
 function checkCookieConsent(){
   const consent=localStorage.getItem('aws_cookie_consent');
-  if(!consent){setTimeout(()=>{const b=document.getElementById('cookie-banner');if(b)b.style.display='flex';},800);}
+  if(!consent){const b=document.getElementById('cookie-banner');if(b)b.style.display='flex';}
 }
 function setCookieConsent(level){
   localStorage.setItem('aws_cookie_consent',level);
