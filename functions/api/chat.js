@@ -2,8 +2,13 @@
  * Cloudflare Pages Function — /api/chat
  * Proxy seguro para Groq API. La clave NUNCA llega al cliente.
  *
- * Configuración requerida en Cloudflare Pages → Settings → Environment variables:
- *   GROQ_API_KEY = sk_...  (Production + Preview)
+ * Variables de entorno requeridas (CF Pages → Settings → Environment variables):
+ *   GROQ_API_KEY = gsk_...   (Production + Preview)
+ *
+ * Rate limiting opcional (requiere KV namespace):
+ *   1. CF Workers & Pages → KV → Crear namespace "RATE_KV"
+ *   2. CF Pages → Settings → Functions → KV namespace bindings → añadir RATE_KV
+ *   Sin el binding el proxy funciona igual pero sin límite de llamadas.
  */
 
 const ALLOWED_ORIGINS = [
@@ -31,7 +36,25 @@ export async function onRequestPost(context) {
     return new Response('Service unavailable', { status: 503 });
   }
 
-  // Parsear body
+  // Rate limiting por IP usando Cloudflare KV (opcional)
+  // Límite: 25 mensajes por IP por hora
+  if (env.RATE_KV) {
+    const ip     = request.headers.get('CF-Connecting-IP') || 'anon';
+    const rlKey  = 'rl:' + ip;
+    const count  = parseInt(await env.RATE_KV.get(rlKey) || '0');
+    if (count >= 25) {
+      return new Response(
+        JSON.stringify({ error: 'Too many requests. Please wait before trying again.' }),
+        { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': '3600' } }
+      );
+    }
+    // Incrementar contador en background (no bloquea la respuesta)
+    context.waitUntil(
+      env.RATE_KV.put(rlKey, String(count + 1), { expirationTtl: 3600 })
+    );
+  }
+
+
   let body;
   try {
     body = await request.json();
