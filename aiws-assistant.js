@@ -27,27 +27,25 @@ const AIWS_CONFIG = {
 
 HERRAMIENTAS DISPONIBLES EN PLAN FREE (activo ahora):
 - Generador de Propuestas IA: crea propuestas comerciales profesionales en segundos
-- Generador de CV IA: CVs optimizados para cada oferta o cliente
-- Generador de Contratos IA: contratos freelance personalizados listos para firmar
-- CRM básico: gestión de hasta 5 clientes
-- Equipos IA: crea hasta 3 equipos de agentes IA especializados
-- Biblioteca de Prompts: guarda hasta 10 prompts personalizados
-- Generación con clave BYOK (Groq gratis, OpenAI, Anthropic, OpenRouter)
+- CRM básico: gestión de hasta 5 clientes con pipeline de 7 etapas y chat IA por fase
+- Equipos IA: crea hasta 3 equipos de agentes IA especializados con distintos roles
+- Workspace IA: chatea con cada equipo lanzado desde una pestaña dedicada
+- Biblioteca de Prompts: guarda hasta 10 prompts personalizados y reutilízalos en cualquier módulo
+- Clave BYOK (Groq gratis, OpenAI, Anthropic, OpenRouter) configurada en Ajustes → Proveedor IA
 - Requiere registro gratuito con email
 
 LÍMITES DEL PLAN FREE:
 - Máx. 5 clientes en CRM (Pro: ilimitados)
-- Máx. 3 equipos IA (Pro: ilimitados)
+- Máx. 3 equipos IA · 1 chat por equipo (Pro: ilimitados · 3 chats por equipo)
 - Máx. 10 prompts en biblioteca (Pro: ilimitados)
-- Sin exportación PDF/DOCX directa (Pro: exportación con diseño profesional)
+- Sin detección automática de roles IA (Pro: detección IA de roles en equipos)
 - Sin personalización de marca (Pro: logo propio, colores, cabeceras)
-- Sin facturación, métricas ni seguimiento de proyectos (solo Pro)
 
 PLAN PRO — PRÓXIMAMENTE, AÚN NO DISPONIBLE:
 El plan Pro está en desarrollo y no se ha lanzado todavía.
 Las personas en la lista de espera serán las primeras en acceder con precio especial de lanzamiento.
-Incluirá: generaciones ilimitadas, exportación PDF/DOCX/HTML profesional, personalización de marca,
-módulos de facturación, métricas y proyectos, soporte prioritario, acceso anticipado a nuevas herramientas.
+Incluirá: clientes y equipos ilimitados, 3 chats por equipo, detección IA de roles,
+prompts ilimitados, personalización de marca, soporte prioritario, acceso anticipado a nuevas herramientas.
 
 PROBLEMAS TÉCNICOS FRECUENTES Y SOLUCIONES:
 - "No genera / botón sin respuesta" → verificar conexión; si usa BYOK comprobar la clave en Ajustes → Proveedor IA
