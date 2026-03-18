@@ -975,7 +975,7 @@ select.inp option{background:var(--bg3)}
     <div class="prop-sec"><div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Proyecto</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="frow"><span class="lbl">Servicio *</span><input class="inp" id="p-servicio" placeholder="Web IA, Automatización..."></div>
-        <div class="frow"><span class="lbl">Plazo</span><input class="inp" id="p-plazo" placeholder="3 semanas..."></div>
+        <div class="frow"><span class="lbl">Tipo de trabajo</span><select class="inp" id="p-tipo"><option value="">— Selecciona tipo —</option><option value="Diseño web">Diseño web</option><option value="Desarrollo web">Desarrollo web</option><option value="App móvil">App móvil</option><option value="Automatización IA">Automatización IA</option><option value="Chatbot IA">Chatbot IA</option><option value="Branding / identidad">Branding / identidad</option><option value="Copywriting / contenido">Copywriting / contenido</option><option value="SEO / marketing digital">SEO / marketing digital</option><option value="Consultoría estratégica">Consultoría estratégica</option><option value="Formación / curso">Formación / curso</option><option value="Otro">Otro</option></select></div>
         <div class="frow" style="grid-column:1/-1"><span class="lbl">Descripción</span><textarea class="inp" id="p-desc" rows="3" placeholder="Describe el proyecto..."></textarea></div>
       </div>
     </div>
@@ -983,12 +983,13 @@ select.inp option{background:var(--bg3)}
       <div id="ent-list"><div class="ent-row"><input class="inp" placeholder="Entregable 1..."><button class="btn-rem" onclick="remEnt(this)">×</button></div></div>
       <button class="btn btn-ghost btn-xs" style="margin-top:7px" onclick="addEnt()">+ Añadir</button>
     </div>
-    <div class="prop-sec"><div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Condiciones</div>
+    <div class="prop-sec"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase">Condiciones</div><button class="btn btn-ghost btn-xs" id="btn-estimar" onclick="estimarCondiciones()" title="Estima precio y plazo con IA seg\u00fan el servicio y descripci\u00f3n">\u2756 Estimar con IA</button></div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-        <div class="frow"><span class="lbl">Precio total</span><input class="inp" id="p-precio" placeholder="€ 2.000"></div>
+        <div class="frow"><span class="lbl">Precio total</span><input class="inp" id="p-precio" placeholder="IA estimar\u00e1 si est\u00e1 vac\u00edo"></div>
+        <div class="frow"><span class="lbl">Plazo de entrega</span><input class="inp" id="p-plazo" placeholder="IA estimar\u00e1 si est\u00e1 vac\u00edo"></div>
         <div class="frow"><span class="lbl">Anticipo</span><input class="inp" id="p-anticipo" value="50% al inicio"></div>
         <div class="frow"><span class="lbl">Pago final</span><input class="inp" id="p-final" value="50% en entrega"></div>
-        <div class="frow" style="grid-column:1/-1"><span class="lbl">Notas</span><textarea class="inp" id="p-notas" rows="2" placeholder="Condiciones especiales..."></textarea></div>
+        <div class="frow" style="grid-column:span 2"><span class="lbl">Notas</span><textarea class="inp" id="p-notas" rows="2" placeholder="Condiciones especiales..."></textarea></div>
       </div>
     </div>
     <div id="result-sec" style="display:none">
@@ -2045,23 +2046,47 @@ function pollCaptadoSignal(){try{const sig=S.get('captado_signal');if(sig&&sig.c
 // PROPUESTAS
 // ═══════════════════════════════════════════════════════════════════════
 const PROP = { clienteIdFromCRM:null, generada:'' };
-function getSysProp(){const cfg=getCFG();return`Eres redactor de propuestas comerciales senior.\nProfesional: ${cfg.userName||'—'} | Email: ${cfg.email||'—'} | WhatsApp: ${cfg.phone||'—'} | Web: ${cfg.web||'—'}\nTAREA: Propuesta comercial profesional en español.\nESTRUCTURA: 1)Saludo y resumen 2)Entendimiento 3)Alcance y entregables 4)Metodología 5)Plazo 6)Inversión 7)Por qué nosotros 8)Próximos pasos 9)Firma.\nESTILO: Profesional pero cercano. 400-600 palabras. Sin asteriscos markdown.`;}
+function getSysProp(){const cfg=getCFG();return`Eres redactor de propuestas comerciales senior especializado en el mercado freelance hispanohablante.\nProfesional: ${cfg.userName||'—'} | Email: ${cfg.email||'—'} | WhatsApp: ${cfg.phone||'—'} | Web: ${cfg.web||'—'}\nTAREA: Propuesta comercial profesional en español.\nESTRUCTURA: 1)Saludo y resumen ejecutivo 2)Entendimiento del proyecto 3)Alcance y entregables 4)Metodología de trabajo 5)Cronograma por fases (incluye siempre semanas estimadas por fase) 6)Inversión (incluye siempre un rango de precio si no se especificó precio fijo, justificando el valor) 7)Por qué nosotros 8)Próximos pasos 9)Firma.\nPRECIOS: Si el precio no está definido estima un rango justo para el mercado freelance hispanohablante basándote en tipo de trabajo, complejidad y entregables. Muéstralo como rango ej: €1.500 – €2.500.\nESTILO: Profesional pero cercano. 450-650 palabras. Sin asteriscos markdown.`;}
+async function estimarCondiciones(){
+  const servicio=document.getElementById('p-servicio').value.trim();
+  const tipo=document.getElementById('p-tipo')?.value||'';
+  const desc=document.getElementById('p-desc').value.trim();
+  const ents=getEnts();
+  if(!servicio){showToast('Introduce el servicio antes de estimar.','warn');return;}
+  const btn=document.getElementById('btn-estimar');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Estimando...';}
+  const q=`Servicio: ${servicio}${tipo?' | Tipo: '+tipo:''}\nDescripción: ${desc||'Sin descripción'}\nEntregables: ${ents.length?ents.join(', '):'Sin especificar'}\n\nResponde SOLO con este formato exacto, sin texto adicional:\nPRECIO: €X.XXX – €X.XXX\nPLAZO: X-X semanas`;
+  try{
+    const r=await callAI('Eres un consultor de precios freelance experto en el mercado hispanohablante. Estima precio de mercado justo y plazo realista. Responde ÚNICAMENTE con el formato solicitado: PRECIO: ... y PLAZO: ..., sin ningún texto adicional.',[{role:'user',content:q}],80);
+    const pm=r.match(/PRECIO:\s*(.+)/i);const tm=r.match(/PLAZO:\s*(.+)/i);
+    let filled=0;
+    if(pm){const el=document.getElementById('p-precio');if(el&&!el.value){el.value=pm[1].trim();el.classList.add('prefilled');filled++;}}
+    if(tm){const el=document.getElementById('p-plazo');if(el&&!el.value){el.value=tm[1].trim();el.classList.add('prefilled');filled++;}}
+    if(filled>0)showToast('✅ Estimación lista. Revisa y ajusta si es necesario.','success');
+    else showToast('Los campos ya tenían valores, no se sobreescribieron.','info');
+  }catch(e){showToast('Error al estimar: '+e.message,'error',4000);}
+  if(btn){btn.disabled=false;btn.textContent='✦ Estimar con IA';}
+}
 function getEnts(){return Array.from(document.querySelectorAll('#ent-list input')).map(i=>i.value.trim()).filter(Boolean);}
 function addEnt(){const r=document.createElement('div');r.className='ent-row';r.innerHTML=`<input class="inp" placeholder="Entregable..."><button class="btn-rem" onclick="remEnt(this)">×</button>`;document.getElementById('ent-list').appendChild(r);r.querySelector('input').focus();}
 function remEnt(btn){const rows=document.querySelectorAll('.ent-row');if(rows.length>1)btn.parentElement.remove();}
 async function generarPropuesta(){
   const nombre=document.getElementById('p-nombre').value.trim();const servicio=document.getElementById('p-servicio').value.trim();
   if(!nombre||!servicio){showToast('Nombre del cliente y servicio son obligatorios.','warn');return;}
+  const tipo=document.getElementById('p-tipo')?.value||'';
   const d={empresa:document.getElementById('p-empresa').value.trim(),contacto:document.getElementById('p-contacto').value.trim(),presupuesto:document.getElementById('p-presupuesto').value.trim(),desc:document.getElementById('p-desc').value.trim(),plazo:document.getElementById('p-plazo').value.trim(),precio:document.getElementById('p-precio').value.trim(),anticipo:document.getElementById('p-anticipo').value.trim(),final:document.getElementById('p-final').value.trim(),notas:document.getElementById('p-notas').value.trim(),ents:getEnts()};
+  const precioVacio=!d.precio;const plazoVacio=!d.plazo;
   document.getElementById('result-sec').style.display='block';const box=document.getElementById('result-box');box.style.color='var(--text3)';box.style.fontStyle='italic';box.style.fontFamily="'JetBrains Mono',monospace";box.style.fontSize='11px';box.innerHTML='<span style="display:inline-flex;gap:4px;align-items:center"><span style="width:5px;height:5px;background:var(--accent);border-radius:50%;animation:blink 1.2s infinite;display:inline-block"></span><span style="width:5px;height:5px;background:var(--accent);border-radius:50%;animation:blink 1.2s infinite .2s;display:inline-block"></span><span style="width:5px;height:5px;background:var(--accent);border-radius:50%;animation:blink 1.2s infinite .4s;display:inline-block"></span> Generando...</span>';
   document.getElementById('btn-generar').disabled=true;
-  const prompt=`Genera propuesta:\nCLIENTE: ${nombre} | Empresa: ${d.empresa||'—'}\nSERVICIO: ${servicio}\nDESCRIPCIÓN: ${d.desc||'Sin descripción'}\nPLAZO: ${d.plazo||'A definir'}\nENTREGABLES:\n${d.ents.length?d.ents.map((e,i)=>`${i+1}. ${e}`).join('\n'):'A definir'}\nCONDICIONES: Precio: ${d.precio||'Según presupuesto'} | Anticipo: ${d.anticipo} | Final: ${d.final}\nNOTAS: ${d.notas||'Ninguna'}`;
-  try{PROP.generada=await callAI(getSysProp(),[{role:'user',content:prompt}],1000);box.style.color='var(--text)';box.style.fontStyle='normal';box.style.fontFamily="'DM Sans',sans-serif";box.style.fontSize='12px';box.textContent=PROP.generada;box.scrollIntoView({behavior:'smooth',block:'start'});logActivity('Propuesta generada para '+nombre,'var(--accent)');}
+  const precioStr=d.precio||(precioVacio?'SIN ESPECIFICAR — estima un rango de mercado justo y justifícalo':'');
+  const plazoStr=d.plazo||(plazoVacio?'SIN ESPECIFICAR — estima un cronograma realista por fases':'');
+  const prompt=`Genera propuesta:\nCLIENTE: ${nombre} | Empresa: ${d.empresa||'—'}\nSERVICIO: ${servicio}${tipo?' | Tipo: '+tipo:''}\nDESCRIPCIÓN: ${d.desc||'Sin descripción'}\nPLAZO: ${plazoStr}\nENTREGABLES:\n${d.ents.length?d.ents.map((e,i)=>`${i+1}. ${e}`).join('\n'):'A definir'}\nCONDICIONES: Precio: ${precioStr} | Anticipo: ${d.anticipo} | Final: ${d.final}\nNOTAS: ${d.notas||'Ninguna'}`;
+  try{PROP.generada=await callAI(getSysProp(),[{role:'user',content:prompt}],1200);box.style.color='var(--text)';box.style.fontStyle='normal';box.style.fontFamily="'DM Sans',sans-serif";box.style.fontSize='12px';box.textContent=PROP.generada;box.scrollIntoView({behavior:'smooth',block:'start'});logActivity('Propuesta generada para '+nombre,'var(--accent)');}
   catch(e){box.style.color='var(--red)';box.textContent='Error: '+e.message;}
   document.getElementById('btn-generar').disabled=false;
 }
 function copyProp(){if(!PROP.generada)return;navigator.clipboard.writeText(PROP.generada).then(()=>{const b=document.querySelector('#result-sec .btn');if(b){b.textContent='✓ Copiado';setTimeout(()=>b.textContent='Copiar',1800);}});}
-function limpiarProp(){showConfirm('¿Limpiar el generador de propuestas?',()=>{['p-nombre','p-empresa','p-contacto','p-presupuesto','p-servicio','p-plazo','p-desc','p-precio','p-notas'].forEach(id=>{const el=document.getElementById(id);el.value='';el.classList.remove('prefilled');});document.getElementById('p-anticipo').value='50% al inicio';document.getElementById('p-final').value='50% en entrega';document.getElementById('ent-list').innerHTML=`<div class="ent-row"><input class="inp" placeholder="Entregable..."><button class="btn-rem" onclick="remEnt(this)">×</button></div>`;document.getElementById('result-sec').style.display='none';PROP.generada='';clearPropCRM();});}
+function limpiarProp(){showConfirm('¿Limpiar el generador de propuestas?',()=>{['p-nombre','p-empresa','p-contacto','p-presupuesto','p-servicio','p-plazo','p-desc','p-precio','p-notas'].forEach(id=>{const el=document.getElementById(id);if(el){el.value='';el.classList.remove('prefilled');}});const tipo=document.getElementById('p-tipo');if(tipo)tipo.value='';document.getElementById('p-anticipo').value='50% al inicio';document.getElementById('p-final').value='50% en entrega';document.getElementById('ent-list').innerHTML=`<div class="ent-row"><input class="inp" placeholder="Entregable..."><button class="btn-rem" onclick="remEnt(this)">×</button></div>`;document.getElementById('result-sec').style.display='none';PROP.generada='';clearPropCRM();});}
 function clearPropCRM(){PROP.clienteIdFromCRM=null;document.getElementById('prop-crm-badge').style.display='none';document.getElementById('prop-crm-banner').style.display='none';document.getElementById('btn-captado').style.display='none';}
 function marcarCaptado(){if(!PROP.clienteIdFromCRM){showToast('Sin cliente vinculado al generador.','warn');return;}try{S.set('captado_signal',{clienteId:PROP.clienteIdFromCRM,precio:document.getElementById('p-precio').value.trim(),fecha:fmtDate()});showToast('✅ Señal enviada al CRM.','success');}catch(e){}}
 
