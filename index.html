@@ -395,8 +395,20 @@ select.inp option{background:var(--bg3)}
 /* ═══════════════════════════════════════════════
    PROPUESTAS
 ═══════════════════════════════════════════════ */
-.prop-body{flex:1;overflow-y:auto;padding:18px}
+.prop-body{flex:1;display:flex;overflow:hidden}
+.prop-form-area{flex:1;overflow-y:auto;padding:18px}
 .prop-inner{max-width:800px;margin:0 auto}
+.prop-sidebar{width:230px;min-width:230px;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;background:var(--bg1)}
+.ps-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 8px;border-bottom:1px solid var(--border);gap:8px}
+.ps-htitle{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.ph-list{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px}
+.ph-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:10px;transition:border-color .15s}
+.ph-card:hover{border-color:var(--accent)}
+.ph-card-title{font-size:11px;font-weight:600;color:var(--text);line-height:1.3;margin-bottom:2px;word-break:break-word}
+.ph-card-meta{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:5px}
+.ph-card-client{font-size:10px;color:var(--teal);margin-bottom:5px}
+.ph-card-acts{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.ph-empty{text-align:center;padding:28px 8px;color:var(--text3);font-size:11px;line-height:1.6}
 .prop-sec{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:16px;margin-bottom:12px}
 .prop-crm-banner{background:var(--gbg);border:1px solid var(--gbb);border-radius:var(--r);padding:11px 14px;display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .prop-crm-banner .title{font-size:12px;font-weight:500;color:var(--green)}
@@ -962,7 +974,15 @@ select.inp option{background:var(--bg3)}
       <button class="btn btn-teal btn-sm" id="btn-captado" style="display:none" onclick="marcarCaptado()" data-i18n="prop_captado">✅ Captado</button>
     </div>
   </div>
-  <div class="prop-body"><div class="prop-inner">
+  <div class="prop-body">
+    <div class="prop-sidebar">
+      <div class="ps-head">
+        <span class="ps-htitle">Historial</span>
+        <select id="ps-filter" onchange="renderPropDB()" style="font-size:10px;padding:2px 5px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text)"><option value="">Todas</option><option value="borrador">Borrador</option><option value="enviada">Enviada</option><option value="aceptada">Aceptada</option><option value="rechazada">Rechazada</option></select>
+      </div>
+      <div id="ph-list" class="ph-list"></div>
+    </div>
+    <div class="prop-form-area"><div class="prop-inner">
     <div id="prop-crm-banner" style="display:none" class="prop-crm-banner"><div style="flex:1"><div class="title" data-i18n="prop_crm_loaded">Datos del CRM cargados</div><div class="sub">Revisa y completa</div></div><button class="btn btn-ghost btn-xs" onclick="clearPropCRM()">×</button></div>
     <div class="prop-sec"><div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Datos del cliente</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -996,12 +1016,12 @@ select.inp option{background:var(--bg3)}
       <div class="prop-sec">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase">Propuesta generada</div>
-          <div style="display:flex;gap:6px"><button class="btn btn-ghost btn-xs" onclick="copyProp()" data-i18n="prop_copy">Copiar</button><button class="btn btn-ghost btn-xs" onclick="generarPropuesta()" data-i18n="prop_regen">↺ Regenerar</button></div>
+          <div style="display:flex;gap:6px"><button class="btn btn-ghost btn-xs" onclick="copyProp()" data-i18n="prop_copy">Copiar</button><button class="btn btn-teal btn-xs" id="btn-guardar-prop" onclick="saveCurrentProp()">💾 Guardar</button><button class="btn btn-ghost btn-xs" onclick="generarPropuesta()" data-i18n="prop_regen">↺ Regenerar</button></div>
         </div>
         <div class="result-box" id="result-box"></div>
       </div>
     </div>
-  </div></div>
+  </div></div></div>
 </div>
 
 <!-- BIBLIOTECA -->
@@ -1290,6 +1310,14 @@ select.inp option{background:var(--bg3)}
     <div class="modal-actions"><button class="btn btn-ghost btn-sm" onclick="closeModal('modal-lib-picker')">Cancelar</button></div>
   </div>
 </div>
+<!-- Vincular propuesta modal -->
+<div class="modal-overlay" id="modal-link-prop" style="display:none" role="dialog" aria-modal="true">
+  <div class="modal" style="width:380px"><h3>🔗 Vincular propuesta a cliente</h3>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Selecciona el cliente del CRM al que pertenece esta propuesta.</p>
+    <div class="frow"><label class="lbl" for="link-prop-client-sel">Cliente CRM</label><select class="inp" id="link-prop-client-sel"></select></div>
+    <div class="modal-actions"><button class="btn btn-ghost btn-sm" onclick="closeModal('modal-link-prop')">Cancelar</button><button class="btn btn-accent btn-sm" onclick="confirmLinkProp()">Vincular</button></div>
+  </div>
+</div>
 <!-- Upgrade modal -->
 <div class="modal-overlay" id="modal-upgrade" style="display:none" role="dialog" aria-modal="true">
   <div class="upgrade-modal">
@@ -1525,6 +1553,7 @@ function launchApp() {
   showScreen('app');
   applyUserSettings();
   initCRM();
+  renderPropDB();
   evalCL();
   renderEqHist();
   renderLib();
@@ -2086,9 +2115,124 @@ async function generarPropuesta(){
   document.getElementById('btn-generar').disabled=false;
 }
 function copyProp(){if(!PROP.generada)return;navigator.clipboard.writeText(PROP.generada).then(()=>{const b=document.querySelector('#result-sec .btn');if(b){b.textContent='✓ Copiado';setTimeout(()=>b.textContent='Copiar',1800);}});}
-function limpiarProp(){showConfirm('¿Limpiar el generador de propuestas?',()=>{['p-nombre','p-empresa','p-contacto','p-presupuesto','p-servicio','p-plazo','p-desc','p-precio','p-notas'].forEach(id=>{const el=document.getElementById(id);if(el){el.value='';el.classList.remove('prefilled');}});const tipo=document.getElementById('p-tipo');if(tipo)tipo.value='';document.getElementById('p-anticipo').value='50% al inicio';document.getElementById('p-final').value='50% en entrega';document.getElementById('ent-list').innerHTML=`<div class="ent-row"><input class="inp" placeholder="Entregable..."><button class="btn-rem" onclick="remEnt(this)">×</button></div>`;document.getElementById('result-sec').style.display='none';PROP.generada='';clearPropCRM();});}
+function limpiarProp(){showConfirm('¿Limpiar el generador de propuestas?',()=>{['p-nombre','p-empresa','p-contacto','p-presupuesto','p-servicio','p-plazo','p-desc','p-precio','p-notas'].forEach(id=>{const el=document.getElementById(id);if(el){el.value='';el.classList.remove('prefilled');}});const tipo=document.getElementById('p-tipo');if(tipo)tipo.value='';document.getElementById('p-anticipo').value='50% al inicio';document.getElementById('p-final').value='50% en entrega';document.getElementById('ent-list').innerHTML=`<div class="ent-row"><input class="inp" placeholder="Entregable..."><button class="btn-rem" onclick="remEnt(this)">×</button></div>`;document.getElementById('result-sec').style.display='none';PROP.generada='';const gs=document.getElementById('btn-guardar-prop');if(gs){gs.textContent='💾 Guardar';gs.disabled=false;}clearPropCRM();});}
 function clearPropCRM(){PROP.clienteIdFromCRM=null;document.getElementById('prop-crm-badge').style.display='none';document.getElementById('prop-crm-banner').style.display='none';document.getElementById('btn-captado').style.display='none';}
 function marcarCaptado(){if(!PROP.clienteIdFromCRM){showToast('Sin cliente vinculado al generador.','warn');return;}try{S.set('captado_signal',{clienteId:PROP.clienteIdFromCRM,precio:document.getElementById('p-precio').value.trim(),fecha:fmtDate()});showToast('✅ Señal enviada al CRM.','success');}catch(e){}}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PROPUESTAS DATABASE
+// ═══════════════════════════════════════════════════════════════════════
+function getPropDB(){ return S.get('proposals') || []; }
+function savePropDB(items){ S.set('proposals', items); }
+
+function renderPropDB(){
+  const filter = document.getElementById('ps-filter')?.value || '';
+  const all = getPropDB();
+  const items = filter ? all.filter(p => p.status === filter) : all;
+  const list = document.getElementById('ph-list'); if(!list) return;
+  if(!items.length){
+    list.innerHTML = `<div class="ph-empty">${all.length===0 ? 'Sin propuestas guardadas.<br>Pulsa <strong>💾 Guardar</strong><br>tras generar una.' : 'Sin propuestas con ese estado.'}</div>`;
+    return;
+  }
+  const sc={borrador:'tag-accent',enviada:'tag-blue',aceptada:'tag-teal',rechazada:'tag-red'};
+  const sl={borrador:'Borrador',enviada:'Enviada',aceptada:'Aceptada',rechazada:'Rechazada'};
+  list.innerHTML=[...items].reverse().map(p=>{
+    const clientName=p.clienteId&&CRM.clients[p.clienteId]?esc(CRM.clients[p.clienteId].name):'';
+    return `<div class="ph-card">
+      <div class="ph-card-title">${esc(p.servicio||'Propuesta')}${p.nombre?' &ndash; '+esc(p.nombre):''}</div>
+      <div class="ph-card-meta">${esc(p.fecha)}${p.precio?' · '+esc(p.precio):''}</div>
+      ${clientName?`<div class="ph-card-client">🔗 ${clientName}</div>`:''}
+      <span class="tag ${sc[p.status]||'tag-gray'}" style="font-size:9px">${sl[p.status]||p.status}</span>
+      <div class="ph-card-acts">
+        <button class="btn btn-ghost btn-xs" onclick="loadPropFromDB('${p.id}')">Reutilizar</button>
+        <select onchange="changePropDBStatus('${p.id}',this.value);this.value=''" style="font-size:10px;padding:1px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text)">
+          <option value="">Estado ▾</option>
+          <option value="borrador">Borrador</option><option value="enviada">Enviada</option><option value="aceptada">Aceptada</option><option value="rechazada">Rechazada</option>
+        </select>
+        <button class="btn btn-ghost btn-xs" onclick="openLinkPropModal('${p.id}')">🔗</button>
+        <button class="btn btn-red btn-xs" onclick="deletePropFromDB('${p.id}')">×</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function saveCurrentProp(){
+  const nombre=document.getElementById('p-nombre').value.trim();
+  const servicio=document.getElementById('p-servicio').value.trim();
+  if(!PROP.generada){showToast('Genera la propuesta antes de guardar.','warn');return;}
+  const items=getPropDB();
+  items.push({
+    id:genId(), fecha:fmtDate(), status:'borrador',
+    clienteId:PROP.clienteIdFromCRM||null,
+    nombre, empresa:document.getElementById('p-empresa').value.trim(),
+    contacto:document.getElementById('p-contacto').value.trim(),
+    presupuesto:document.getElementById('p-presupuesto').value.trim(),
+    servicio, tipo:document.getElementById('p-tipo')?.value||'',
+    desc:document.getElementById('p-desc').value.trim(),
+    plazo:document.getElementById('p-plazo').value.trim(),
+    precio:document.getElementById('p-precio').value.trim(),
+    anticipo:document.getElementById('p-anticipo').value.trim(),
+    final:document.getElementById('p-final').value.trim(),
+    notas:document.getElementById('p-notas').value.trim(),
+    entregables:getEnts(), texto:PROP.generada
+  });
+  savePropDB(items); renderPropDB();
+  showToast('✅ Propuesta guardada en el historial.','success');
+  const btn=document.getElementById('btn-guardar-prop');
+  if(btn){btn.textContent='✓ Guardada';btn.disabled=true;setTimeout(()=>{btn.textContent='💾 Guardar';btn.disabled=false;},2500);}
+}
+
+function loadPropFromDB(id){
+  const p=getPropDB().find(x=>x.id===id);if(!p)return;
+  const fields={'p-nombre':p.nombre,'p-empresa':p.empresa,'p-contacto':p.contacto,'p-presupuesto':p.presupuesto,'p-servicio':p.servicio,'p-desc':p.desc,'p-plazo':p.plazo,'p-precio':p.precio,'p-anticipo':p.anticipo,'p-final':p.final,'p-notas':p.notas};
+  Object.entries(fields).forEach(([fid,val])=>{const el=document.getElementById(fid);if(el)el.value=val||'';});
+  const tipo=document.getElementById('p-tipo');if(tipo)tipo.value=p.tipo||'';
+  if(p.entregables?.length){document.getElementById('ent-list').innerHTML=p.entregables.map(e=>`<div class="ent-row"><input class="inp" value="${esc(e)}"><button class="btn-rem" onclick="remEnt(this)">×</button></div>`).join('');}
+  if(p.texto){
+    document.getElementById('result-sec').style.display='block';
+    const box=document.getElementById('result-box');box.style.color='var(--text)';box.style.fontStyle='normal';box.style.fontFamily="'DM Sans',sans-serif";box.style.fontSize='12px';
+    box.textContent=p.texto;PROP.generada=p.texto;
+  }
+  if(p.clienteId&&CRM.clients[p.clienteId]){
+    PROP.clienteIdFromCRM=p.clienteId;
+    document.getElementById('prop-crm-badge').style.display='block';
+    document.getElementById('prop-crm-banner').style.display='flex';
+    document.getElementById('btn-captado').style.display='inline-flex';
+  }
+  showToast('Propuesta cargada en el formulario.','success');
+  document.querySelector('.prop-form-area')?.scrollTo({top:0,behavior:'smooth'});
+}
+
+function deletePropFromDB(id){
+  showConfirm('¿Eliminar esta propuesta del historial?',()=>{
+    savePropDB(getPropDB().filter(p=>p.id!==id));renderPropDB();showToast('Propuesta eliminada.','info');
+  });
+}
+
+function changePropDBStatus(id,status){
+  if(!status)return;
+  const items=getPropDB();const p=items.find(x=>x.id===id);if(!p)return;
+  p.status=status;savePropDB(items);renderPropDB();
+  const sl={borrador:'Borrador',enviada:'Enviada',aceptada:'✅ Aceptada',rechazada:'Rechazada'};
+  showToast('Estado: '+( sl[status]||status),'success');
+}
+
+function openLinkPropModal(id){
+  const clients=Object.keys(CRM.clients);
+  if(!clients.length){showToast('No hay clientes en el CRM.','warn');return;}
+  PROP._linkTargetId=id;
+  const sel=document.getElementById('link-prop-client-sel');
+  const p=getPropDB().find(x=>x.id===id);
+  sel.innerHTML='<option value="">\u2014 Sin vincular \u2014</option>'+clients.map(cid=>`<option value="${cid}"${p?.clienteId===cid?' selected':''}>${esc(CRM.clients[cid].name)}${CRM.clients[cid].company?' \u2013 '+esc(CRM.clients[cid].company):''}</option>`).join('');
+  document.getElementById('modal-link-prop').style.display='flex';
+}
+
+function confirmLinkProp(){
+  const cid=document.getElementById('link-prop-client-sel').value;
+  const items=getPropDB();const p=items.find(x=>x.id===PROP._linkTargetId);if(!p)return;
+  p.clienteId=cid||null;savePropDB(items);renderPropDB();closeModal('modal-link-prop');
+  showToast(cid?`Vinculada a ${esc(CRM.clients[cid]?.name||'cliente')}.`:'Vínculo eliminado.','success');
+}
 
 // ═══════════════════════════════════════════════════════════════════════
 // BIBLIOTECA
