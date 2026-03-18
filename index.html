@@ -1789,6 +1789,21 @@ function updateProviderLabel() {
   const mlbl = document.getElementById('s-model-label');
   if(lbl) lbl.textContent = `API Key (${PROVIDERS[prov]?.hint || '...'})`;
   if(mlbl) mlbl.textContent = `Modelo por defecto: ${PROVIDERS[prov]?.model || ''}`;
+  // Populate model select with options for the chosen provider
+  const sel = document.getElementById('s-model-select');
+  if(sel) {
+    const models = PROVIDERS[prov]?.models || [];
+    sel.innerHTML = models.map(m => `<option value="${m}">${m}</option>`).join('') +
+      '<option value="__custom">\u2014 Modelo personalizado \u2014</option>';
+    sel.value = PROVIDERS[prov]?.model || models[0] || '';
+  }
+  _onModelSelectChange();
+}
+function onModelSelectChange() { _onModelSelectChange(); }
+function _onModelSelectChange() {
+  const sel = document.getElementById('s-model-select');
+  const row = document.getElementById('s-custom-model-row');
+  if(row) row.style.display = (sel && sel.value === '__custom') ? 'flex' : 'none';
 }
 function updateApiStatusBadge(status) {
   const el = document.getElementById('api-status-badge'); if(!el) return;

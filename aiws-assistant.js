@@ -169,7 +169,7 @@ REGLAS DE COMPORTAMIENTO:
   <div id="${NS}-log"></div>
   <div id="${NS}-chips">
     <button class="${NS}-chip" data-msg="¿Cómo genero una propuesta?">Propuestas</button>
-    <button class="${NS}-chip" data-msg="¿Cómo funciona el generador de CV?">CV con IA</button>
+    <button class="${NS}-chip" data-msg="¿Cómo funcionan los Equipos IA?">Equipos IA</button>
     <button class="${NS}-chip" data-msg="¿Qué incluye el plan Pro?">Plan Pro</button>
     <button class="${NS}-chip" data-msg="Tengo un problema técnico">Soporte</button>
   </div>
