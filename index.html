@@ -72,7 +72,7 @@
   --abg:rgba(240,165,0,.10);--abg2:rgba(240,165,0,.18);
   --bg:#0c0d0f;--bg2:#141618;--bg3:#1c1e22;--bg4:#232629;
   --border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.13);
-  --text:#edeae2;--text2:#9a9790;--text3:#55534f;
+  --text:#edeae2;--text2:#aeaaa4;--text3:#888481;
   --teal:#1d9e75;--tbg:rgba(29,158,117,.10);--tb:rgba(29,158,117,.25);
   --purple:#8b7cf8;--pbg:rgba(139,124,248,.10);--pb:rgba(139,124,248,.25);
   --blue:#5b8dee;--bbg:rgba(91,141,238,.10);--bbb:rgba(91,141,238,.25);
@@ -102,6 +102,39 @@
 [data-theme="light"] .land-footer                       { background:var(--bg); }
 [data-theme="light"] .auth-card,
 [data-theme="light"] .modal                             { box-shadow:0 8px 32px rgba(0,0,0,.12); }
+/* ── TEMA MIDNIGHT ──────────────────────────────────── */
+[data-theme="midnight"] {
+  --bg:#000000; --bg2:#0d0d0d; --bg3:#161616; --bg4:#202020;
+  --border:rgba(255,255,255,.10); --border2:rgba(255,255,255,.20);
+  --text:#ffffff; --text2:#ccc8c2; --text3:#9a9790;
+  --abg:rgba(240,165,0,.13); --abg2:rgba(240,165,0,.24);
+}
+[data-theme="midnight"] .wm.assistant .wm-bubble,
+[data-theme="midnight"] .wm.assistant .wm-bubble pre,
+[data-theme="midnight"] .cmsg.assistant,
+[data-theme="midnight"] .result-box,
+[data-theme="midnight"] .sys-prv { background:#101010; }
+/* ── TEMA WARM (ámbar oscuro) ───────────────────────── */
+[data-theme="warm"] {
+  --bg:#1a1612; --bg2:#231e18; --bg3:#2c261f; --bg4:#362f26;
+  --border:rgba(255,230,170,.08); --border2:rgba(255,230,170,.16);
+  --text:#f5ede0; --text2:#c9b99e; --text3:#9a8872;
+  --accent:#e8a020; --accent2:#cc8d18;
+  --abg:rgba(232,160,32,.12); --abg2:rgba(232,160,32,.22);
+  --teal:#1d9e75; --tbg:rgba(29,158,117,.10); --tb:rgba(29,158,117,.25);
+  --purple:#8b7cf8; --pbg:rgba(139,124,248,.10); --pb:rgba(139,124,248,.25);
+  --blue:#5b8dee; --bbg:rgba(91,141,238,.10); --bbb:rgba(91,141,238,.25);
+  --red:#e05555; --rbg:rgba(224,85,85,.10); --rb:rgba(224,85,85,.25);
+  --green:#4caf7d; --gbg:rgba(76,175,125,.10); --gbb:rgba(76,175,125,.25);
+}
+[data-theme="warm"] .wm.assistant .wm-bubble,
+[data-theme="warm"] .wm.assistant .wm-bubble pre,
+[data-theme="warm"] .cmsg.assistant,
+[data-theme="warm"] .result-box,
+[data-theme="warm"] .sys-prv { background:#2a2218; }
+/* ── BRAND ──────────────────────────────────────────── */
+.land-logo-by{font-family:'DM Sans',sans-serif;font-size:10px;font-weight:400;color:var(--text3);text-decoration:none;margin-left:7px;transition:color .15s;vertical-align:middle;white-space:nowrap}
+.land-logo-by:hover{color:var(--accent)}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.5}
 ::-webkit-scrollbar{width:3px;height:3px}
@@ -609,7 +642,7 @@ select.inp option{background:var(--bg3)}
 <div class="screen active" id="screen-landing">
 
   <nav class="land-nav">
-    <div class="land-logo">AIWork<span>Suite</span></div>
+    <div class="land-logo">AIWork<span>Suite</span><a href="https://molvicstudios.pro" target="_blank" rel="noopener noreferrer" class="land-logo-by">by MolvicStudios</a></div>
     <div class="land-nav-links">
       <a href="#pricing" style="font-size:12px;color:var(--text3);text-decoration:none;font-family:'JetBrains Mono',monospace;margin-right:8px;transition:color .15s" onmouseover="this.style.color='var(--text2)'" onmouseout="this.style.color='var(--text3)'">Planes</a>
       <button class="btn btn-ghost btn-sm" onclick="showAuth('login')" data-i18n="auth_btn_login">Entrar</button>
@@ -782,15 +815,6 @@ select.inp option{background:var(--bg3)}
 <!-- NAV -->
 <nav class="sidenav">
   <div class="nav-logo-btn" id="nav-logo-btn" onclick="goTo('dash')" title="Dashboard">AI</div>
-  <!-- Toggle de tema (sol/luna) -->
-  <div class="nav-item" id="nav-theme-toggle" onclick="toggleTheme()" style="margin-bottom:2px">
-    <div class="nav-tip" data-i18n="nav_theme">Cambiar tema</div>
-  </div>
-  <!-- Toggle de idioma ES/EN -->
-  <div class="nav-item" id="nav-lang-toggle" onclick="toggleLang()" title="Switch language">
-    <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--text3)">EN</span>
-    <div class="nav-tip">Switch to English</div>
-  </div>
   <div class="nav-item active" id="nav-dash" onclick="goTo('dash')">
     <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
     <div class="nav-tip">Dashboard</div>
@@ -1115,7 +1139,7 @@ select.inp option{background:var(--bg3)}
 
     <!-- User profile -->
     <div class="settings-sec">
-      <div class="settings-sec-title">Tu cuenta</div>
+      <div class="settings-sec-title" data-i18n="settings_account">Tu cuenta</div>
       <div class="user-profile-bar">
         <div class="user-avatar" id="user-avatar-initials">?</div>
         <div>
@@ -1130,12 +1154,14 @@ select.inp option{background:var(--bg3)}
     <div class="settings-sec">
       <div class="settings-sec-title" data-i18n="settings_appearance">Apariencia</div>
       <div class="frow">
-        <span class="lbl" data-i18n="settings_theme">Tema</span>
-        <div style="display:flex;gap:8px;margin-top:6px">
-          <div class="chip" data-theme-chip="system" onclick="applyTheme('system')" data-i18n="settings_theme_system">Sistema</div>
-          <div class="chip" data-theme-chip="light"  onclick="applyTheme('light')"  data-i18n="settings_theme_light">Claro</div>
-          <div class="chip" data-theme-chip="dark"   onclick="applyTheme('dark')"   data-i18n="settings_theme_dark">Oscuro</div>
-        </div>
+        <label class="lbl" for="s-theme-select" data-i18n="settings_theme">Tema</label>
+        <select class="inp" id="s-theme-select" onchange="applyTheme(this.value)" style="margin-top:6px">
+          <option value="dark"     data-i18n="settings_theme_dark">Oscuro</option>
+          <option value="light"    data-i18n="settings_theme_light">Claro</option>
+          <option value="midnight" data-i18n="settings_theme_midnight">Medianoche</option>
+          <option value="warm"     data-i18n="settings_theme_warm">Cálido</option>
+          <option value="system"   data-i18n="settings_theme_system">Sistema</option>
+        </select>
       </div>
       <div class="frow" style="margin-top:10px">
         <span class="lbl" data-i18n="settings_lang_label">Idioma</span>
@@ -1148,7 +1174,7 @@ select.inp option{background:var(--bg3)}
 
     <!-- API -->
     <div class="settings-sec">
-      <div class="settings-sec-title">Proveedor IA (BYOK)</div>
+      <div class="settings-sec-title" data-i18n="settings_api">Proveedor IA (BYOK)</div>
       <div class="frow"><label class="lbl" for="s-provider">Proveedor</label>
         <select class="inp" id="s-provider" onchange="updateProviderLabel()"><option value="anthropic">Anthropic — Claude</option><option value="openai">OpenAI — GPT-4o</option><option value="groq">Groq — Llama 3.3</option><option value="openrouter">OpenRouter — Multi-model</option></select>
       </div>
@@ -1171,7 +1197,7 @@ select.inp option{background:var(--bg3)}
 
     <!-- Perfil profesional -->
     <div class="settings-sec">
-      <div class="settings-sec-title">Perfil profesional</div>
+      <div class="settings-sec-title" data-i18n="settings_profile">Perfil profesional</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="frow"><label class="lbl" for="s-user-name">Tu nombre / marca</label><input class="inp" id="s-user-name" placeholder="Jose / MolvicStudios"></div>
         <div class="frow"><label class="lbl" for="s-email">Email de contacto</label><input class="inp" id="s-email" placeholder="tu@email.com"></div>
@@ -1184,7 +1210,7 @@ select.inp option{background:var(--bg3)}
 
     <!-- Datos -->
     <div class="settings-sec">
-      <div class="settings-sec-title">Datos y privacidad</div>
+      <div class="settings-sec-title" data-i18n="settings_data">Datos y privacidad</div>
       <div class="data-action">
         <div><div class="data-action-label">Exportar todos los datos</div><div class="data-action-sub">CRM, biblioteca, equipos y configuración en JSON</div></div>
         <button class="btn btn-ghost btn-sm" onclick="exportData()">↓ Export JSON</button>
@@ -1751,6 +1777,9 @@ function applyUserSettings() {
     }
   }
   updateApiStatusBadge(cfg.apiKey ? 'ok' : 'no');
+  // sync theme select with saved preference
+  const thSel = document.getElementById('s-theme-select');
+  if(thSel) thSel.value = S.get('theme') || 'system';
 }
 
 function updateProviderLabel() {
@@ -2353,19 +2382,13 @@ function applyTheme(preference){
   S.set('theme',preference);
   const resolved=preference==='system'?getSystemTheme():preference;
   document.documentElement.setAttribute('data-theme',resolved);
-  _updateThemeIcon(resolved);_updateThemeChips(preference);
+  _updateThemeUI(preference);
 }
 function loadTheme(){const saved=S.get('theme')||'system';applyTheme(saved);}
-function toggleTheme(){const current=document.documentElement.getAttribute('data-theme');applyTheme(current==='dark'?'light':'dark');}
-function _updateThemeIcon(resolved){
-  const btn=document.getElementById('nav-theme-toggle');if(!btn)return;
-  const existing=btn.querySelector('svg');if(existing)existing.remove();
-  const svgSun=`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
-  const svgMoon=`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
-  btn.insertAdjacentHTML('afterbegin',resolved==='dark'?svgSun:svgMoon);
-}
-function _updateThemeChips(preference){
-  document.querySelectorAll('[data-theme-chip]').forEach(el=>el.classList.toggle('sel',el.dataset.themeChip===preference));
+function toggleTheme(){applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');}
+function _updateThemeUI(preference){
+  const sel=document.getElementById('s-theme-select');
+  if(sel)sel.value=preference;
 }
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{
   if((S.get('theme')||'system')==='system')applyTheme('system');
@@ -2424,7 +2447,7 @@ const TRANSLATIONS={
     ws_back:'← Equipos',ws_clear:'Limpiar',ws_empty:'Equipo activo · escribe tu primera instrucción',
     ws_system_show:'▸ ver system prompt',ws_system_hide:'▾ ocultar system prompt',ws_pro_hint:'+2 chats en Pro',
     settings_appearance:'Apariencia',settings_theme:'Tema',
-    settings_theme_system:'Sistema',settings_theme_light:'Claro',settings_theme_dark:'Oscuro',
+    settings_theme_system:'Sistema',settings_theme_light:'Claro',settings_theme_dark:'Oscuro',settings_theme_midnight:'Medianoche',settings_theme_warm:'Cálido',
     settings_lang_label:'Idioma',settings_api:'Proveedor IA (BYOK)',
     settings_provider:'Proveedor',settings_key_label:'API Key',settings_test:'Probar',settings_model:'Modelo personalizado (opcional)',
     settings_profile:'Perfil profesional',settings_name:'Tu nombre / marca',
@@ -2498,7 +2521,7 @@ const TRANSLATIONS={
     ws_back:'← Teams',ws_clear:'Clear',ws_empty:'Team active · write your first instruction',
     ws_system_show:'▸ show system prompt',ws_system_hide:'▾ hide system prompt',ws_pro_hint:'+2 chats in Pro',
     settings_appearance:'Appearance',settings_theme:'Theme',
-    settings_theme_system:'System',settings_theme_light:'Light',settings_theme_dark:'Dark',
+    settings_theme_system:'System',settings_theme_light:'Light',settings_theme_dark:'Dark',settings_theme_midnight:'Midnight',settings_theme_warm:'Warm',
     settings_lang_label:'Language',settings_api:'AI Provider (BYOK)',
     settings_provider:'Provider',settings_key_label:'API Key',settings_test:'Test',settings_model:'Custom model (optional)',
     settings_profile:'Professional profile',settings_name:'Your name / brand',
