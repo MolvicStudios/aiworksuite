@@ -584,22 +584,22 @@ select.inp option{background:var(--bg3)}
     <div class="land-logo">AIWork<span>Suite</span></div>
     <div class="land-nav-links">
       <a href="#pricing" style="font-size:12px;color:var(--text3);text-decoration:none;font-family:'JetBrains Mono',monospace;margin-right:8px;transition:color .15s" onmouseover="this.style.color='var(--text2)'" onmouseout="this.style.color='var(--text3)'">Planes</a>
-      <button class="btn btn-ghost btn-sm" onclick="showAuth('login')">Entrar</button>
-      <button class="btn btn-accent btn-sm" onclick="showAuth('register')">Empezar gratis</button>
+      <button class="btn btn-ghost btn-sm" onclick="showAuth('login')" data-i18n="auth_btn_login">Entrar</button>
+      <button class="btn btn-accent btn-sm" onclick="showAuth('register')" data-i18n="plan_free_start">Empezar gratis</button>
     </div>
   </nav>
 
   <div style="flex:1;overflow-y:auto">
     <!-- HERO -->
     <div class="land-hero">
-      <div class="land-eyebrow">Sistema operativo para freelances IA</div>
-      <h1 class="land-h1">Todo lo que necesitas<br>para <span>trabajar con IA</span></h1>
-      <p class="land-sub">CRM, propuestas, equipos IA y biblioteca de prompts en una sola app. Sin servidor. Con tu propia API key. Gratis para empezar.</p>
+      <div class="land-eyebrow" data-i18n="land_eyebrow">Sistema operativo para freelances IA</div>
+      <h1 class="land-h1"><span id="land-h1-a">Todo lo que necesitas</span><br>para <span id="land-h1-b">trabajar con IA</span></h1>
+      <p class="land-sub" data-i18n="land_sub">CRM, propuestas, equipos IA y biblioteca de prompts en una sola app. Sin servidor. Con tu propia API key. Gratis para empezar.</p>
       <div class="land-cta-row">
-        <button class="btn btn-accent btn-lg" onclick="showAuth('register')">Empezar gratis — sin tarjeta</button>
-        <button class="btn btn-ghost btn-lg" onclick="showAuth('login')">Ya tengo cuenta</button>
+        <button class="btn btn-accent btn-lg" onclick="showAuth('register')" data-i18n="land_cta_primary">Empezar gratis — sin tarjeta</button>
+        <button class="btn btn-ghost btn-lg" onclick="showAuth('login')" data-i18n="land_cta_secondary">Ya tengo cuenta</button>
       </div>
-      <div class="land-proof">BYOK · 100% local · Sin suscripción para empezar</div>
+      <div class="land-proof" data-i18n="land_proof">BYOK · 100% local · Sin suscripción para empezar</div>
     </div>
 
     <!-- FEATURES -->
@@ -607,40 +607,40 @@ select.inp option{background:var(--bg3)}
       <div class="land-feat-grid">
         <div class="land-feat-card">
           <div class="land-feat-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
-          <div class="land-feat-title">CRM con IA</div>
-          <div class="land-feat-desc">Pipeline de 7 etapas con chat IA especializado por fase. Del primer contacto al onboarding.</div>
+          <div class="land-feat-title" data-i18n="land_feat_crm_title">CRM con IA</div>
+          <div class="land-feat-desc" data-i18n="land_feat_crm_desc">Pipeline de 7 etapas con chat IA especializado por fase. Del primer contacto al onboarding.</div>
         </div>
         <div class="land-feat-card">
           <div class="land-feat-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
-          <div class="land-feat-title">Propuestas IA</div>
-          <div class="land-feat-desc">Genera propuestas comerciales profesionales en segundos. Conectado con tu CRM.</div>
+          <div class="land-feat-title" data-i18n="land_feat_prop_title">Propuestas IA</div>
+          <div class="land-feat-desc" data-i18n="land_feat_prop_desc">Genera propuestas comerciales profesionales en segundos. Conectado con tu CRM.</div>
         </div>
         <div class="land-feat-card">
           <div class="land-feat-icon"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
-          <div class="land-feat-title">Lanzador de Equipos IA</div>
-          <div class="land-feat-desc">Configura equipos con roles detectados automáticamente y lanza el workspace en un clic.</div>
+          <div class="land-feat-title" data-i18n="land_feat_teams_title">Lanzador de Equipos IA</div>
+          <div class="land-feat-desc" data-i18n="land_feat_teams_desc">Configura equipos con roles detectados automáticamente y lanza el workspace en un clic.</div>
         </div>
         <div class="land-feat-card">
           <div class="land-feat-icon"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
-          <div class="land-feat-title">Biblioteca de Prompts</div>
-          <div class="land-feat-desc">Guarda y reutiliza tus mejores prompts. Insértalos en cualquier proyecto con un clic.</div>
+          <div class="land-feat-title" data-i18n="land_feat_lib_title">Biblioteca de Prompts</div>
+          <div class="land-feat-desc" data-i18n="land_feat_lib_desc">Guarda y reutiliza tus mejores prompts. Insértalos en cualquier proyecto con un clic.</div>
         </div>
         <div class="land-feat-card">
           <div class="land-feat-icon"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-          <div class="land-feat-title">BYOK — Tu API key</div>
-          <div class="land-feat-desc">Compatible con Anthropic, OpenAI, Groq y OpenRouter. Tu key nunca sale de tu dispositivo.</div>
+          <div class="land-feat-title" data-i18n="land_feat_byok_title">BYOK — Tu API key</div>
+          <div class="land-feat-desc" data-i18n="land_feat_byok_desc">Compatible con Anthropic, OpenAI, Groq y OpenRouter. Tu key nunca sale de tu dispositivo.</div>
         </div>
         <div class="land-feat-card">
           <div class="land-feat-icon"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
-          <div class="land-feat-title">100% local</div>
-          <div class="land-feat-desc">Tus datos en tu navegador. Export/import JSON. Sin servidores que fallen, sin dependencias.</div>
+          <div class="land-feat-title" data-i18n="land_feat_local_title">100% local</div>
+          <div class="land-feat-desc" data-i18n="land_feat_local_desc">Tus datos en tu navegador. Export/import JSON. Sin servidores que fallen, sin dependencias.</div>
         </div>
       </div>
 
       <!-- PRICING -->
       <div class="land-pricing" id="pricing">
-        <h2 class="land-section-title">Simple y transparente</h2>
-        <p class="land-section-sub">Empieza gratis. Cuando crezcas, Pro te acompaña.</p>
+        <h2 class="land-section-title" data-i18n="land_pricing_title">Simple y transparente</h2>
+        <p class="land-section-sub" data-i18n="land_pricing_sub">Empieza gratis. Cuando crezcas, Pro te acompaña.</p>
         <div class="pricing-grid">
           <div class="price-card">
             <div class="price-name">Free</div>
@@ -654,7 +654,7 @@ select.inp option{background:var(--bg3)}
             <div class="price-feat"><div class="pf-ok"></div>BYOK multi-proveedor</div>
             <div class="price-feat"><div class="pf-no"></div><span style="color:var(--text3)">Detección IA de roles</span></div>
             <div class="price-feat"><div class="pf-no"></div><span style="color:var(--text3)">3 chats por equipo</span></div>
-            <div style="margin-top:12px"><button class="btn btn-ghost" style="width:100%" onclick="showAuth('register')">Empezar gratis</button></div>
+            <div style="margin-top:12px"><button class="btn btn-ghost" style="width:100%" onclick="showAuth('register')" data-i18n="plan_free_start">Empezar gratis</button></div>
           </div>
           <div class="price-card featured">
             <div style="display:flex;align-items:center;justify-content:space-between">
@@ -670,7 +670,7 @@ select.inp option{background:var(--bg3)}
             <div class="price-feat"><div class="pf-ok"></div>Detección IA de roles</div>
             <div class="price-feat"><div class="pf-ok"></div>Prompts ilimitados</div>
             <div class="price-feat"><div class="pf-ok"></div>Branding personalizable</div>
-            <div style="margin-top:12px"><button class="btn btn-accent" style="width:100%" onclick="showUpgradeInterest()">Notificarme al lanzar</button></div>
+            <div style="margin-top:12px"><button class="btn btn-accent" style="width:100%" onclick="showUpgradeInterest()" data-i18n="plan_pro_notify">Notificarme al lanzar</button></div>
           </div>
         </div>
       </div>
@@ -1358,7 +1358,7 @@ async function doRegister() {
   document.getElementById('btn-register').textContent = 'Creando cuenta...';
   try {
     if (!supabase) throw new Error('Supabase no configurado. Añade tu URL y anon key en el código.');
-    const { data, error } = await supabase.auth.signUp({ email, password: pass });
+    const { data, error } = await supabase.auth.signUp({ email, password: pass, options: { emailRedirectTo: window.location.origin } });
     if (error) throw error;
     if (data.user && data.user.identities && data.user.identities.length === 0) {
       errEl.textContent = 'Este email ya está registrado. Inicia sesión.'; errEl.style.display = 'block';
@@ -2297,14 +2297,14 @@ let LANG='es';
 function t(key){return TRANSLATIONS[LANG]?.[key]??TRANSLATIONS['es']?.[key]??key;}
 function setLang(lang){
   if(!['es','en'].includes(lang))return;
-  LANG=lang;S.set('lang',lang);
+  LANG=lang; localStorage.setItem('aws_lang',lang);
   document.documentElement.setAttribute('lang',lang);
   document.title=lang==='es'?'AIWorkSuite — Suite IA para freelances | MolvicStudios':'AIWorkSuite — AI Suite for Freelancers | MolvicStudios';
   if(typeof updateStageNames==='function')updateStageNames();
   applyTranslations();_updateLangToggle();
 }
 function loadLang(){
-  const saved=S.get('lang')||(navigator.language?.startsWith('en')?'en':'es');
+  const saved=localStorage.getItem('aws_lang')||(navigator.language?.startsWith('en')?'en':'es');
   LANG=['es','en'].includes(saved)?saved:'es';
   document.documentElement.setAttribute('lang',LANG);
   if(typeof updateStageNames==='function')updateStageNames();
@@ -2320,6 +2320,8 @@ function applyTranslations(){
   _syncDynamicStrings();
 }
 function _syncDynamicStrings(){
+  const h1a=document.getElementById('land-h1-a');if(h1a)h1a.textContent=t('land_h1_a');
+  const h1b=document.getElementById('land-h1-b');if(h1b)h1b.textContent=t('land_h1_b');
   const tipMap={'nav-dash':'nav_dashboard','nav-crm':'nav_crm','nav-prop':'nav_proposals',
     'nav-lib':'nav_library','nav-teams':'nav_teams','nav-ws':'nav_workspace','nav-settings':'nav_settings'};
   Object.entries(tipMap).forEach(([id,key])=>{const el=document.querySelector(`#${id} .nav-tip`);if(el)el.textContent=t(key);});
@@ -2502,6 +2504,9 @@ if('serviceWorker' in navigator){
 // ═══════════════════════════════════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════════════════════════════════
+loadTheme();
+loadLang();
+applyTranslations();
 checkSession();
 </script>
 </body>
