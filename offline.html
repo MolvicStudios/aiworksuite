@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIWorkSuite — Sin conexión</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0c0d0f;color:#edeae2;font-family:'DM Sans',system-ui,sans-serif;
+       display:flex;align-items:center;justify-content:center;min-height:100vh;
+       text-align:center;padding:24px}
+  .logo{font-family:'Syne',system-ui,sans-serif;font-size:28px;font-weight:800;
+        color:#f0a500;letter-spacing:.04em;margin-bottom:8px}
+  .icon{font-size:64px;margin-bottom:16px;opacity:.4}
+  h1{font-size:20px;font-weight:600;margin-bottom:8px}
+  p{font-size:14px;color:#9a9790;line-height:1.6;max-width:320px;margin:0 auto 24px}
+  .btn{display:inline-block;background:#f0a500;color:#0c0d0f;padding:10px 24px;
+       border-radius:8px;font-weight:600;font-size:14px;text-decoration:none;
+       cursor:pointer;border:none;transition:background .15s}
+  .btn:hover{background:#d99200}
+  .note{font-size:11px;color:#55534f;margin-top:16px;font-family:monospace}
+</style>
+</head>
+<body>
+  <div>
+    <div class="icon">📡</div>
+    <div class="logo">AIWorkSuite</div>
+    <h1>Sin conexión</h1>
+    <p>No hay conexión a internet. Tus datos locales (CRM, equipos, biblioteca) siguen disponibles cuando vuelvas a estar online.</p>
+    <button class="btn" onclick="window.location.reload()">Intentar de nuevo</button>
+    <p class="note">by MolvicStudios · molvicstudios.pro</p>
+  </div>
+</body>
+</html>

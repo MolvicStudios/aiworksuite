@@ -1,0 +1,31 @@
+{
+  "name": "AIWorkSuite — Suite IA para freelances",
+  "short_name": "AIWorkSuite",
+  "description": "CRM, propuestas, equipos IA y biblioteca de prompts para freelances. By MolvicStudios.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c0d0f",
+  "theme_color": "#f0a500",
+  "orientation": "any",
+  "scope": "/",
+  "lang": "es",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    { "src": "/favicon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/favicon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/favicon.svg",          "sizes": "any",     "type": "image/svg+xml" }
+  ],
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "label": "AIWorkSuite Dashboard"
+    }
+  ],
+  "shortcuts": [
+    { "name": "CRM",        "url": "/?view=crm",   "description": "Abrir CRM" },
+    { "name": "Propuestas", "url": "/?view=prop",  "description": "Generar propuesta" },
+    { "name": "Equipos",    "url": "/?view=teams", "description": "Lanzar equipo IA" }
+  ]
+}
