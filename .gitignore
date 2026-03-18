@@ -1,0 +1,10 @@
+# Notas privadas / docs locales
+instruccionespro.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
