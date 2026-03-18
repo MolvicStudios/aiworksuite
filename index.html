@@ -1358,7 +1358,7 @@ async function doRegister() {
   document.getElementById('btn-register').textContent = 'Creando cuenta...';
   try {
     if (!supabase) throw new Error('Supabase no configurado. Añade tu URL y anon key en el código.');
-    const { data, error } = await supabase.auth.signUp({ email, password: pass, options: { emailRedirectTo: window.location.origin } });
+    const { data, error } = await supabase.auth.signUp({ email, password: pass });
     if (error) throw error;
     if (data.user && data.user.identities && data.user.identities.length === 0) {
       errEl.textContent = 'Este email ya está registrado. Inicia sesión.'; errEl.style.display = 'block';
