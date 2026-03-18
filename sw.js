@@ -3,7 +3,7 @@
 // Estrategia: Cache-first para assets estáticos, red siempre para APIs
 // ═══════════════════════════════════════════════════════════════════════
 
-const SW_VERSION    = 'v4.0.0';
+const SW_VERSION    = 'v4.1.0';
 const CACHE_STATIC  = `aws-static-${SW_VERSION}`;
 const CACHE_DYNAMIC = `aws-dynamic-${SW_VERSION}`;
 
@@ -17,7 +17,6 @@ const STATIC_ASSETS = [
   '/favicon-192x192.png',
   '/favicon-512x512.png',
   '/offline.html',
-  'https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap',
 ];
 
 // Dominios que NUNCA se cachean — siempre pasan por la red
@@ -28,6 +27,9 @@ const NEVER_CACHE = [
   'api.groq.com',
   'openrouter.ai',
   'cdn.jsdelivr.net',
+  'fonts.googleapis.com',
+  'fonts.gstatic.com',
+  'static.cloudflareinsights.com',
 ];
 
 // ── INSTALL ──────────────────────────────────────────────────────────────
@@ -35,12 +37,7 @@ self.addEventListener('install', event => {
   console.log(`[SW] Instalando ${SW_VERSION}`);
   event.waitUntil(
     caches.open(CACHE_STATIC).then(cache => {
-      return cache.addAll(STATIC_ASSETS.map(url => {
-        if (url.startsWith('https://fonts.googleapis.com')) {
-          return new Request(url, { mode: 'no-cors' });
-        }
-        return url;
-      })).catch(err => console.warn('[SW] Error cacheando assets:', err));
+      return cache.addAll(STATIC_ASSETS).catch(err => console.warn('[SW] Error cacheando assets:', err));
     })
   );
   self.skipWaiting();
@@ -77,7 +74,7 @@ self.addEventListener('fetch', event => {
   // Estrategia: Cache First → Red → Offline fallback
   event.respondWith(
     caches.match(event.request).then(cached => {
-      if (cached) return cached;
+      if (cached) return cached.clone();
       return fetch(event.request.clone())
         .then(response => {
           if (response.ok && response.type !== 'opaque' && url.origin === self.location.origin) {

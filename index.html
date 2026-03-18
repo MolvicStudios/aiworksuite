@@ -770,7 +770,7 @@ select.inp option{background:var(--bg3)}
 
       <!-- LOGIN -->
       <div id="auth-login">
-        <div class="auth-title">Accede a tu cuenta</div>
+        <div class="auth-title" data-i18n="auth_login_title">Accede a tu cuenta</div>
         <div id="auth-error-login" class="auth-error" style="display:none"></div>
         <div class="frow"><span class="lbl">Email</span><input class="inp" type="email" id="login-email" placeholder="tu@email.com" autocomplete="email"></div>
         <div class="frow" style="margin-top:8px"><span class="lbl">Contraseña</span><input class="inp" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
@@ -781,7 +781,7 @@ select.inp option{background:var(--bg3)}
 
       <!-- REGISTER -->
       <div id="auth-register" style="display:none">
-        <div class="auth-title">Crea tu cuenta gratis</div>
+        <div class="auth-title" data-i18n="auth_reg_title">Crea tu cuenta gratis</div>
         <div id="auth-error-reg" class="auth-error" style="display:none"></div>
         <div id="auth-success-reg" class="auth-success" style="display:none"></div>
         <div class="frow"><span class="lbl">Email</span><input class="inp" type="email" id="reg-email" placeholder="tu@email.com" autocomplete="email"></div>
@@ -795,7 +795,7 @@ select.inp option{background:var(--bg3)}
 
       <!-- RESET PASSWORD -->
       <div id="auth-reset" style="display:none">
-        <div class="auth-title">Recuperar contraseña</div>
+        <div class="auth-title" data-i18n="auth_reset_title">Recuperar contraseña</div>
         <div id="auth-error-reset" class="auth-error" style="display:none"></div>
         <div id="auth-success-reset" class="auth-success" style="display:none"></div>
         <div class="frow"><label class="lbl" for="reset-email">Tu email de registro</label><input class="inp" type="email" id="reset-email" placeholder="tu@email.com"></div>
@@ -890,12 +890,12 @@ select.inp option{background:var(--bg3)}
     <div class="topbar-meta" id="crm-count">0 clientes</div>
     <div style="margin-left:8px;display:flex;gap:6px;align-items:center">
       <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace" id="crm-limit-label"></span>
-      <button class="btn btn-accent btn-sm" id="btn-new-client" onclick="openNewClientModal()">+ Nuevo cliente</button>
+      <button class="btn btn-accent btn-sm" id="btn-new-client" onclick="openNewClientModal()" data-i18n="crm_new">+ Nuevo cliente</button>
     </div>
   </div>
   <div class="crm-layout">
     <div class="crm-sidebar">
-      <div class="crm-sidebar-top"><input class="inp inp-sm" id="crm-search" placeholder="Buscar..." oninput="renderClientList()" style="height:34px;font-size:12px;padding:6px 9px"></div>
+      <div class="crm-sidebar-top"><input class="inp inp-sm" id="crm-search" placeholder="Buscar..." data-i18n="crm_search" oninput="renderClientList()" style="height:34px;font-size:12px;padding:6px 9px"></div>
       <div class="client-list" id="client-list"><div class="crm-empty">Sin clientes aún.</div></div>
     </div>
     <div class="crm-main">
@@ -914,9 +914,9 @@ select.inp option{background:var(--bg3)}
             </div>
           </div>
           <div class="ftabs">
-            <button class="ftab active" onclick="switchTab('datos')">Datos</button>
-            <button class="ftab" onclick="switchTab('flujo')">Flujo</button>
-            <button class="ftab" onclick="switchTab('propuestas')">Propuestas</button>
+            <button class="ftab active" onclick="switchTab('datos')" data-i18n="tab_datos">Datos</button>
+            <button class="ftab" onclick="switchTab('flujo')" data-i18n="tab_flujo">Flujo</button>
+            <button class="ftab" onclick="switchTab('propuestas')" data-i18n="tab_props">Propuestas</button>
           </div>
           <div class="ftab-content active" id="tab-datos">
             <div class="datos-sec">
@@ -932,7 +932,7 @@ select.inp option{background:var(--bg3)}
             <div class="prop-tab-wrap">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
                 <div style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase">Propuestas</div>
-                <button class="btn btn-accent btn-xs" onclick="abrirGenerador()">+ Generar</button>
+                <button class="btn btn-accent btn-xs" onclick="abrirGenerador()" data-i18n="crm_gen_prop">+ Generar</button>
               </div>
               <div id="propuestas-list"></div>
             </div>
@@ -942,8 +942,8 @@ select.inp option{background:var(--bg3)}
           <div class="crm-chat-head"><div class="crm-stage-tag" id="chat-stage-tag">ETAPA</div><div class="crm-stage-lbl" id="chat-stage-lbl">—</div><div class="crm-client-tag" id="chat-client-tag"></div></div>
           <div class="crm-msgs" id="chat-messages"></div>
           <div class="crm-inp-area">
-            <textarea class="crm-inp" id="chat-input" placeholder="Consulta para esta etapa..." rows="1" onkeydown="crmKey(event)" oninput="crmResize(this)"></textarea>
-            <button class="btn btn-accent btn-xs" id="btn-send" onclick="crmSend()" style="height:36px;padding:0 11px;font-family:'Syne',sans-serif;font-weight:700">ENVIAR</button>
+            <textarea class="crm-inp" id="chat-input" placeholder="Consulta para esta etapa..." data-i18n="crm_chat_placeholder" rows="1" onkeydown="crmKey(event)" oninput="crmResize(this)"></textarea>
+            <button class="btn btn-accent btn-xs" id="btn-send" onclick="crmSend()" style="height:36px;padding:0 11px;font-family:'Syne',sans-serif;font-weight:700" data-i18n="crm_send">ENVIAR</button>
           </div>
         </div>
       </div>
@@ -955,15 +955,15 @@ select.inp option{background:var(--bg3)}
 <div class="view" id="view-prop">
   <div class="topbar">
     <div class="topbar-title">Propuestas</div><div class="topbar-badge">Generador IA</div>
-    <div id="prop-crm-badge" style="display:none;margin-left:6px" class="topbar-meta" style="color:var(--green)">↩ desde CRM</div>
+    <div id="prop-crm-badge" style="display:none;margin-left:6px" class="topbar-meta" data-i18n="prop_from_crm">↩ desde CRM</div>
     <div style="margin-left:auto;display:flex;gap:6px">
-      <button class="btn btn-accent btn-sm" id="btn-generar" onclick="generarPropuesta()">✦ Generar</button>
-      <button class="btn btn-ghost btn-sm" onclick="limpiarProp()">Limpiar</button>
-      <button class="btn btn-teal btn-sm" id="btn-captado" style="display:none" onclick="marcarCaptado()">✅ Captado</button>
+      <button class="btn btn-accent btn-sm" id="btn-generar" onclick="generarPropuesta()" data-i18n="prop_generate">✦ Generar</button>
+      <button class="btn btn-ghost btn-sm" onclick="limpiarProp()" data-i18n="prop_clear">Limpiar</button>
+      <button class="btn btn-teal btn-sm" id="btn-captado" style="display:none" onclick="marcarCaptado()" data-i18n="prop_captado">✅ Captado</button>
     </div>
   </div>
   <div class="prop-body"><div class="prop-inner">
-    <div id="prop-crm-banner" style="display:none" class="prop-crm-banner"><div style="flex:1"><div class="title">Datos del CRM cargados</div><div class="sub">Revisa y completa</div></div><button class="btn btn-ghost btn-xs" onclick="clearPropCRM()">×</button></div>
+    <div id="prop-crm-banner" style="display:none" class="prop-crm-banner"><div style="flex:1"><div class="title" data-i18n="prop_crm_loaded">Datos del CRM cargados</div><div class="sub">Revisa y completa</div></div><button class="btn btn-ghost btn-xs" onclick="clearPropCRM()">×</button></div>
     <div class="prop-sec"><div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Datos del cliente</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="frow"><span class="lbl">Nombre *</span><input class="inp" id="p-nombre" placeholder="Juan García"></div>
@@ -995,7 +995,7 @@ select.inp option{background:var(--bg3)}
       <div class="prop-sec">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase">Propuesta generada</div>
-          <div style="display:flex;gap:6px"><button class="btn btn-ghost btn-xs" onclick="copyProp()">Copiar</button><button class="btn btn-ghost btn-xs" onclick="generarPropuesta()">↺ Regenerar</button></div>
+          <div style="display:flex;gap:6px"><button class="btn btn-ghost btn-xs" onclick="copyProp()" data-i18n="prop_copy">Copiar</button><button class="btn btn-ghost btn-xs" onclick="generarPropuesta()" data-i18n="prop_regen">↺ Regenerar</button></div>
         </div>
         <div class="result-box" id="result-box"></div>
       </div>
@@ -1008,7 +1008,7 @@ select.inp option{background:var(--bg3)}
   <div class="topbar">
     <div class="topbar-title">Biblioteca</div><div class="topbar-badge">Prompts</div>
     <div class="topbar-meta" id="lib-limit-label"></div>
-    <div style="margin-left:auto"><button class="btn btn-accent btn-sm" id="btn-new-prompt" onclick="openNewPromptModal()">+ Nuevo prompt</button></div>
+    <div style="margin-left:auto"><button class="btn btn-accent btn-sm" id="btn-new-prompt" onclick="openNewPromptModal()" data-i18n="lib_new">+ Nuevo prompt</button></div>
   </div>
   <div class="lib-body">
     <div class="lib-sidebar">
@@ -1016,7 +1016,7 @@ select.inp option{background:var(--bg3)}
       <div id="lib-cats"></div>
     </div>
     <div class="lib-main">
-      <div class="lib-toolbar"><input class="lib-search" id="lib-search" placeholder="Buscar prompts..." oninput="renderLibGrid()"><span id="lib-count" style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;white-space:nowrap"></span></div>
+      <div class="lib-toolbar"><input class="lib-search" id="lib-search" placeholder="Buscar prompts..." data-i18n="lib_search" oninput="renderLibGrid()"><span id="lib-count" style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;white-space:nowrap"></span></div>
       <div class="lib-grid" id="lib-grid"></div>
     </div>
   </div>
@@ -1038,7 +1038,7 @@ select.inp option{background:var(--bg3)}
     <div id="teams-list-section">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700">Mis equipos</div>
-        <button class="btn btn-accent btn-sm" id="btn-new-team" onclick="showNewTeamConfig()">+ Nuevo equipo</button>
+        <button class="btn btn-accent btn-sm" id="btn-new-team" onclick="showNewTeamConfig()" data-i18n="teams_new">+ Nuevo equipo</button>
       </div>
       <div class="teams-grid" id="teams-grid"></div>
     </div>
@@ -1050,7 +1050,7 @@ select.inp option{background:var(--bg3)}
         <button class="btn btn-ghost btn-xs" onclick="closeConfig()">Cancelar</button>
       </div>
 
-      <div class="stepper"><div class="cstep active" id="s1">01·brief</div><div class="cstep" id="s2">02·cliente</div><div class="cstep" id="s3">03·roles</div><div class="cstep" id="s4">04·lanzar</div></div>
+      <div class="stepper"><div class="cstep active" id="s1" data-i18n="teams_step1">01·brief</div><div class="cstep" id="s2" data-i18n="teams_step2">02·cliente</div><div class="cstep" id="s3" data-i18n="teams_step3">03·roles</div><div class="cstep" id="s4" data-i18n="teams_step4">04·lanzar</div></div>
 
       <!-- FASE 1: BRIEF -->
       <div id="ph-brief">
@@ -1076,9 +1076,9 @@ select.inp option{background:var(--bg3)}
         <div class="cacts">
           <!-- Free: no IA detection, manual roles -->
           <button class="btn btn-accent" id="btn-analyze-ia" onclick="cs2to3_pro()" style="display:none">Detectar roles con IA →</button>
-          <button class="btn btn-ghost" id="btn-manual-roles" onclick="cs2to3_manual()">Seleccionar roles manualmente →</button>
+          <button class="btn btn-ghost" id="btn-manual-roles" onclick="cs2to3_manual()" data-i18n="teams_manual_roles">Seleccionar roles manualmente →</button>
           <button class="btn btn-ghost" onclick="cgB(1)">← Brief</button>
-          <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace" id="roles-plan-note">Detección IA disponible en Pro</span>
+          <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace" id="roles-plan-note" data-i18n="teams_ia_only_pro">Detección IA disponible en Pro</span>
         </div>
       </div>
 
@@ -1108,8 +1108,8 @@ select.inp option{background:var(--bg3)}
         <textarea class="ctextarea" id="c-extra" rows="3" placeholder="Stack técnico, restricciones, decisiones ya tomadas..."></textarea>
         <div style="display:flex;justify-content:flex-end;margin-top:6px"><button class="lib-insert-btn" onclick="openLibPicker('extra')">+ Desde Biblioteca</button></div>
         <div class="cacts" style="margin-top:16px">
-          <button class="btn btn-accent" style="font-weight:700;font-size:14px" onclick="launchTeam()">▣ Lanzar equipo →</button>
-          <button class="btn btn-ghost" onclick="saveTeamOnly()">Guardar sin lanzar</button>
+          <button class="btn btn-accent" style="font-weight:700;font-size:14px" onclick="launchTeam()" data-i18n="teams_launch_btn">▣ Lanzar equipo →</button>
+          <button class="btn btn-ghost" onclick="saveTeamOnly()" data-i18n="teams_save_only">Guardar sin lanzar</button>
           <button class="btn btn-ghost" onclick="cgB(3)">← Roles</button>
         </div>
       </div>
@@ -1127,7 +1127,7 @@ select.inp option{background:var(--bg3)}
       <div class="ws-proj-label" id="ws-proj-label">Workspace</div>
       <div class="ws-tabs" id="ws-tabs"></div>
       <div class="ws-add" id="ws-add-btn" onclick="wsAddChat()" title="+">+</div>
-      <button class="ws-back-btn" onclick="goTo('teams')">← Equipos</button>
+      <button class="ws-back-btn" onclick="goTo('teams')" data-i18n="ws_back">← Equipos</button>
     </div>
     <div class="ws-panels" id="ws-panels"></div>
   </div>
@@ -1147,7 +1147,7 @@ select.inp option{background:var(--bg3)}
           <div class="user-email" id="user-email-display">—</div>
           <div class="user-plan" id="user-plan-display">Plan: <strong style="color:var(--accent)">Free</strong> · <span style="cursor:pointer;color:var(--purple)" onclick="showUpgradeModal()">Upgrade a Pro</span></div>
         </div>
-        <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="doLogout()">Cerrar sesión</button>
+        <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="doLogout()" data-i18n="settings_logout">Cerrar sesión</button>
       </div>
     </div>
 
@@ -1176,11 +1176,11 @@ select.inp option{background:var(--bg3)}
     <!-- API -->
     <div class="settings-sec">
       <div class="settings-sec-title" data-i18n="settings_api">Proveedor IA (BYOK)</div>
-      <div class="frow"><label class="lbl" for="s-provider">Proveedor</label>
+      <div class="frow"><label class="lbl" for="s-provider" data-i18n="settings_provider">Proveedor</label>
         <select class="inp" id="s-provider" onchange="updateProviderLabel()"><option value="anthropic">Anthropic — Claude</option><option value="openai">OpenAI — GPT-4o</option><option value="groq">Groq — Llama 3.3</option><option value="openrouter">OpenRouter — Multi-model</option></select>
       </div>
       <div class="frow" style="margin-top:8px"><label class="lbl" id="s-key-label" for="s-api-key">API Key (Anthropic)</label>
-        <div style="display:flex;gap:7px"><input class="inp" type="password" id="s-api-key" placeholder="sk-ant-..." autocomplete="off" style="flex:1"><button class="btn btn-ghost btn-sm" onclick="toggleKeyVis()">👁</button><button class="btn btn-teal btn-sm" onclick="testApiKey()">Probar</button></div>
+        <div style="display:flex;gap:7px"><input class="inp" type="password" id="s-api-key" placeholder="sk-ant-..." autocomplete="off" style="flex:1"><button class="btn btn-ghost btn-sm" onclick="toggleKeyVis()">👁</button><button class="btn btn-teal btn-sm" onclick="testApiKey()" data-i18n="settings_test">Probar</button></div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
         <div class="api-status api-no" id="api-status-badge">● Sin configurar</div>
@@ -1193,36 +1193,36 @@ select.inp option{background:var(--bg3)}
         <label class="lbl" for="s-custom-model">Modelo personalizado</label>
         <input class="inp" id="s-custom-model" placeholder="proveedor/nombre-del-modelo">
       </div>
-      <div style="margin-top:10px"><button class="btn btn-accent btn-sm" onclick="saveApiSettings()">Guardar</button></div>
+      <div style="margin-top:10px"><button class="btn btn-accent btn-sm" onclick="saveApiSettings()" data-i18n="settings_save">Guardar</button></div>
     </div>
 
     <!-- Perfil profesional -->
     <div class="settings-sec">
       <div class="settings-sec-title" data-i18n="settings_profile">Perfil profesional</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="frow"><label class="lbl" for="s-user-name">Tu nombre / marca</label><input class="inp" id="s-user-name" placeholder="Jose / MolvicStudios"></div>
-        <div class="frow"><label class="lbl" for="s-email">Email de contacto</label><input class="inp" id="s-email" placeholder="tu@email.com"></div>
-        <div class="frow"><label class="lbl" for="s-phone">WhatsApp / Teléfono</label><input class="inp" id="s-phone" placeholder="+34 600 000 000"></div>
-        <div class="frow"><label class="lbl" for="s-telegram">Telegram</label><input class="inp" id="s-telegram" placeholder="@usuario"></div>
-        <div class="frow" style="grid-column:1/-1"><label class="lbl" for="s-web">Web / Portfolio</label><input class="inp" id="s-web" placeholder="molvicstudios.pro"></div>
+        <div class="frow"><label class="lbl" for="s-user-name" data-i18n="settings_name">Tu nombre / marca</label><input class="inp" id="s-user-name" placeholder="Jose / MolvicStudios"></div>
+        <div class="frow"><label class="lbl" for="s-email" data-i18n="settings_email_c">Email de contacto</label><input class="inp" id="s-email" placeholder="tu@email.com"></div>
+        <div class="frow"><label class="lbl" for="s-phone" data-i18n="settings_phone">WhatsApp / Teléfono</label><input class="inp" id="s-phone" placeholder="+34 600 000 000"></div>
+        <div class="frow"><label class="lbl" for="s-telegram" data-i18n="settings_telegram">Telegram</label><input class="inp" id="s-telegram" placeholder="@usuario"></div>
+        <div class="frow" style="grid-column:1/-1"><label class="lbl" for="s-web" data-i18n="settings_web">Web / Portfolio</label><input class="inp" id="s-web" placeholder="molvicstudios.pro"></div>
       </div>
-      <div style="margin-top:4px"><button class="btn btn-accent btn-sm" onclick="saveProfileSettings()">Guardar perfil</button></div>
+      <div style="margin-top:4px"><button class="btn btn-accent btn-sm" onclick="saveProfileSettings()" data-i18n="settings_save">Guardar perfil</button></div>
     </div>
 
     <!-- Datos -->
     <div class="settings-sec">
       <div class="settings-sec-title" data-i18n="settings_data">Datos y privacidad</div>
       <div class="data-action">
-        <div><div class="data-action-label">Exportar todos los datos</div><div class="data-action-sub">CRM, biblioteca, equipos y configuración en JSON</div></div>
+        <div><div class="data-action-label" data-i18n="settings_export_label">Exportar todos los datos</div><div class="data-action-sub" data-i18n="settings_export_sub">CRM, biblioteca, equipos y configuración en JSON</div></div>
         <button class="btn btn-ghost btn-sm" onclick="exportData()">↓ Export JSON</button>
       </div>
       <div class="data-action">
-        <div><div class="data-action-label">Importar datos</div><div class="data-action-sub">Restaurar desde backup JSON</div></div>
+        <div><div class="data-action-label" data-i18n="settings_import_label">Importar datos</div><div class="data-action-sub" data-i18n="settings_import_sub">Restaurar desde backup JSON</div></div>
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('import-file').click()">↑ Import JSON</button>
         <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
       </div>
       <div class="data-action">
-        <div><div class="data-action-label">Restablecer aplicación</div><div class="data-action-sub">Elimina todos los datos locales. Irreversible.</div></div>
+        <div><div class="data-action-label" data-i18n="settings_reset_label">Restablecer aplicación</div><div class="data-action-sub" data-i18n="settings_reset_sub">Elimina todos los datos locales. Irreversible.</div></div>
         <button class="btn btn-red btn-sm" onclick="resetApp()">Restablecer</button>
       </div>
     </div>
@@ -1870,7 +1870,7 @@ async function callAI(systemPrompt, messages, maxTokens=1200) {
 function refreshDash() {
   document.getElementById('dash-date').textContent = new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
   const cfg = getCFG();
-  document.getElementById('dash-h1').textContent = 'Hola, ' + (cfg.userName || 'amigo') + ' 👋';
+  document.getElementById('dash-h1').textContent = t('dash_hello') + ', ' + (cfg.userName || 'amigo') + ' 👋';
   const clients = getCRMData(); const cids = Object.keys(clients);
   const captados = cids.filter(id => clients[id].captado).length;
   const allProps = cids.flatMap(id => clients[id].propuestas || []);
@@ -1878,27 +1878,27 @@ function refreshDash() {
   const teams = getTeams(); const libItems = getLib();
   document.getElementById('dash-sub').textContent = `${cids.length} clientes · ${captados} captados · ${teams.length} equipos activos`;
   document.getElementById('kpi-grid').innerHTML = [
-    {label:'Clientes',val:cids.length,sub:captados+' captados',view:'crm'},
-    {label:'Propuestas pendientes',val:pendientes,sub:allProps.length+' total',view:'prop'},
-    {label:'Equipos IA',val:teams.length,sub:'activos',view:'teams'},
-    {label:'Prompts biblioteca',val:libItems.length,sub:'reutilizables',view:'lib'},
+    {label:t('dash_kpi_clients'),val:cids.length,sub:captados+' '+t('dash_kpi_won'),view:'crm'},
+    {label:t('dash_kpi_proposals'),val:pendientes,sub:allProps.length+' '+t('dash_kpi_total'),view:'prop'},
+    {label:t('dash_kpi_teams'),val:teams.length,sub:t('dash_kpi_active'),view:'teams'},
+    {label:t('dash_kpi_prompts'),val:libItems.length,sub:t('dash_kpi_reusable'),view:'lib'},
   ].map(k => `<div class="kpi" onclick="goTo('${k.view}')"><div class="kpi-label">${k.label}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
   document.getElementById('dash-modules').innerHTML = [
-    {icon:'◈',name:'CRM',desc:'Pipeline 7 etapas con chat IA por fase.',cta:cids.length+' clientes →',view:'crm'},
-    {icon:'◇',name:'Propuestas',desc:'Genera propuestas profesionales con IA.',cta:'Generar →',view:'prop'},
-    {icon:'▣',name:'Equipos IA',desc:'Lanza equipos de trabajo con roles IA.',cta:teams.length+' equipos →',view:'teams'},
-    {icon:'◉',name:'Biblioteca',desc:'Prompts reutilizables para todos tus proyectos.',cta:libItems.length+' prompts →',view:'lib'},
+    {icon:'◈',name:t('nav_crm'),desc:t('dash_mod_crm_desc'),cta:cids.length+' '+t('dash_mod_crm_cta'),view:'crm'},
+    {icon:'◇',name:t('nav_proposals'),desc:t('dash_mod_prop_desc'),cta:t('prop_generate'),view:'prop'},
+    {icon:'▣',name:t('nav_teams'),desc:t('dash_mod_teams_desc'),cta:teams.length+' '+t('dash_mod_teams_cta'),view:'teams'},
+    {icon:'◉',name:t('nav_library'),desc:t('dash_mod_lib_desc'),cta:libItems.length+' prompts →',view:'lib'},
   ].map(m => `<div class="dash-mod" onclick="goTo('${m.view}')" style="cursor:pointer;border:1px solid var(--border);border-radius:var(--r2);padding:14px 16px;background:var(--bg2);transition:all .15s"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px;color:var(--accent);opacity:.7">${m.icon}</span><div class="dash-mod-name">${m.name}</div></div><div class="dash-mod-desc">${m.desc}</div><div class="dash-mod-cta">${m.cta}</div></div>`).join('');
   const stages = ['CONTACTO','CALIF','DISCOVERY','PROPUESTA','PRESENTACIÓN','NEGOC','ONBOARDING'];
   const sc = Array(7).fill(0); cids.forEach(id => { sc[clients[id].activeStage||0]++; });
   const colors = ['#f0a500','#e8950a','#d08010','#1d9e75','#5b8dee','#8b7cf8','#4caf7d'];
   document.getElementById('dash-pipeline').innerHTML = cids.length
     ? `<div style="display:flex;gap:1px;height:6px;border-radius:4px;overflow:hidden">${sc.map((c,i)=>`<div style="flex:${Math.max(c,.1)};background:${colors[i]};opacity:${c?1:.15}" title="${stages[i]}: ${c}"></div>`).join('')}</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${stages.map((s,i)=>`<span style="font-size:9px;font-family:'JetBrains Mono',monospace;color:${sc[i]?colors[i]:'var(--text3)'}">${s}: ${sc[i]}</span>`).join('')}</div>`
-    : `<div style="color:var(--text3);font-size:12px;text-align:center;padding:8px">Sin clientes en el pipeline</div>`;
+    : `<div style="color:var(--text3);font-size:12px;text-align:center;padding:8px">${t('dash_pipeline_empty')}</div>`;
   const acts = S.get('activity') || [];
   document.getElementById('dash-activity').innerHTML = acts.length
     ? acts.slice(0,8).map(a=>`<div class="activity-item"><div class="activity-dot" style="background:${a.color}"></div><div class="activity-text">${a.text}</div><div class="activity-time">${a.time}</div></div>`).join('')
-    : `<div style="padding:14px 0;text-align:center;color:var(--text3);font-size:12px">Sin actividad reciente</div>`;
+    : `<div style="padding:14px 0;text-align:center;color:var(--text3);font-size:12px">${t('dash_activity_empty')}</div>`;
   updateLimitLabels();
 }
 
@@ -1926,7 +1926,7 @@ function renderClientList() {
   document.getElementById('crm-count').textContent = ids.length + ' cliente' + (ids.length!==1?'s':'');
   const list = document.getElementById('client-list');
   const f = ids.filter(id => { const c=CRM.clients[id]; return !q||c.name?.toLowerCase().includes(q)||c.company?.toLowerCase().includes(q); });
-  if (!f.length) { list.innerHTML = `<div class="crm-empty">${ids.length?'Sin resultados.':'Sin clientes aún.'}</div>`; return; }
+  if (!f.length) { list.innerHTML = `<div class="crm-empty">${ids.length?t('crm_no_results'):t('crm_empty')}</div>`; return; }
   list.innerHTML = f.map(id => { const c=CRM.clients[id]; const s=STAGES[c.activeStage||0]; const act=id===CRM.activeId; return `<div class="client-item${act?' active':''}" onclick="selectClient('${id}')"><div class="ci-name">${c.captado?'✅ ':''}${esc(c.name)}</div><div class="ci-meta">${esc(c.company||'—')}</div><div class="ci-tag">${s.tag}</div></div>`; }).join('');
 }
 
@@ -2424,6 +2424,12 @@ const TRANSLATIONS={
     nav_library:'Biblioteca',nav_teams:'Equipos IA',nav_workspace:'Workspace',
     nav_settings:'Configuración',nav_theme:'Cambiar tema',nav_lang:'Switch to English',
     dash_hello:'Hola',dash_api_warn:'Configura tu API key',
+    dash_kpi_clients:'Clientes',dash_kpi_proposals:'Propuestas pendientes',dash_kpi_teams:'Equipos IA',dash_kpi_prompts:'Prompts',
+    dash_kpi_won:'captados',dash_kpi_total:'total',dash_kpi_active:'activos',dash_kpi_reusable:'reutilizables',
+    dash_pipeline_empty:'Sin clientes en el pipeline',dash_activity_empty:'Sin actividad reciente',
+    dash_mod_crm_desc:'Pipeline 7 etapas con chat IA por fase.',dash_mod_prop_desc:'Genera propuestas profesionales con IA.',
+    dash_mod_teams_desc:'Lanza equipos de trabajo con roles IA.',dash_mod_lib_desc:'Prompts reutilizables para todos tus proyectos.',
+    dash_mod_crm_cta:'clientes →',dash_mod_teams_cta:'equipos →',
     crm_new:'+ Nuevo cliente',crm_search:'Buscar...',crm_empty:'Sin clientes aún.',
     crm_no_results:'Sin resultados.',crm_send:'ENVIAR',
     crm_chat_placeholder:'Consulta para esta etapa...',
@@ -2498,6 +2504,12 @@ const TRANSLATIONS={
     nav_library:'Library',nav_teams:'AI Teams',nav_workspace:'Workspace',
     nav_settings:'Settings',nav_theme:'Toggle theme',nav_lang:'Cambiar a Español',
     dash_hello:'Hello',dash_api_warn:'Configure your API key',
+    dash_kpi_clients:'Clients',dash_kpi_proposals:'Pending proposals',dash_kpi_teams:'AI Teams',dash_kpi_prompts:'Prompts',
+    dash_kpi_won:'won',dash_kpi_total:'total',dash_kpi_active:'active',dash_kpi_reusable:'reusable',
+    dash_pipeline_empty:'No clients in pipeline',dash_activity_empty:'No recent activity',
+    dash_mod_crm_desc:'7-stage pipeline with AI chat per phase.',dash_mod_prop_desc:'Generate professional proposals with AI.',
+    dash_mod_teams_desc:'Launch AI work teams with specialized roles.',dash_mod_lib_desc:'Reusable prompts for all your projects.',
+    dash_mod_crm_cta:'clients →',dash_mod_teams_cta:'teams →',
     crm_new:'+ New client',crm_search:'Search...',crm_empty:'No clients yet.',
     crm_no_results:'No results.',crm_send:'SEND',
     crm_chat_placeholder:'Question for this stage...',
@@ -2583,6 +2595,7 @@ function _syncDynamicStrings(){
   Object.entries(tipMap).forEach(([id,key])=>{const el=document.querySelector(`#${id} .nav-tip`);if(el)el.textContent=t(key);});
   if(typeof renderTimeline==='function'&&typeof CRM!=='undefined'&&CRM?.activeId)renderTimeline();
   if(typeof renderClientList==='function')renderClientList();
+  if(typeof refreshDash==='function')refreshDash();
 }
 function _updateLangToggle(){
   const btn=document.getElementById('nav-lang-toggle');
