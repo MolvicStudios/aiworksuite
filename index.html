@@ -1993,11 +1993,10 @@ const tierSystem = (() => {
   async function load(supabaseClient) {
     try {
       const { data: { user } } = await supabaseClient.auth.getUser();
-      console.log('[tier] user:', user?.id, user?.email);
-      if (!user) { console.log('[tier] no user → free'); _tier = 'free'; return; }
+      if (!user) { _tier = 'free'; return; }
 
       const cached = _readCache();
-      if (cached) { console.log('[tier] from cache:', cached); _applyTier(cached); return; }
+      if (cached) { _applyTier(cached); return; }
 
       const { data, error } = await supabaseClient
         .from('subscriptions')
@@ -2005,10 +2004,7 @@ const tierSystem = (() => {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      console.log('[tier] supabase query result:', { data, error });
-
       if (error || !data) {
-        console.log('[tier] no data or error → free');
         _tier = 'free'; _seats = 1;
         _updateUI();
         return;
@@ -2016,7 +2012,6 @@ const tierSystem = (() => {
 
       const isActive = data.status === 'active' ||
         (data.status === 'trialing' && new Date(data.trial_ends_at) > new Date());
-      console.log('[tier] isActive:', isActive, 'plan:', data.plan, 'status:', data.status);
 
       const tierData = {
         plan: isActive ? data.plan : 'free',
@@ -2375,6 +2370,17 @@ function updateLimitLabels() {
   const cl = document.getElementById('crm-limit-label'); if(cl) cl.textContent = `${clients}/${plan.clients === Infinity ? '∞' : plan.clients} clientes`;
   const tl = document.getElementById('teams-limit-label'); if(tl) tl.textContent = `${teams}/${plan.teams === Infinity ? '∞' : plan.teams} equipos`;
   const ll = document.getElementById('lib-limit-label'); if(ll) ll.textContent = `${prompts}/${plan.prompts === Infinity ? '∞' : plan.prompts} prompts`;
+  // Actualizar banner plan text & visibilidad
+  const banner = document.getElementById('dash-limit-banner');
+  if (banner) {
+    if (USER_PLAN === 'pro') {
+      banner.style.display = 'none';
+    } else {
+      banner.style.display = '';
+      const txt = banner.querySelector('.limit-banner-text');
+      if (txt) txt.innerHTML = `Estás en el plan <strong>${USER_PLAN === 'free' ? 'Free' : USER_PLAN.charAt(0).toUpperCase() + USER_PLAN.slice(1)}</strong>. Clientes: <span id="banner-clients">${el ? el.textContent : ''}</span> · Equipos: <span id="banner-teams">${et ? et.textContent : ''}</span> · Prompts: <span id="banner-prompts">${ep ? ep.textContent : ''}</span>`;
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
