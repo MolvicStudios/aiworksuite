@@ -1993,10 +1993,11 @@ const tierSystem = (() => {
   async function load(supabaseClient) {
     try {
       const { data: { user } } = await supabaseClient.auth.getUser();
-      if (!user) { _tier = 'free'; return; }
+      console.log('[tier] user:', user?.id, user?.email);
+      if (!user) { console.log('[tier] no user → free'); _tier = 'free'; return; }
 
       const cached = _readCache();
-      if (cached) { _applyTier(cached); return; }
+      if (cached) { console.log('[tier] from cache:', cached); _applyTier(cached); return; }
 
       const { data, error } = await supabaseClient
         .from('subscriptions')
@@ -2004,7 +2005,10 @@ const tierSystem = (() => {
         .eq('user_id', user.id)
         .maybeSingle();
 
+      console.log('[tier] supabase query result:', { data, error });
+
       if (error || !data) {
+        console.log('[tier] no data or error → free');
         _tier = 'free'; _seats = 1;
         _updateUI();
         return;
@@ -2012,6 +2016,7 @@ const tierSystem = (() => {
 
       const isActive = data.status === 'active' ||
         (data.status === 'trialing' && new Date(data.trial_ends_at) > new Date());
+      console.log('[tier] isActive:', isActive, 'plan:', data.plan, 'status:', data.status);
 
       const tierData = {
         plan: isActive ? data.plan : 'free',
