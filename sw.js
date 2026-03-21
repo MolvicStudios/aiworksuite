@@ -77,7 +77,10 @@ self.addEventListener('fetch', event => {
       if (cached) return cached.clone();
       return fetch(event.request.clone())
         .then(response => {
-          if (response.ok && response.type !== 'opaque' && url.origin === self.location.origin) {
+          if (!response || response.status !== 200 || response.type === 'opaqueredirect' || response.redirected) {
+            return response;
+          }
+          if (response.type !== 'opaque' && url.origin === self.location.origin) {
             caches.open(CACHE_DYNAMIC).then(cache => cache.put(event.request, response.clone()));
           }
           return response;
