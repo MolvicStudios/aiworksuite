@@ -742,6 +742,48 @@ select.inp option{background:var(--bg3)}
 /* Bloquear visualmente módulos en Free */
 [data-tier="free"] .premium-indicator{display:flex}
 [data-tier="pro"] .premium-indicator,[data-tier="agency"] .premium-indicator{display:none}
+
+/* ── PDF Export button ───────────────────────────────────────────────────────── */
+#btn-export-pdf .premium-lock{display:inline;color:var(--accent);margin-left:4px}
+[data-tier="pro"] #btn-export-pdf .premium-lock,[data-tier="agency"] #btn-export-pdf .premium-lock{display:none}
+
+/* ── Business Metrics ────────────────────────────────────────────────────────── */
+.metrics-header{display:flex;align-items:center;gap:.75rem;margin-bottom:12px}
+.metrics-header h3{margin:0;font-size:13px;font-family:'Syne',sans-serif;font-weight:700}
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.metric-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:14px;text-align:center}
+.metric-card--accent{border-color:rgba(240,165,0,.3)}
+.metric-card--green{border-color:rgba(52,211,153,.3)}
+.metric-value{font-size:1.4rem;font-weight:700;color:var(--text1);margin-bottom:2px}
+.metric-card--accent .metric-value{color:#f0a500}
+.metric-card--green .metric-value{color:#34d399}
+.metric-label{font-size:.7rem;color:var(--text3)}
+
+/* ── Reminders ───────────────────────────────────────────────────────────────── */
+#pending-reminders{background:rgba(240,165,0,.06);border:1px solid rgba(240,165,0,.2);border-radius:var(--r2);padding:14px;margin-bottom:14px}
+.reminders-header{font-weight:600;font-size:12px;margin-bottom:10px;color:#f0a500}
+.reminder-item{background:var(--bg2);border-radius:var(--r);padding:8px 12px;margin-bottom:6px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.reminder-item__client{font-weight:600;font-size:12px;flex:1}
+.reminder-item__time{font-size:10px;color:var(--text3)}
+.reminder-item__note{font-size:11px;color:var(--text2);width:100%}
+
+/* ── Workspace History Panel ─────────────────────────────────────────────────── */
+.ws-history-panel{width:220px;min-width:220px;border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--bg1);overflow:hidden}
+.ws-history-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border);font-size:11px;font-weight:600}
+.ws-history-list{flex:1;overflow-y:auto;padding:6px}
+.ws-history-item{border-radius:var(--r);padding:8px 10px;margin-bottom:4px;cursor:pointer;position:relative;transition:background .15s;background:var(--bg2)}
+.ws-history-item:hover{background:var(--bg3)}
+.ws-history-item__name{font-size:11px;font-weight:500;margin-bottom:2px}
+.ws-history-item__meta{font-size:9px;color:var(--text3)}
+.ws-history-item__delete{position:absolute;top:6px;right:6px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:10px;opacity:0;transition:opacity .15s}
+.ws-history-item:hover .ws-history-item__delete{opacity:1}
+.ws-history-loading,.ws-history-empty{text-align:center;color:var(--text3);font-size:11px;padding:20px 8px}
+
+/* ── Assignments ─────────────────────────────────────────────────────────────── */
+.assignment-seats{display:flex;flex-direction:column;gap:6px}
+.assignment-seat-btn{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px;cursor:pointer;width:100%;text-align:left;transition:border-color .15s;color:var(--text1);font-size:12px}
+.assignment-seat-btn:hover{border-color:var(--accent)}
+.assignment-seat-avatar{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#000;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0}
 </style>
 <!-- Tema temprano: evita flash al cargar -->
 <script>!function(){try{var k=Object.keys(localStorage).find(function(x){return x.endsWith('_theme')});var s=k?JSON.parse(localStorage.getItem(k)):null;var p=s||'system';var r=p==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r)}catch(e){}}()</script>
@@ -1348,6 +1390,8 @@ select.inp option{background:var(--bg3)}
       <button class="btn btn-sm" style="background:linear-gradient(135deg,#8b7cf8,#5b8dee);color:#fff;border:none" onclick="showUpgradeModal()">Upgrade a Pro →</button>
     </div>
     <div class="kpi-grid" id="kpi-grid"></div>
+    <div id="pending-reminders" hidden></div>
+    <div id="business-metrics-section" hidden></div>
     <div class="dash-cols">
       <div><div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Módulos</div><div id="dash-modules" style="display:flex;flex-direction:column;gap:8px"></div></div>
       <div>
@@ -1387,6 +1431,8 @@ select.inp option{background:var(--bg3)}
             <div class="ficha-acts">
               <button class="btn btn-ghost btn-xs" onclick="openEditModal()">Editar</button>
               <button class="btn btn-purple btn-xs" onclick="crmToTeams()">+ Equipo</button>
+              <button class="btn btn-ghost btn-xs" onclick="openReminderModal(CRM.activeId, CRM.clients[CRM.activeId]?.name)" title="Recordatorio (Pro)">⏰</button>
+              <button class="btn btn-ghost btn-xs" onclick="openAssignmentModal(CRM.activeId, CRM.clients[CRM.activeId]?.name)" title="Asignar (Agency)">👤</button>
               <button class="btn btn-red btn-xs" onclick="deleteClient()">×</button>
             </div>
           </div>
@@ -1481,7 +1527,7 @@ select.inp option{background:var(--bg3)}
       <div class="prop-sec">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase">Propuesta generada</div>
-          <div style="display:flex;gap:6px"><button class="btn btn-ghost btn-xs" onclick="copyProp()" data-i18n="prop_copy">Copiar</button><button class="btn btn-teal btn-xs" id="btn-guardar-prop" onclick="saveCurrentProp()">💾 Guardar</button><button class="btn btn-ghost btn-xs" onclick="generarPropuesta()" data-i18n="prop_regen">↺ Regenerar</button></div>
+          <div style="display:flex;gap:6px"><button class="btn btn-ghost btn-xs" onclick="copyProp()" data-i18n="prop_copy">Copiar</button><button class="btn btn-teal btn-xs" id="btn-guardar-prop" onclick="saveCurrentProp()">💾 Guardar</button><button class="btn btn-ghost btn-xs" onclick="generarPropuesta()" data-i18n="prop_regen">↺ Regenerar</button><button class="btn btn-ghost btn-xs" id="btn-export-pdf" onclick="exportProposalToPDF()" title="Exportar a PDF (Pro)">📄 PDF<span class="premium-lock" style="font-size:.65rem">⚡Pro</span></button></div>
         </div>
         <div class="result-box" id="result-box"></div>
       </div>
@@ -1613,9 +1659,19 @@ select.inp option{background:var(--bg3)}
       <div class="ws-proj-label" id="ws-proj-label">Workspace</div>
       <div class="ws-tabs" id="ws-tabs"></div>
       <div class="ws-add" id="ws-add-btn" onclick="wsAddChat()" title="+">+</div>
+      <button class="btn btn-ghost btn-xs" id="btn-ws-history" onclick="toggleWorkspaceHistory()" title="Historial (Pro)" style="margin-left:auto;margin-right:4px">📋</button>
       <button class="ws-back-btn" onclick="goTo('teams')" data-i18n="ws_back">← Equipos</button>
     </div>
-    <div class="ws-panels" id="ws-panels"></div>
+    <div style="display:flex;flex:1;overflow:hidden">
+      <div id="workspace-history-panel" class="ws-history-panel" hidden>
+        <div class="ws-history-header">
+          <span>📋 Historial</span>
+          <button onclick="workspaceHistory.newSession();renderWorkspaceHistoryPanel()" class="btn btn-ghost btn-xs">+ Nueva</button>
+        </div>
+        <div id="ws-history-list" class="ws-history-list"></div>
+      </div>
+      <div class="ws-panels" id="ws-panels" style="flex:1"></div>
+    </div>
   </div>
 </div>
 
@@ -3311,7 +3367,7 @@ async function wsSend(chatId){
   wsAddBubble(chatId,'user',text);chat.history.push({role:'user',content:text});
   const msgs=document.getElementById(`wm-${chatId}`);const typ=document.createElement('div');typ.id=`wtyp-${chatId}`;typ.className='wm-typing';typ.innerHTML='<div class="tdot"></div><div class="tdot"></div><div class="tdot"></div>';if(msgs){msgs.appendChild(typ);msgs.scrollTop=msgs.scrollHeight;}
   const fullSys=WS.systemPrompt+'\n\n### MODO ACTIVO DE ESTE CHAT\n'+WS_MODES[chat.mode].extra;
-  try{const reply=await callAI(fullSys,chat.history.slice(-20),2000);chat.history.push({role:'assistant',content:reply});const t=document.getElementById(`wtyp-${chatId}`);if(t)t.remove();wsAddBubble(chatId,'assistant',reply);}
+  try{const reply=await callAI(fullSys,chat.history.slice(-20),2000);chat.history.push({role:'assistant',content:reply});const t=document.getElementById(`wtyp-${chatId}`);if(t)t.remove();wsAddBubble(chatId,'assistant',reply);workspaceHistory.save(chat.history,chat.name,getCFG().provider,getCFG().model);}
   catch(e){const t=document.getElementById(`wtyp-${chatId}`);if(t)t.remove();wsAddBubble(chatId,'assistant','⚠ Error: '+e.message);}
   if(sbtn)sbtn.disabled=false;const i2=document.getElementById(`wi-${chatId}`);if(i2)i2.focus();
 }
@@ -3760,6 +3816,328 @@ if('serviceWorker' in navigator){
       });
     }catch(err){console.warn('[PWA] Service Worker no registrado:',err);}
   });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// TAREA 1 — Exportar propuesta a PDF (Pro)
+// ═══════════════════════════════════════════════════════════════════════
+async function exportProposalToPDF() {
+  if (!tierSystem.requiresTier('pro', 'Exportar PDF')) return;
+  if (!window.jspdf) {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const proposalEl = document.getElementById('result-box');
+  if (!proposalEl || !proposalEl.textContent.trim()) {
+    showToast('No hay propuesta generada para exportar', 'warn'); return;
+  }
+  const content = proposalEl.textContent.trim();
+  const clientName = document.getElementById('p-nombre')?.value || 'Cliente';
+  const today = new Date().toLocaleDateString('es-ES');
+  doc.setFillColor(15, 15, 18);
+  doc.rect(0, 0, 210, 25, 'F');
+  doc.setTextColor(240, 165, 0);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('AIWorkSuite', 15, 16);
+  doc.setTextColor(180, 180, 180);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('by MolvicStudios · aiworksuite.pro', 100, 16);
+  doc.text(today, 180, 16, { align: 'right' });
+  doc.setTextColor(30, 30, 30);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Propuesta para ' + clientName, 15, 40);
+  doc.setDrawColor(240, 165, 0);
+  doc.setLineWidth(0.8);
+  doc.line(15, 44, 195, 44);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(40, 40, 40);
+  const lines = doc.splitTextToSize(content, 180);
+  let y = 52;
+  lines.forEach(function(line) {
+    if (y > 280) { doc.addPage(); y = 20; }
+    doc.text(line, 15, y);
+    y += 5.5;
+  });
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text('Generado con AIWorkSuite \u00b7 aiworksuite.pro \u00b7 P\u00e1gina ' + i + ' de ' + pageCount, 105, 290, { align: 'center' });
+  }
+  const filename = 'propuesta-' + clientName.toLowerCase().replace(/\s+/g, '-') + '-' + today.replace(/\//g, '-') + '.pdf';
+  doc.save(filename);
+  showToast('PDF exportado correctamente', 'success');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// TAREA 2 — Historial de Workspace en Supabase (Pro)
+// ═══════════════════════════════════════════════════════════════════════
+const workspaceHistory = (() => {
+  let _currentSessionId = null;
+  async function save(messages, sessionName, provider, model) {
+    if (!tierSystem.isPro() || !supabase) return;
+    if (!messages?.length) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const record = {
+        user_id: user.id,
+        session_name: sessionName || ('Sesi\u00f3n ' + new Date().toLocaleDateString('es-ES')),
+        provider: provider || getCFG().provider || 'groq',
+        model: model || getCFG().model || '',
+        messages,
+        updated_at: new Date().toISOString()
+      };
+      if (_currentSessionId) {
+        await supabase.from('workspace_history').update(record).eq('id', _currentSessionId);
+      } else {
+        const { data } = await supabase.from('workspace_history').insert(record).select('id').single();
+        _currentSessionId = data?.id;
+      }
+    } catch (err) { console.error('[wsHistory] save:', err); }
+  }
+  async function loadAll() {
+    if (!tierSystem.isPro() || !supabase) return [];
+    try {
+      const { data, error } = await supabase.from('workspace_history')
+        .select('id, session_name, provider, model, created_at, updated_at')
+        .order('updated_at', { ascending: false }).limit(50);
+      if (error) throw error;
+      return data || [];
+    } catch (err) { console.error('[wsHistory] loadAll:', err); return []; }
+  }
+  async function loadSession(id) {
+    try {
+      const { data, error } = await supabase.from('workspace_history').select('*').eq('id', id).single();
+      if (error) throw error;
+      _currentSessionId = id;
+      return data;
+    } catch (err) { console.error('[wsHistory] load:', err); return null; }
+  }
+  async function deleteSession(id) {
+    try {
+      await supabase.from('workspace_history').delete().eq('id', id);
+      if (_currentSessionId === id) _currentSessionId = null;
+    } catch (err) { console.error('[wsHistory] delete:', err); }
+  }
+  function newSession() { _currentSessionId = null; }
+  return { save, loadAll, loadSession, deleteSession, newSession, getCurrentId: () => _currentSessionId };
+})();
+
+async function toggleWorkspaceHistory() {
+  if (!tierSystem.requiresTier('pro', 'Historial de Workspace')) return;
+  const panel = document.getElementById('workspace-history-panel');
+  const isHidden = panel.hidden;
+  panel.hidden = !isHidden;
+  if (isHidden) await renderWorkspaceHistoryPanel();
+}
+async function renderWorkspaceHistoryPanel() {
+  const list = document.getElementById('ws-history-list');
+  if (!list) return;
+  list.innerHTML = '<div class="ws-history-loading">Cargando...</div>';
+  const sessions = await workspaceHistory.loadAll();
+  if (!sessions.length) { list.innerHTML = '<div class="ws-history-empty">Sin conversaciones guardadas</div>'; return; }
+  list.innerHTML = sessions.map(function(s) {
+    return '<div class="ws-history-item" data-id="' + s.id + '">' +
+      '<div class="ws-history-item__name" onclick="loadWorkspaceSession(\'' + s.id + '\')">' + esc(s.session_name) + '</div>' +
+      '<div class="ws-history-item__meta">' + s.provider + ' \u00b7 ' + new Date(s.updated_at).toLocaleDateString('es-ES') + '</div>' +
+      '<button class="ws-history-item__delete" onclick="deleteWorkspaceSession(\'' + s.id + '\')" aria-label="Eliminar">\u2715</button></div>';
+  }).join('');
+}
+async function loadWorkspaceSession(id) {
+  const session = await workspaceHistory.loadSession(id);
+  if (!session) return;
+  // Restaurar mensajes en el chat activo del workspace
+  const activeChat = WS.chats.find(function(c) { return c.id === WS.activeChat; });
+  if (activeChat && session.messages) {
+    activeChat.history = session.messages;
+    const msgs = document.getElementById('wm-' + activeChat.id);
+    if (msgs) {
+      msgs.innerHTML = '';
+      session.messages.forEach(function(m) { wsAddBubble(activeChat.id, m.role, m.content); });
+    }
+  }
+  showToast('Sesi\u00f3n "' + session.session_name + '" cargada', 'success');
+}
+async function deleteWorkspaceSession(id) {
+  await workspaceHistory.deleteSession(id);
+  await renderWorkspaceHistoryPanel();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// TAREA 3 — Dashboard de métricas de negocio (Pro)
+// ═══════════════════════════════════════════════════════════════════════
+async function renderBusinessMetrics() {
+  if (!tierSystem.isPro()) return;
+  const container = document.getElementById('business-metrics-section');
+  if (!container) return;
+  container.hidden = false;
+  const clients = getCRMData(); const cids = Object.keys(clients);
+  const allProps = cids.flatMap(function(id) { return clients[id].propuestas || []; });
+  const total = cids.length;
+  const won = cids.filter(function(id) { return clients[id].captado; }).length;
+  const pipelineValue = cids.reduce(function(sum, id) { return sum + (parseFloat(clients[id].budget) || 0); }, 0);
+  const revenueClosed = cids.filter(function(id) { return clients[id].captado; })
+    .reduce(function(sum, id) { return sum + (parseFloat(clients[id].precioCerrado) || parseFloat(clients[id].budget) || 0); }, 0);
+  const proposalsSent = allProps.filter(function(p) { return p.status === 'enviada'; }).length;
+  const proposalsWon = allProps.filter(function(p) { return p.status === 'aceptada'; }).length;
+  const convRate = proposalsSent > 0 ? Math.round((proposalsWon / proposalsSent) * 100) : 0;
+
+  container.innerHTML = '<div class="metrics-header"><h3>\ud83d\udcca M\u00e9tricas de negocio</h3><span class="tier-badge tier-badge--pro">PRO</span></div>' +
+    '<div class="metrics-grid">' +
+    '<div class="metric-card"><div class="metric-value">' + total + '</div><div class="metric-label">Clientes totales</div></div>' +
+    '<div class="metric-card metric-card--accent"><div class="metric-value">$' + pipelineValue.toLocaleString('es-ES') + '</div><div class="metric-label">Valor en pipeline</div></div>' +
+    '<div class="metric-card metric-card--green"><div class="metric-value">$' + revenueClosed.toLocaleString('es-ES') + '</div><div class="metric-label">Ingresos cerrados</div></div>' +
+    '<div class="metric-card"><div class="metric-value">' + convRate + '%</div><div class="metric-label">Conversi\u00f3n propuestas</div></div>' +
+    '<div class="metric-card"><div class="metric-value">' + proposalsSent + '</div><div class="metric-label">Propuestas enviadas</div></div>' +
+    '<div class="metric-card metric-card--green"><div class="metric-value">' + proposalsWon + '</div><div class="metric-label">Propuestas ganadas</div></div>' +
+    '</div>';
+
+  // Snapshot mensual en Supabase
+  try {
+    if (!supabase) return;
+    const period = new Date().toISOString().slice(0, 7);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('business_metrics').upsert({
+        user_id: user.id, period,
+        total_clients: total, pipeline_value: pipelineValue,
+        proposals_sent: proposalsSent, proposals_won: proposalsWon,
+        conversion_rate: convRate, revenue_closed: revenueClosed,
+        recorded_at: new Date().toISOString()
+      }, { onConflict: 'user_id,period' });
+    }
+  } catch (err) { console.error('[metrics] snapshot:', err); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// TAREA 4 — Recordatorios de seguimiento de clientes (Pro)
+// ═══════════════════════════════════════════════════════════════════════
+async function openReminderModal(clientId, clientName) {
+  if (!tierSystem.requiresTier('pro', 'Recordatorios de seguimiento')) return;
+  if (!clientId || !clientName) return;
+  document.getElementById('reminder-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'reminder-modal';
+  modal.className = 'upgrade-modal-overlay';
+  modal.style.cssText = 'display:flex;align-items:center;justify-content:center;position:fixed;inset:0;z-index:2100;background:rgba(0,0,0,.55);backdrop-filter:blur(6px)';
+  modal.innerHTML = '<div style="background:var(--bg1);border:1px solid var(--border);border-radius:var(--r2);padding:24px;max-width:380px;width:90%;position:relative">' +
+    '<button onclick="document.getElementById(\'reminder-modal\').remove()" style="position:absolute;top:10px;right:14px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px">\u2715</button>' +
+    '<h3 style="margin:0 0 14px;font-size:14px;font-family:\'Syne\',sans-serif">\u23f0 Recordatorio \u2014 ' + esc(clientName) + '</h3>' +
+    '<label style="display:block;margin-bottom:4px;font-size:11px;color:var(--text3)">Fecha y hora</label>' +
+    '<input type="datetime-local" id="reminder-date" class="inp" style="width:100%;margin-bottom:12px" min="' + new Date().toISOString().slice(0, 16) + '">' +
+    '<label style="display:block;margin-bottom:4px;font-size:11px;color:var(--text3)">Nota (opcional)</label>' +
+    '<textarea id="reminder-note" class="inp" rows="3" placeholder="Ej: Llamar para seguimiento de propuesta..." style="width:100%;margin-bottom:14px;resize:vertical"></textarea>' +
+    '<button class="btn btn-accent" style="width:100%" onclick="saveReminder(\'' + clientId + '\',\'' + esc(clientName).replace(/'/g, "\\'") + '\')">Guardar recordatorio</button></div>';
+  document.body.appendChild(modal);
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+}
+
+async function saveReminder(clientId, clientName) {
+  const date = document.getElementById('reminder-date')?.value;
+  const note = document.getElementById('reminder-note')?.value;
+  if (!date) { showToast('Selecciona una fecha', 'warn'); return; }
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from('client_reminders').insert({
+      user_id: user.id, client_id: clientId, client_name: clientName,
+      note: note || null, remind_at: new Date(date).toISOString(), done: false
+    });
+    document.getElementById('reminder-modal')?.remove();
+    showToast('Recordatorio guardado', 'success');
+    await renderPendingReminders();
+  } catch (err) {
+    console.error('[reminders] save:', err);
+    showToast('Error al guardar recordatorio', 'error');
+  }
+}
+
+async function renderPendingReminders() {
+  if (!tierSystem.isPro() || !supabase) return;
+  const container = document.getElementById('pending-reminders');
+  if (!container) return;
+  try {
+    const { data } = await supabase.from('client_reminders')
+      .select('*').eq('done', false)
+      .lte('remind_at', new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString())
+      .order('remind_at', { ascending: true }).limit(5);
+    if (!data?.length) { container.hidden = true; return; }
+    container.hidden = false;
+    container.innerHTML = '<div class="reminders-header">\u23f0 Seguimientos pendientes</div>' +
+      data.map(function(r) {
+        return '<div class="reminder-item">' +
+          '<div class="reminder-item__client">' + esc(r.client_name) + '</div>' +
+          '<div class="reminder-item__time">' + new Date(r.remind_at).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' }) + '</div>' +
+          (r.note ? '<div class="reminder-item__note">' + esc(r.note) + '</div>' : '') +
+          '<button class="btn btn-ghost btn-xs" onclick="markReminderDone(\'' + r.id + '\')">\u2713 Hecho</button></div>';
+      }).join('');
+  } catch (err) { console.error('[reminders] render:', err); }
+}
+
+async function markReminderDone(id) {
+  await supabase.from('client_reminders').update({ done: true }).eq('id', id);
+  await renderPendingReminders();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// TAREA 5 — Asignación de clientes a seats Agency
+// ═══════════════════════════════════════════════════════════════════════
+async function openAssignmentModal(clientId, clientName) {
+  if (!tierSystem.requiresTier('agency', 'Asignaci\u00f3n de clientes')) return;
+  if (!clientId || !clientName) return;
+  const { data: sub } = await supabase.from('subscriptions').select('id').maybeSingle();
+  if (!sub) { showToast('No se encontr\u00f3 suscripci\u00f3n Agency', 'warn'); return; }
+  const { data: seats } = await supabase.from('subscription_seats')
+    .select('email, user_id, role').eq('subscription_id', sub.id);
+  if (!seats?.length) { showToast('No hay miembros en tu equipo todav\u00eda', 'warn'); return; }
+
+  document.getElementById('assignment-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'assignment-modal';
+  modal.style.cssText = 'display:flex;align-items:center;justify-content:center;position:fixed;inset:0;z-index:2100;background:rgba(0,0,0,.55);backdrop-filter:blur(6px)';
+  modal.innerHTML = '<div style="background:var(--bg1);border:1px solid var(--border);border-radius:var(--r2);padding:24px;max-width:360px;width:90%;position:relative">' +
+    '<button onclick="document.getElementById(\'assignment-modal\').remove()" style="position:absolute;top:10px;right:14px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px">\u2715</button>' +
+    '<h3 style="margin:0 0 14px;font-size:14px;font-family:\'Syne\',sans-serif">\ud83d\udc64 Asignar cliente \u2014 ' + esc(clientName) + '</h3>' +
+    '<div class="assignment-seats">' + seats.map(function(s) {
+      return '<button class="assignment-seat-btn" onclick="assignClient(\'' + clientId + '\',\'' + esc(clientName).replace(/'/g, "\\'") + '\',\'' + (s.user_id || '') + '\',\'' + esc(s.email) + '\')">' +
+        '<span class="assignment-seat-avatar">' + s.email[0].toUpperCase() + '</span>' +
+        '<span>' + esc(s.email) + '</span>' +
+        (s.role === 'owner' ? '<span class="tier-badge tier-badge--pro" style="font-size:.6rem">Owner</span>' : '') +
+        '</button>';
+    }).join('') + '</div>' +
+    '<button class="btn btn-ghost" style="width:100%;margin-top:12px" onclick="assignClient(\'' + clientId + '\',\'' + esc(clientName).replace(/'/g, "\\'") + '\',\'\',\'\')">\ud83d\udeab Sin asignar</button></div>';
+  document.body.appendChild(modal);
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+}
+
+async function assignClient(clientId, clientName, userId, email) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: sub } = await supabase.from('subscriptions')
+      .select('id').eq('user_id', user.id).maybeSingle();
+    if (!sub) return;
+    await supabase.from('client_assignments').upsert({
+      subscription_id: sub.id, client_id: clientId, client_name: clientName,
+      assigned_to: userId || null, assigned_email: email || null, assigned_by: user.id
+    }, { onConflict: 'subscription_id,client_id' });
+    document.getElementById('assignment-modal')?.remove();
+    showToast(email ? 'Cliente asignado a ' + email : 'Asignaci\u00f3n eliminada', 'success');
+  } catch (err) {
+    console.error('[assignments]:', err);
+    showToast('Error al asignar cliente', 'error');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
