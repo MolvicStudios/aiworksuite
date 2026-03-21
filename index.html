@@ -2137,7 +2137,7 @@ async function doLogin() {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
     if (error) throw error;
     CURRENT_USER = data.user;
-    launchApp();
+    await launchApp();
   } catch(e) {
     errEl.textContent = e.message || 'Error al iniciar sesión';
     errEl.style.display = 'block';
@@ -2206,14 +2206,14 @@ async function checkSession() {
   if (!supabase) {
     // Demo mode sin auth — permitir acceso directo para testing
     const demoUser = S.get('demo_user');
-    if (demoUser) { CURRENT_USER = { id: 'demo', email: 'demo@aiworksuite.app' }; launchApp(); return; }
+    if (demoUser) { CURRENT_USER = { id: 'demo', email: 'demo@aiworksuite.app' }; await launchApp(); return; }
     showScreen('landing'); return;
   }
   try {
     const { data } = await supabase.auth.getSession();
     if (data?.session?.user) {
       CURRENT_USER = data.session.user;
-      launchApp();
+      await launchApp();
     } else {
       showScreen('landing');
     }
@@ -2221,7 +2221,7 @@ async function checkSession() {
     supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user && !CURRENT_USER) {
         CURRENT_USER = session.user;
-        launchApp();
+        await launchApp();
       } else if (!session) {
         CURRENT_USER = null;
         tierSystem.clearCache();
@@ -2234,13 +2234,14 @@ async function checkSession() {
   }
 }
 
-function launchApp() {
+async function launchApp() {
   loadTheme();
   loadLang();
   applyTranslations();
   S.set('demo_user', true); // for demo mode
   showScreen('app');
   applyUserSettings();
+  await fetchAndApplyPlan(); // cargar tier ANTES de renderizar módulos
   initCRM();
   renderPropDB();
   evalCL();
@@ -2248,7 +2249,6 @@ function launchApp() {
   renderLib();
   refreshDash();
   updateLimitLabels();
-  fetchAndApplyPlan(); // async — actualiza plan desde Supabase en background
   handleDeepLink();
   // Show onboarding on first launch
   if (!S.get('onboarded')) {
@@ -2401,6 +2401,7 @@ async function fetchAndApplyPlan() {
     // tierSystem._applyTier ya sincroniza USER_PLAN
     updateLimitLabels();
     updatePlanBadge();
+    refreshDash();
     if (tierSystem.isPro()) renderTeamsView();
   } catch(_e) {
     // tabla no existe aún o sin conexión — plan free por defecto
