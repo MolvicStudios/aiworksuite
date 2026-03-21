@@ -3,7 +3,7 @@
 // Estrategia: Cache-first para assets estáticos, red siempre para APIs
 // ═══════════════════════════════════════════════════════════════════════
 
-const SW_VERSION    = 'v4.3.2';
+const SW_VERSION    = 'v4.3.3';
 const CACHE_STATIC  = `aws-static-${SW_VERSION}`;
 const CACHE_DYNAMIC = `aws-dynamic-${SW_VERSION}`;
 
@@ -74,14 +74,15 @@ self.addEventListener('fetch', event => {
   // Estrategia: Cache First → Red → Offline fallback
   event.respondWith(
     caches.match(event.request).then(cached => {
-      if (cached) return cached.clone();
-      return fetch(event.request.clone())
+      if (cached) return cached;
+      return fetch(event.request)
         .then(response => {
           if (!response || response.status !== 200 || response.type === 'opaqueredirect' || response.redirected) {
             return response;
           }
           if (response.type !== 'opaque' && url.origin === self.location.origin) {
-            caches.open(CACHE_DYNAMIC).then(cache => cache.put(event.request, response.clone()));
+            const clone = response.clone();
+            caches.open(CACHE_DYNAMIC).then(cache => cache.put(event.request, clone));
           }
           return response;
         })
