@@ -3,7 +3,7 @@
 // Estrategia: Cache-first para assets estáticos, red siempre para APIs
 // ═══════════════════════════════════════════════════════════════════════
 
-const SW_VERSION    = 'v5.0.0';
+const SW_VERSION    = 'v5.0.1';
 const CACHE_STATIC  = `aws-static-${SW_VERSION}`;
 const CACHE_DYNAMIC = `aws-dynamic-${SW_VERSION}`;
 
