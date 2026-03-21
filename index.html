@@ -2002,7 +2002,7 @@ const tierSystem = (() => {
         .from('subscriptions')
         .select('plan, status, seats, billing_cycle, current_period_end, trial_ends_at')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error || !data) {
         _tier = 'free'; _seats = 1;
