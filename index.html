@@ -225,7 +225,7 @@ select.inp option{background:var(--bg3)}
 .land-pricing{padding:48px 24px;max-width:900px;margin:0 auto;width:100%;text-align:center}
 .land-section-title{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;margin-bottom:8px}
 .land-section-sub{font-size:14px;color:var(--text3);margin-bottom:32px}
-.pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:600px;margin:0 auto;text-align:left}
+.pricing-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;max-width:900px;margin:0 auto;text-align:left}
 .price-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:20px;display:flex;flex-direction:column;gap:8px}
 .price-card.featured{border:2px solid var(--accent)}
 .price-name{font-family:'Syne',sans-serif;font-size:15px;font-weight:700}
@@ -244,7 +244,7 @@ select.inp option{background:var(--bg3)}
 .land-pricing{padding:48px 24px;max-width:900px;margin:0 auto;width:100%;text-align:center}
 .land-section-title{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;margin-bottom:8px}
 .land-section-sub{font-size:14px;color:var(--text3);margin-bottom:32px}
-.pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:600px;margin:0 auto;text-align:left}
+.pricing-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;max-width:900px;margin:0 auto;text-align:left}
 .price-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:20px;display:flex;flex-direction:column;gap:8px}
 .price-card.featured{border:2px solid var(--accent)}
 .price-name{font-family:'Syne',sans-serif;font-size:15px;font-weight:700}
@@ -1138,10 +1138,10 @@ select.inp option{background:var(--bg3)}
           <div class="price-card featured">
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div class="price-name">Pro</div>
-              <span style="background:linear-gradient(135deg,var(--accent),#e87c00);color:#0c0d0f;font-size:9px;padding:2px 8px;border-radius:20px;font-family:'JetBrains Mono',monospace;font-weight:600">Lanzamiento Q3 2026</span>
+              <span style="background:linear-gradient(135deg,#8b7cf8,#5b8dee);color:#fff;font-size:9px;padding:2px 8px;border-radius:20px;font-family:'JetBrains Mono',monospace;font-weight:600">Popular</span>
             </div>
-            <div class="price-amount">€9 <span>/ mes</span></div>
-            <div style="font-size:10px;color:var(--accent);font-family:'JetBrains Mono',monospace;margin:2px 0 2px;font-weight:600">o €99/año — ahorra 2 meses</div>
+            <div class="price-amount">$19 <span>/ mes</span></div>
+            <div style="font-size:10px;color:var(--accent);font-family:'JetBrains Mono',monospace;margin:2px 0 2px;font-weight:600">o $180/año — ahorra 2 meses</div>
             <div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin:0 0 8px">Para freelances activos</div>
             <div class="sep" style="margin:8px 0"></div>
             <div class="price-feat"><div class="pf-ok"></div>Clientes ilimitados</div>
@@ -1150,8 +1150,19 @@ select.inp option{background:var(--bg3)}
             <div class="price-feat"><div class="pf-ok"></div>Detección IA de roles</div>
             <div class="price-feat"><div class="pf-ok"></div>Prompts ilimitados</div>
             <div class="price-feat"><div class="pf-ok"></div>Branding personalizable</div>
-            <div style="margin-top:12px"><button class="btn btn-accent" style="width:100%" onclick="showUpgradeInterest()" data-i18n="plan_pro_notify">Early access — Notificarme con descuento</button></div>
-            <div style="margin-top:6px;font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;text-align:center">Lanzamiento previsto Q3 2026 · Lista de espera con descuento de lanzamiento</div>
+            <div style="margin-top:12px"><a href="https://josemole5.gumroad.com/l/xozxj" target="_blank" rel="noopener" class="btn btn-accent" style="width:100%;display:block;text-align:center;text-decoration:none">Suscribirme a Pro →</a></div>
+          </div>
+          <div class="price-card">
+            <div class="price-name">Agency</div>
+            <div class="price-amount">$49 <span>/ mes</span></div>
+            <div style="font-size:10px;color:var(--accent);font-family:'JetBrains Mono',monospace;margin:2px 0 2px;font-weight:600">o $468/año — ahorra 2 meses</div>
+            <div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin:0 0 8px">Para agencias y equipos</div>
+            <div class="sep" style="margin:8px 0"></div>
+            <div class="price-feat"><div class="pf-ok"></div>Todo lo de Pro</div>
+            <div class="price-feat"><div class="pf-ok"></div>5 puestos de equipo</div>
+            <div class="price-feat"><div class="pf-ok"></div>Gestión multi-cliente</div>
+            <div class="price-feat"><div class="pf-ok"></div>Soporte prioritario</div>
+            <div style="margin-top:12px"><a href="https://josemole5.gumroad.com/l/juowa" target="_blank" rel="noopener" class="btn btn-ghost" style="width:100%;display:block;text-align:center;text-decoration:none">Suscribirme a Agency →</a></div>
           </div>
         </div>
       </div>
@@ -1894,12 +1905,11 @@ select.inp option{background:var(--bg3)}
       <div class="uf"><div class="uf-dot"></div>Branding personalizable</div>
     </div>
     <div style="background:var(--pbg);border:1px solid var(--pb);border-radius:var(--r);padding:12px;margin-bottom:16px">
-      <div style="font-size:13px;font-weight:500;color:var(--purple);margin-bottom:4px">🚀 Lanzamiento Q3 2026 — €9/mes · €99/año</div>
-      <div style="font-size:11px;color:var(--text3)">Déjanos tu email y te avisamos cuando Pro esté disponible con descuento de lanzamiento.</div>
+      <div style="font-size:13px;font-weight:500;color:var(--purple);margin-bottom:4px">✦ Pro — $19/mes · $180/año</div>
+      <div style="font-size:11px;color:var(--text3)">Desbloquea clientes, equipos y prompts ilimitados.</div>
     </div>
-    <input class="inp" id="upgrade-email" placeholder="tu@email.com" style="margin-bottom:10px">
     <div style="display:flex;gap:8px">
-      <button class="btn btn-accent" style="flex:1" id="btn-upgrade-cta" onclick="openProCheckout()">Notificarme — descuento early</button>
+      <a href="https://josemole5.gumroad.com/l/xozxj" target="_blank" rel="noopener" class="btn btn-accent" style="flex:1;text-align:center;text-decoration:none" id="btn-upgrade-cta">Suscribirme a Pro — $19/mes</a>
       <button class="btn btn-ghost" onclick="closeModal('modal-upgrade')">Ahora no</button>
     </div>
   </div>
@@ -2400,8 +2410,8 @@ function updatePlanBadge() {
   if (badge) badge.textContent = USER_PLAN === 'pro' ? '✦ Pro' : 'Free';
   // Update upgrade modal CTA text
   const cta = document.getElementById('btn-upgrade-cta');
-  if (cta && LEMON_CONFIG.checkoutUrl) {
-    cta.textContent = 'Suscribirme — €9/mes';
+  if (cta) {
+    cta.textContent = 'Suscribirme a Pro — $19/mes';
   }
 }
 
@@ -3440,15 +3450,15 @@ const TRANSLATIONS={
     settings_import_label:'Importar datos',settings_import_sub:'Restaurar desde backup JSON',
     settings_reset_label:'Restablecer aplicación',settings_reset_sub:'Elimina todos los datos locales. Irreversible.',
     settings_save:'Guardar',settings_logout:'Cerrar sesión',settings_account:'Tu cuenta',
-    upgrade_title:'Actualiza a Pro',upgrade_coming:'🚀 Lanzamiento Q3 2026 — €9/mes · €99/año',
-    upgrade_coming_sub:'Déjanos tu email y te avisamos cuando Pro esté disponible con descuento de lanzamiento.',
+    upgrade_title:'Actualiza a Pro',upgrade_coming:'✦ Pro — $19/mes · $180/año',
+    upgrade_coming_sub:'Desbloquea clientes, equipos y prompts ilimitados.',
     upgrade_notify:'Notificarme — descuento early',upgrade_dismiss:'Ahora no',
     btn_save:'Guardar',btn_cancel:'Cancelar',btn_edit:'Editar',btn_delete:'Eliminar',
     btn_copy:'Copiar',btn_copied:'✓ Copiado',btn_continue:'Continuar →',btn_back:'←',btn_confirm:'Confirmar',
     cookie_text:'Usamos cookies esenciales para el funcionamiento de la app y recordar tu sesión.',
     cookie_learn:'Política de cookies',cookie_accept:'Aceptar todo',cookie_essential:'Solo esenciales',
     plan_free_tag:'Gratis para siempre',plan_pro_badge:'Q3 2026',
-    plan_free_start:'Empezar gratis',plan_pro_notify:'Notificarme al lanzar',
+    plan_free_start:'Empezar gratis',plan_pro_notify:'Suscribirme a Pro →',
     footer_tagline:'BYOK · Tus datos, tu navegador',
     footer_privacy:'Privacidad',footer_cookies:'Cookies',footer_terms:'Términos',footer_contact:'Contacto',footer_by:'by',
     privacy_title:'Política de Privacidad',cookies_title:'Política de Cookies',terms_title:'Términos de Uso',
@@ -3520,15 +3530,15 @@ const TRANSLATIONS={
     settings_import_label:'Import data',settings_import_sub:'Restore from previously exported JSON backup',
     settings_reset_label:'Reset app',settings_reset_sub:'Deletes all local data. Irreversible.',
     settings_save:'Save',settings_logout:'Sign out',settings_account:'Your account',
-    upgrade_title:'Upgrade to Pro',upgrade_coming:'🚀 Launch Q3 2026 — €9/mo · €99/yr',
-    upgrade_coming_sub:"Leave your email and we'll notify you when Pro launches with an early discount.",
+    upgrade_title:'Upgrade to Pro',upgrade_coming:'✦ Pro — $19/mo · $180/yr',
+    upgrade_coming_sub:'Unlock unlimited clients, teams and prompts.',
     upgrade_notify:'Notify me — early discount',upgrade_dismiss:'Maybe later',
     btn_save:'Save',btn_cancel:'Cancel',btn_edit:'Edit',btn_delete:'Delete',
     btn_copy:'Copy',btn_copied:'✓ Copied',btn_continue:'Continue →',btn_back:'←',btn_confirm:'Confirm',
     cookie_text:'We use essential cookies to keep the app working and remember your session.',
     cookie_learn:'Cookie policy',cookie_accept:'Accept all',cookie_essential:'Essential only',
     plan_free_tag:'Always free',plan_pro_badge:'Q3 2026',
-    plan_free_start:'Start free',plan_pro_notify:'Notify me at launch',
+    plan_free_start:'Start free',plan_pro_notify:'Subscribe to Pro →',
     footer_tagline:'BYOK · Your data, your browser',
     footer_privacy:'Privacy',footer_cookies:'Cookies',footer_terms:'Terms',footer_contact:'Contact',footer_by:'by',
     privacy_title:'Privacy Policy',cookies_title:'Cookie Policy',terms_title:'Terms of Use',
