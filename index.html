@@ -1769,7 +1769,7 @@ select.inp option{background:var(--bg3)}
     <div class="settings-sec">
       <div class="settings-sec-title" data-i18n="settings_api">Proveedor IA (BYOK)</div>
       <div class="frow"><label class="lbl" for="s-provider" data-i18n="settings_provider">Proveedor</label>
-        <select class="inp" id="s-provider" onchange="updateProviderLabel()"><option value="anthropic">Anthropic — Claude</option><option value="openai">OpenAI — GPT-4o</option><option value="groq">Groq — Llama 3.3</option><option value="openrouter">OpenRouter — Multi-model</option></select>
+        <select class="inp" id="s-provider" onchange="updateProviderLabel()"><option value="anthropic">Anthropic — Claude</option><option value="openai">OpenAI — GPT-4o</option><option value="groq">Groq — Llama 3.3</option><option value="openrouter">OpenRouter — Multi-model</option><option value="gemini">Google Gemini — Flash 2.0 ✨ Gratis</option><option value="mistral">Mistral — Small ✨ Gratis</option><option value="deepseek">DeepSeek — Chat 💳</option><option value="together">Together AI — Llama 3 70B ✨ Gratis</option><option value="cohere">Cohere — Command R+ ✨ Gratis</option><option value="xai">xAI (Grok) 💳</option></select>
       </div>
       <div class="frow" style="margin-top:8px"><label class="lbl" id="s-key-label" for="s-api-key">API Key (Anthropic)</label>
         <div style="display:flex;gap:7px"><input class="inp" type="password" id="s-api-key" placeholder="sk-ant-..." autocomplete="off" style="flex:1"><button class="btn btn-ghost btn-sm" onclick="toggleKeyVis()">👁</button><button class="btn btn-teal btn-sm" onclick="testApiKey()" data-i18n="settings_test">Probar</button></div>
@@ -2119,7 +2119,13 @@ const PROVIDERS = {
   anthropic: { label:'Anthropic', model:'claude-sonnet-4-20250514', models:['claude-opus-4-5','claude-sonnet-4-5','claude-sonnet-4-20250514','claude-3-5-haiku-20241022'], endpoint:'https://api.anthropic.com/v1/messages', hint:'sk-ant-...' },
   openai:    { label:'OpenAI',    model:'gpt-4o',                   models:['gpt-4o','gpt-4o-mini','gpt-4-turbo','o1-mini'],             endpoint:'https://api.openai.com/v1/chat/completions', hint:'sk-...' },
   groq:      { label:'Groq',      model:'llama-3.3-70b-versatile',  models:['llama-3.3-70b-versatile','llama-3.1-8b-instant','mixtral-8x7b-32768','gemma2-9b-it'], endpoint:'https://api.groq.com/openai/v1/chat/completions', hint:'gsk_...' },
-  openrouter:{ label:'OpenRouter',model:'anthropic/claude-3.5-sonnet',models:['anthropic/claude-3.5-sonnet','openai/gpt-4o','meta-llama/llama-3.3-70b-instruct','google/gemini-flash-1.5'], endpoint:'https://openrouter.ai/api/v1/chat/completions', hint:'sk-or-...' }
+  openrouter:{ label:'OpenRouter',model:'anthropic/claude-3.5-sonnet',models:['anthropic/claude-3.5-sonnet','openai/gpt-4o','meta-llama/llama-3.3-70b-instruct','google/gemini-flash-1.5'], endpoint:'https://openrouter.ai/api/v1/chat/completions', hint:'sk-or-...' },
+  gemini:    { label:'Google Gemini', model:'gemini-2.0-flash',      models:['gemini-2.0-flash','gemini-1.5-pro','gemini-1.5-flash'],    endpoint:'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', hint:'AIza...' },
+  mistral:   { label:'Mistral',   model:'mistral-small-latest',      models:['mistral-small-latest','mistral-medium-latest','mistral-large-latest','open-mistral-nemo'], endpoint:'https://api.mistral.ai/v1/chat/completions', hint:'...' },
+  deepseek:  { label:'DeepSeek',  model:'deepseek-chat',             models:['deepseek-chat','deepseek-reasoner'],                       endpoint:'https://api.deepseek.com/v1/chat/completions', hint:'sk-...' },
+  together:  { label:'Together AI',model:'meta-llama/Llama-3-70b-chat-hf', models:['meta-llama/Llama-3-70b-chat-hf','meta-llama/Llama-3-8b-chat-hf','mistralai/Mixtral-8x7B-Instruct-v0.1'], endpoint:'https://api.together.xyz/v1/chat/completions', hint:'...' },
+  cohere:    { label:'Cohere',    model:'command-r-plus',             models:['command-r-plus','command-r','command-light'],               endpoint:'https://api.cohere.com/v2/chat', hint:'...' },
+  xai:       { label:'xAI (Grok)',model:'grok-beta',                  models:['grok-beta','grok-2'],                                      endpoint:'https://api.x.ai/v1/chat/completions', hint:'xai-...' }
 };
 
 // ═══════════════════════════════════════════════════════════════════════
