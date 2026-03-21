@@ -716,6 +716,32 @@ select.inp option{background:var(--bg3)}
 /* CONFIRM MODAL */
 .confirm-box{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r2);padding:24px 22px;width:340px;max-width:96vw;text-align:center}
 .confirm-msg{font-size:13px;color:var(--text);line-height:1.6;margin-bottom:18px}
+
+/* ── Upgrade Modal (Gumroad) ── */
+#upgrade-modal{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .3s ease}
+#upgrade-modal.upgrade-modal--visible{opacity:1}
+.upgrade-modal__backdrop{position:absolute;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px)}
+.upgrade-modal__card{position:relative;z-index:1;background:var(--bg2,#1a1b1e);border:1px solid var(--border,rgba(255,255,255,.1));border-radius:16px;padding:2rem;max-width:480px;width:calc(100% - 2rem);text-align:center;transform:translateY(20px);transition:transform .3s ease}
+#upgrade-modal.upgrade-modal--visible .upgrade-modal__card{transform:translateY(0)}
+.upgrade-modal__close{position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text3,#888);cursor:pointer;font-size:1.25rem}
+.upgrade-modal__close:hover{color:var(--text,#fff)}
+.upgrade-modal__icon{font-size:2.5rem;margin-bottom:.75rem}
+.upgrade-modal__title{font-size:1.25rem;margin-bottom:.5rem;color:var(--text,#fff)}
+.upgrade-modal__subtitle{color:var(--text3,#aaa);margin-bottom:1.25rem;font-size:.9rem}
+.upgrade-modal__features{list-style:none;padding:0;margin:0 0 1.5rem;text-align:left;display:inline-block}
+.upgrade-modal__features li{padding:.25rem 0;font-size:.9rem;color:var(--text2,#ccc)}
+.upgrade-modal__ctas{display:flex;flex-direction:column;gap:.75rem}
+.upgrade-modal__footnote{margin-top:1rem;font-size:.75rem;color:var(--text3,#777)}
+
+/* Badge de tier en nav */
+.tier-badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.65rem;font-weight:700;letter-spacing:.05em}
+.tier-badge--free{background:var(--bg3,#333);color:#888}
+.tier-badge--pro{background:#f0a500;color:#000}
+.tier-badge--agency{background:#7c3aed;color:#fff}
+
+/* Bloquear visualmente módulos en Free */
+[data-tier="free"] .premium-indicator{display:flex}
+[data-tier="pro"] .premium-indicator,[data-tier="agency"] .premium-indicator{display:none}
 </style>
 <!-- Tema temprano: evita flash al cargar -->
 <script>!function(){try{var k=Object.keys(localStorage).find(function(x){return x.endsWith('_theme')});var s=k?JSON.parse(localStorage.getItem(k)):null;var p=s||'system';var r=p==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r)}catch(e){}}()</script>
@@ -1274,6 +1300,11 @@ select.inp option{background:var(--bg3)}
   </div>
   <div class="nav-bottom">
     <div class="nav-sep"></div>
+    <div class="nav-item" id="nav-pricing" onclick="goTo('pricing')">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      <span id="tier-badge" class="tier-badge tier-badge--free" style="position:absolute;top:2px;right:2px;font-size:7px;padding:1px 4px">FREE</span>
+      <div class="nav-tip">Planes</div>
+    </div>
     <div class="nav-item" id="nav-aiden" onclick="typeof aiwsToggle==='function'&&aiwsToggle()" title="Aiden · Asistente IA">
       <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       <div class="nav-tip">Aiden · Asistente</div>
@@ -1577,6 +1608,112 @@ select.inp option{background:var(--bg3)}
   </div>
 </div>
 
+<!-- PRICING -->
+<div class="view" id="view-pricing">
+  <div class="topbar"><div class="topbar-title" data-i18n="pricing.title">Elige tu plan</div><div class="topbar-badge">Pricing</div></div>
+  <div class="settings-body"><div class="settings-inner" style="max-width:900px">
+
+    <p style="text-align:center;color:var(--text3);font-size:13px;margin-bottom:20px" data-i18n="pricing.subtitle">
+      14 días de prueba gratuita · Sin tarjeta hasta que decidas · Cancela cuando quieras
+    </p>
+
+    <!-- Toggle mensual/anual -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:24px">
+      <span style="font-size:12px;color:var(--text3)" data-i18n="pricing.monthly">Mensual</span>
+      <button class="toggle-switch" id="billing-toggle" aria-pressed="false" style="width:40px;height:22px;border-radius:11px;background:var(--bg3);border:1px solid var(--border);cursor:pointer;position:relative;transition:background .2s">
+        <span style="position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--accent);transition:transform .2s" id="toggle-thumb"></span>
+      </button>
+      <span style="font-size:12px;color:var(--text3)" data-i18n="pricing.yearly">Anual</span>
+      <span style="font-size:10px;background:var(--green);color:#000;padding:2px 8px;border-radius:999px;font-weight:700" data-i18n="pricing.save">Ahorra 20%</span>
+    </div>
+
+    <!-- Cards de pricing -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
+
+      <!-- FREE -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:24px;text-align:center">
+        <h3 style="margin:0 0 8px;font-size:16px;color:var(--text)">Free</h3>
+        <div style="font-size:32px;font-weight:800;color:var(--text);margin-bottom:4px">$0</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:16px" data-i18n="pricing.forever">para siempre</div>
+        <ul style="list-style:none;padding:0;text-align:left;font-size:12px;color:var(--text2);margin-bottom:20px">
+          <li style="padding:4px 0">✅ Dashboard con KPIs</li>
+          <li style="padding:4px 0">✅ Workspace (3 chats)</li>
+          <li style="padding:4px 0">✅ Biblioteca (máx. 5 prompts)</li>
+          <li style="padding:4px 0;opacity:.4">❌ CRM inteligente</li>
+          <li style="padding:4px 0;opacity:.4">❌ Propuestas con IA</li>
+          <li style="padding:4px 0;opacity:.4">❌ Equipos IA</li>
+          <li style="padding:4px 0;opacity:.4">❌ Biblioteca ilimitada</li>
+        </ul>
+        <div style="padding:10px 20px;background:var(--bg3);border-radius:var(--r);color:var(--text3);font-size:12px;font-weight:600" id="current-plan-free">Plan actual</div>
+      </div>
+
+      <!-- PRO -->
+      <div style="background:var(--bg2);border:2px solid var(--accent);border-radius:var(--r2);padding:24px;text-align:center;position:relative">
+        <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--accent);color:#000;font-size:10px;font-weight:700;padding:2px 12px;border-radius:999px" data-i18n="pricing.popular">Más popular</div>
+        <h3 style="margin:0 0 8px;font-size:16px;color:var(--text)">Pro</h3>
+        <div style="margin-bottom:4px"><span style="font-size:32px;font-weight:800;color:var(--text)" id="pro-price">$19</span><span style="font-size:13px;color:var(--text3)">/mes</span></div>
+        <div style="font-size:10px;color:var(--accent);margin-bottom:16px;display:none" id="pro-annual-note">$180/año · ahorras $48</div>
+        <ul style="list-style:none;padding:0;text-align:left;font-size:12px;color:var(--text2);margin-bottom:20px">
+          <li style="padding:4px 0">✅ Todo lo de Free</li>
+          <li style="padding:4px 0">✅ CRM completo (pipeline 7 etapas)</li>
+          <li style="padding:4px 0">✅ Chat IA por fase del CRM</li>
+          <li style="padding:4px 0">✅ Propuestas con IA ilimitadas</li>
+          <li style="padding:4px 0">✅ Equipos IA configurables</li>
+          <li style="padding:4px 0">✅ Biblioteca de prompts ilimitada</li>
+          <li style="padding:4px 0">✅ 1 usuario</li>
+        </ul>
+        <a href="https://shop.aiworksuite.pro/l/aiworksuite-pro" target="_blank" rel="noopener" id="cta-pro"
+           style="display:block;padding:12px 20px;background:var(--accent);color:#000;border-radius:var(--r);font-size:13px;font-weight:700;text-decoration:none;transition:opacity .15s"
+           onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+          ⚡ Probar Pro gratis 14 días
+        </a>
+      </div>
+
+      <!-- AGENCY -->
+      <div style="background:var(--bg2);border:1px solid #7c3aed;border-radius:var(--r2);padding:24px;text-align:center">
+        <h3 style="margin:0 0 8px;font-size:16px;color:var(--text)">Agency</h3>
+        <div style="margin-bottom:4px"><span style="font-size:32px;font-weight:800;color:var(--text)" id="agency-price">$49</span><span style="font-size:13px;color:var(--text3)">/mes</span></div>
+        <div style="font-size:10px;color:#7c3aed;margin-bottom:16px;display:none" id="agency-annual-note">$468/año · ahorras $120</div>
+        <ul style="list-style:none;padding:0;text-align:left;font-size:12px;color:var(--text2);margin-bottom:20px">
+          <li style="padding:4px 0">✅ Todo lo de Pro</li>
+          <li style="padding:4px 0">✅ Hasta 5 usuarios</li>
+          <li style="padding:4px 0">✅ Gestión de equipo</li>
+          <li style="padding:4px 0">✅ Seats compartidos</li>
+          <li style="padding:4px 0">✅ Soporte prioritario</li>
+        </ul>
+        <a href="https://shop.aiworksuite.pro/l/aiworksuite-agency" target="_blank" rel="noopener" id="cta-agency"
+           style="display:block;padding:12px 20px;background:#7c3aed;color:#fff;border-radius:var(--r);font-size:13px;font-weight:700;text-decoration:none;transition:opacity .15s"
+           onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+          👥 Agency — hasta 5 usuarios
+        </a>
+      </div>
+
+    </div>
+
+    <!-- FAQ -->
+    <div style="margin-top:32px;max-width:600px;margin-left:auto;margin-right:auto">
+      <h3 style="font-size:14px;color:var(--text);margin-bottom:12px;text-align:center" data-i18n="pricing.faq.title">Preguntas frecuentes</h3>
+      <details style="border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;font-size:12px;color:var(--text2)">
+        <summary style="cursor:pointer;font-weight:600;color:var(--text)" data-i18n="pricing.faq.q1">¿Necesito tarjeta de crédito para la prueba?</summary>
+        <p style="margin:8px 0 0;line-height:1.6" data-i18n="pricing.faq.a1">No. Los 14 días de prueba son completamente gratuitos. Solo se te cobrará si decides continuar.</p>
+      </details>
+      <details style="border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;font-size:12px;color:var(--text2)">
+        <summary style="cursor:pointer;font-weight:600;color:var(--text)" data-i18n="pricing.faq.q2">¿Puedo cancelar en cualquier momento?</summary>
+        <p style="margin:8px 0 0;line-height:1.6" data-i18n="pricing.faq.a2">Sí. Sin permanencia ni penalizaciones. Tu acceso continúa hasta el final del período pagado.</p>
+      </details>
+      <details style="border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;font-size:12px;color:var(--text2)">
+        <summary style="cursor:pointer;font-weight:600;color:var(--text)" data-i18n="pricing.faq.q3">¿Qué pasa con mis datos si cancelo?</summary>
+        <p style="margin:8px 0 0;line-height:1.6" data-i18n="pricing.faq.a3">Tus datos permanecen accesibles en modo Free. Nada se elimina automáticamente.</p>
+      </details>
+      <details style="border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;font-size:12px;color:var(--text2)">
+        <summary style="cursor:pointer;font-weight:600;color:var(--text)" data-i18n="pricing.faq.q4">¿Traéis API key propia (BYOK)?</summary>
+        <p style="margin:8px 0 0;line-height:1.6" data-i18n="pricing.faq.a4">Sí. Conectas tu propia clave de Groq, OpenAI, Anthropic u OpenRouter. AIWorkSuite no almacena ni usa tus claves en nuestros servidores.</p>
+      </details>
+    </div>
+
+  </div></div>
+</div>
+
 <!-- SETTINGS -->
 <div class="view" id="view-settings">
   <div class="topbar"><div class="topbar-title">Configuración</div><div class="topbar-badge">Settings</div></div>
@@ -1817,8 +1954,9 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // PLAN LIMITS
 // ═══════════════════════════════════════════════════════════════════════
 const PLANS = {
-  free: { clients: 5, teams: 3, prompts: 10, chatsPerTeam: 1, aiRoles: false },
-  pro:  { clients: Infinity, teams: Infinity, prompts: Infinity, chatsPerTeam: 3, aiRoles: true }
+  free:   { clients: 5, teams: 3, prompts: 10, chatsPerTeam: 1, aiRoles: false },
+  pro:    { clients: Infinity, teams: Infinity, prompts: Infinity, chatsPerTeam: 3, aiRoles: true },
+  agency: { clients: Infinity, teams: Infinity, prompts: Infinity, chatsPerTeam: 3, aiRoles: true }
 };
 let USER_PLAN = 'free'; // se actualiza en fetchAndApplyPlan() tras login
 
@@ -1839,6 +1977,123 @@ try {
 }
 
 let CURRENT_USER = null;
+
+// ═══════════════════════════════════════════════════════════════════════
+// TIER SYSTEM — Gumroad subscription tiers
+// ═══════════════════════════════════════════════════════════════════════
+const tierSystem = (() => {
+  let _tier = 'free';
+  let _seats = 1;
+  let _status = 'active';
+  let _periodEnd = null;
+
+  const TIER_CACHE_KEY = 'aiws_tier_cache';
+  const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
+
+  async function load(supabaseClient) {
+    try {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      if (!user) { _tier = 'free'; return; }
+
+      const cached = _readCache();
+      if (cached) { _applyTier(cached); return; }
+
+      const { data, error } = await supabaseClient
+        .from('subscriptions')
+        .select('plan, status, seats, billing_cycle, current_period_end, trial_ends_at')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error || !data) {
+        _tier = 'free'; _seats = 1;
+        _updateUI();
+        return;
+      }
+
+      const isActive = data.status === 'active' ||
+        (data.status === 'trialing' && new Date(data.trial_ends_at) > new Date());
+
+      const tierData = {
+        plan: isActive ? data.plan : 'free',
+        seats: isActive ? data.seats : 1,
+        status: data.status,
+        periodEnd: data.current_period_end,
+        cachedAt: Date.now()
+      };
+
+      _writeCache(tierData);
+      _applyTier(tierData);
+    } catch (err) {
+      _tier = 'free';
+      _updateUI();
+    }
+  }
+
+  function _applyTier({ plan, seats, status, periodEnd }) {
+    _tier = plan || 'free';
+    _seats = seats || 1;
+    _status = status || 'active';
+    _periodEnd = periodEnd;
+    // Sync con el sistema USER_PLAN existente
+    if (typeof USER_PLAN !== 'undefined') {
+      USER_PLAN = (_tier === 'pro' || _tier === 'agency') ? 'pro' : 'free';
+    }
+    _updateUI();
+  }
+
+  function _readCache() {
+    try {
+      const raw = sessionStorage.getItem(TIER_CACHE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (Date.now() - parsed.cachedAt > CACHE_TTL_MS) return null;
+      return parsed;
+    } catch { return null; }
+  }
+
+  function _writeCache(data) {
+    try { sessionStorage.setItem(TIER_CACHE_KEY, JSON.stringify(data)); }
+    catch { /* sessionStorage lleno */ }
+  }
+
+  function clearCache() {
+    sessionStorage.removeItem(TIER_CACHE_KEY);
+  }
+
+  function _updateUI() {
+    document.body.dataset.tier = _tier;
+    const badge = document.getElementById('tier-badge');
+    if (badge) {
+      badge.textContent = _tier.toUpperCase();
+      badge.className = 'tier-badge tier-badge--' + _tier;
+    }
+    const dashBadge = document.getElementById('dash-plan-badge');
+    if (dashBadge) {
+      if (_tier === 'agency') dashBadge.textContent = '✦ Agency';
+      else if (_tier === 'pro') dashBadge.textContent = '✦ Pro';
+      else dashBadge.textContent = 'Free';
+    }
+  }
+
+  function isPro() { return _tier === 'pro' || _tier === 'agency'; }
+  function isAgency() { return _tier === 'agency'; }
+  function isFree() { return _tier === 'free'; }
+  function getTier() { return _tier; }
+  function getSeats() { return _seats; }
+  function getPeriodEnd() { return _periodEnd; }
+
+  function requiresTier(minTier, featureName) {
+    const tiers = { free: 0, pro: 1, agency: 2 };
+    const userLevel = tiers[_tier] ?? 0;
+    const requiredLevel = tiers[minTier] ?? 1;
+    if (userLevel >= requiredLevel) return true;
+    showUpgradeModal(featureName, minTier);
+    return false;
+  }
+
+  return { load, isPro, isAgency, isFree, getTier, getSeats,
+           getPeriodEnd, requiresTier, clearCache };
+})();
 
 // ═══════════════════════════════════════════════════════════════════════
 // STORAGE — por usuario
@@ -1940,6 +2195,9 @@ async function doReset() {
 async function doLogout() {
   if (supabase) await supabase.auth.signOut();
   CURRENT_USER = null;
+  USER_PLAN = 'free';
+  tierSystem.clearCache();
+  document.body.dataset.tier = 'free';
   showScreen('landing');
 }
 
@@ -1960,9 +2218,16 @@ async function checkSession() {
       showScreen('landing');
     }
     // Listen for auth changes
-    supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user && !CURRENT_USER) { CURRENT_USER = session.user; launchApp(); }
-      else if (!session) { CURRENT_USER = null; showScreen('landing'); }
+    supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user && !CURRENT_USER) {
+        CURRENT_USER = session.user;
+        launchApp();
+      } else if (!session) {
+        CURRENT_USER = null;
+        tierSystem.clearCache();
+        document.body.dataset.tier = 'free';
+        showScreen('landing');
+      }
     });
   } catch(e) {
     showScreen('landing');
@@ -1998,7 +2263,63 @@ function dismissOnboarding() {
 // ═══════════════════════════════════════════════════════════════════════
 // UPGRADE / PRO INTEREST
 // ═══════════════════════════════════════════════════════════════════════
-function showUpgradeModal() { document.getElementById('modal-upgrade').style.display = 'flex'; document.getElementById('upgrade-email').value = CURRENT_USER?.email || ''; }
+function showUpgradeModal(featureName, minTier) {
+  featureName = featureName || '';
+  minTier = minTier || 'pro';
+  document.getElementById('upgrade-modal')?.remove();
+  const isAgencyRequired = minTier === 'agency';
+  const proUrl = 'https://shop.aiworksuite.pro/l/aiworksuite-pro';
+  const agencyUrl = 'https://shop.aiworksuite.pro/l/aiworksuite-agency';
+  const modal = document.createElement('div');
+  modal.id = 'upgrade-modal';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-label', 'Upgrade a Pro');
+  modal.innerHTML = `
+    <div class="upgrade-modal__backdrop" id="upgrade-modal-backdrop"></div>
+    <div class="upgrade-modal__card">
+      <button class="upgrade-modal__close" id="upgrade-modal-close" aria-label="Cerrar">✕</button>
+      <div class="upgrade-modal__icon">⚡</div>
+      <h2 class="upgrade-modal__title">
+        ${featureName ? '<strong>' + esc(featureName) + '</strong> es una función Pro' : 'Función exclusiva Pro'}
+      </h2>
+      <p class="upgrade-modal__subtitle">
+        Desbloquea todas las herramientas y lleva tu flujo de trabajo al siguiente nivel.
+      </p>
+      <ul class="upgrade-modal__features">
+        <li>✅ CRM completo con pipeline de 7 etapas</li>
+        <li>✅ Propuestas con IA ilimitadas</li>
+        <li>✅ Equipos IA configurables</li>
+        <li>✅ Biblioteca de prompts ilimitada</li>
+        <li>✅ 14 días de prueba gratuita</li>
+      </ul>
+      <div class="upgrade-modal__ctas">
+        <a href="${proUrl}" target="_blank" rel="noopener" class="btn btn-accent" style="padding:12px 24px;font-size:14px;text-decoration:none;display:block;text-align:center">
+          ⚡ Probar Pro gratis 14 días — $19/mes
+        </a>
+        ${!isAgencyRequired ? `
+        <a href="${agencyUrl}" target="_blank" rel="noopener" class="btn btn-ghost" style="padding:10px 20px;font-size:13px;text-decoration:none;display:block;text-align:center">
+          👥 Agency (hasta 5 usuarios) — $49/mes
+        </a>` : `
+        <a href="${agencyUrl}" target="_blank" rel="noopener" class="btn btn-accent" style="padding:12px 24px;font-size:14px;text-decoration:none;display:block;text-align:center">
+          👥 Agency (hasta 5 usuarios) — $49/mes
+        </a>`}
+      </div>
+      <p class="upgrade-modal__footnote">
+        Garantía de devolución 14 días · Sin permanencia · Cancela cuando quieras
+      </p>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  requestAnimationFrame(() => modal.classList.add('upgrade-modal--visible'));
+  const close = () => {
+    modal.classList.remove('upgrade-modal--visible');
+    setTimeout(() => modal.remove(), 300);
+  };
+  document.getElementById('upgrade-modal-close').addEventListener('click', close);
+  document.getElementById('upgrade-modal-backdrop').addEventListener('click', close);
+  document.addEventListener('keydown', function _esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', _esc); } });
+}
 function showUpgradeInterest() { showUpgradeModal(); }
 
 async function submitUpgradeInterest() {
@@ -2034,13 +2355,8 @@ function checkPlanLimit(type) {
 }
 
 function showLimitWarning(type) {
-  const msgs = {
-    clients: `Has alcanzado el límite de ${PLANS.free.clients} clientes del plan Free.`,
-    teams:   `Has alcanzado el límite de ${PLANS.free.teams} equipos del plan Free.`,
-    prompts: `Has alcanzado el límite de ${PLANS.free.prompts} prompts del plan Free.`
-  };
-  document.getElementById('upgrade-email').value = CURRENT_USER?.email || '';
-  document.getElementById('modal-upgrade').style.display = 'flex';
+  const names = { clients: 'CRM Inteligente', teams: 'Equipos IA', prompts: 'Biblioteca ilimitada' };
+  showUpgradeModal(names[type] || '', 'pro');
 }
 
 function updateLimitLabels() {
@@ -2081,23 +2397,11 @@ function updatePlanBadge() {
 async function fetchAndApplyPlan() {
   if (!supabase || !CURRENT_USER || CURRENT_USER.id === 'demo') return;
   try {
-    const { data } = await supabase
-      .from('subscriptions')
-      .select('plan, status, valid_until')
-      .eq('user_id', CURRENT_USER.id)
-      .eq('status', 'active')
-      .maybeSingle();
-    if (data?.plan === 'pro') {
-      const validUntil = data.valid_until ? new Date(data.valid_until) : null;
-      if (!validUntil || validUntil > new Date()) {
-        USER_PLAN = 'pro';
-        updateLimitLabels();
-        updatePlanBadge();
-        renderTeamsView();
-      }
-    } else {
-      updatePlanBadge(); // ensure badge is correct even if free
-    }
+    await tierSystem.load(supabase);
+    // tierSystem._applyTier ya sincroniza USER_PLAN
+    updateLimitLabels();
+    updatePlanBadge();
+    if (tierSystem.isPro()) renderTeamsView();
   } catch(_e) {
     // tabla no existe aún o sin conexión — plan free por defecto
   }
@@ -2118,8 +2422,12 @@ function openProCheckout() {
 // ═══════════════════════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════════════════════
-const VIEWS = ['dash','crm','prop','lib','teams','ws','settings'];
+const VIEWS = ['dash','crm','prop','lib','teams','ws','settings','pricing'];
 function goTo(id) {
+  // Guards para vistas premium
+  if (id === 'crm' && !tierSystem.requiresTier('pro', 'CRM Inteligente')) return;
+  if (id === 'prop' && !tierSystem.requiresTier('pro', 'Generador de Propuestas')) return;
+  if (id === 'teams' && !tierSystem.requiresTier('pro', 'Equipos IA')) return;
   VIEWS.forEach(v => {
     document.getElementById('view-' + v).classList.toggle('active', v === id);
     const n = document.getElementById('nav-' + v); if(n) n.classList.toggle('active', v === id);
@@ -2128,7 +2436,51 @@ function goTo(id) {
   if (id === 'lib')    renderLib();
   if (id === 'teams')  renderTeamsView();
   if (id === 'crm')    pollCaptadoSignal();
+  if (id === 'pricing') updatePricingView();
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// PRICING — toggle mensual/anual + estado de plan
+// ═══════════════════════════════════════════════════════════════════════
+function updatePricingView() {
+  const tier = tierSystem.getTier();
+  const freeBtn = document.getElementById('current-plan-free');
+  if (freeBtn) freeBtn.textContent = tier === 'free' ? 'Plan actual' : '';
+  if (freeBtn) freeBtn.style.display = tier === 'free' ? 'block' : 'none';
+}
+
+document.addEventListener('click', function(e) {
+  if (e.target.id !== 'billing-toggle' && e.target.id !== 'toggle-thumb') return;
+  const btn = document.getElementById('billing-toggle');
+  if (!btn) return;
+  const isAnnual = btn.getAttribute('aria-pressed') === 'true';
+  btn.setAttribute('aria-pressed', String(!isAnnual));
+  const thumb = document.getElementById('toggle-thumb');
+  if (thumb) thumb.style.transform = !isAnnual ? 'translateX(18px)' : 'translateX(0)';
+
+  const proPrice = document.getElementById('pro-price');
+  const agencyPrice = document.getElementById('agency-price');
+  const proNote = document.getElementById('pro-annual-note');
+  const agencyNote = document.getElementById('agency-annual-note');
+  const ctaPro = document.getElementById('cta-pro');
+  const ctaAgency = document.getElementById('cta-agency');
+
+  if (!isAnnual) {
+    if (proPrice) proPrice.textContent = '$15';
+    if (agencyPrice) agencyPrice.textContent = '$39';
+    if (proNote) proNote.style.display = 'block';
+    if (agencyNote) agencyNote.style.display = 'block';
+    if (ctaPro) ctaPro.href = 'https://shop.aiworksuite.pro/l/aiworksuite-pro?option=yearly';
+    if (ctaAgency) ctaAgency.href = 'https://shop.aiworksuite.pro/l/aiworksuite-agency?option=yearly';
+  } else {
+    if (proPrice) proPrice.textContent = '$19';
+    if (agencyPrice) agencyPrice.textContent = '$49';
+    if (proNote) proNote.style.display = 'none';
+    if (agencyNote) agencyNote.style.display = 'none';
+    if (ctaPro) ctaPro.href = 'https://shop.aiworksuite.pro/l/aiworksuite-pro';
+    if (ctaAgency) ctaAgency.href = 'https://shop.aiworksuite.pro/l/aiworksuite-agency';
+  }
+});
 
 // ═══════════════════════════════════════════════════════════════════════
 // UTILS
@@ -2527,6 +2879,7 @@ function getEnts(){return Array.from(document.querySelectorAll('#ent-list input'
 function addEnt(){const r=document.createElement('div');r.className='ent-row';r.innerHTML=`<input class="inp" placeholder="Entregable..."><button class="btn-rem" onclick="remEnt(this)">×</button>`;document.getElementById('ent-list').appendChild(r);r.querySelector('input').focus();}
 function remEnt(btn){const rows=document.querySelectorAll('.ent-row');if(rows.length>1)btn.parentElement.remove();}
 async function generarPropuesta(){
+  if (!tierSystem.requiresTier('pro', 'Generador de Propuestas')) return;
   const nombre=document.getElementById('p-nombre').value.trim();const servicio=document.getElementById('p-servicio').value.trim();
   if(!nombre||!servicio){showToast('Nombre del cliente y servicio son obligatorios.','warn');return;}
   const tipo=document.getElementById('p-tipo')?.value||'';
@@ -2685,7 +3038,7 @@ function renderLibGrid(){
   grid.innerHTML=f.map(p=>{const idx=items.indexOf(p);const tags=(p.tags||[]).slice(0,3).map(t=>`<span class="tag tag-gray">${esc(t)}</span>`).join('');return`<div class="prompt-card"><div class="pc-title">${esc(p.title)}</div><div class="pc-preview">${esc(p.content)}</div><div class="pc-tags"><span class="tag ${tagCls[p.category]||'tag-gray'}">${LIB_CATS[p.category]||p.category}</span>${tags}</div><div class="pc-actions"><button class="btn btn-ghost btn-xs" onclick="editPrompt(${idx})">Editar</button><button class="btn btn-purple btn-xs" onclick="insertPromptToTeam(${idx})">→ Equipos</button><button class="btn btn-red btn-xs" onclick="deletePrompt(${idx})">×</button></div></div>`;}).join('');
 }
 function openNewPromptModal(){
-  if(!checkPlanLimit('prompts')){showLimitWarning('prompts');return;}
+  if(tierSystem.isFree()&&getLib().length>=5){tierSystem.requiresTier('pro','Biblioteca ilimitada');return;}
   document.getElementById('modal-prompt-title').textContent='Nuevo prompt';['np-title','np-content','np-tags'].forEach(id=>document.getElementById(id).value='');document.getElementById('np-cat').value='system';delete document.getElementById('modal-prompt').dataset.editIdx;document.getElementById('modal-prompt').style.display='flex';setTimeout(()=>document.getElementById('np-title').focus(),80);
 }
 function editPrompt(idx){const p=getLib()[idx];document.getElementById('modal-prompt-title').textContent='Editar prompt';document.getElementById('np-title').value=p.title||'';document.getElementById('np-content').value=p.content||'';document.getElementById('np-cat').value=p.category||'system';document.getElementById('np-tags').value=(p.tags||[]).join(', ');document.getElementById('modal-prompt').dataset.editIdx=idx;document.getElementById('modal-prompt').style.display='flex';}
@@ -2693,7 +3046,7 @@ function savePrompt(){
   const title=document.getElementById('np-title').value.trim();const content=document.getElementById('np-content').value.trim();if(!title||!content){showToast('Título y contenido son obligatorios.','warn');return;}
   const items=getLib();
   const editIdx=parseInt(document.getElementById('modal-prompt').dataset.editIdx);
-  if(!isNaN(editIdx)&&editIdx>=0){/* editing, no limit check */}else if(!checkPlanLimit('prompts')){showLimitWarning('prompts');return;}
+  if(!isNaN(editIdx)&&editIdx>=0){/* editing, no limit check */}else if(tierSystem.isFree()&&getLib().length>=5){tierSystem.requiresTier('pro','Biblioteca ilimitada');return;}
   const p={id:genId(),title,content,category:document.getElementById('np-cat').value,tags:document.getElementById('np-tags').value.split(',').map(t=>t.trim()).filter(Boolean),createdAt:fmtDate()};
   if(!isNaN(editIdx)&&editIdx>=0){items[editIdx]={...items[editIdx],...p};}else{items.unshift(p);}
   saveLib(items);closeModal('modal-prompt');renderLib();updateLimitLabels();logActivity('Prompt guardado: '+title,'var(--purple)');
@@ -2761,7 +3114,7 @@ function renderTeamsView() {
 }
 
 function showNewTeamConfig() {
-  if(!checkPlanLimit('teams')){showLimitWarning('teams');return;}
+  if(!tierSystem.requiresTier('pro','Equipos IA'))return;
   document.getElementById('config-panel').classList.add('active');
   document.getElementById('config-panel-title').textContent='Nuevo equipo';
   configReset();
@@ -3033,7 +3386,7 @@ const TRANSLATIONS={
     auth_privacy_note:'Al registrarte aceptas que tus datos se almacenan localmente en tu navegador. Solo tu email se guarda en nuestro servidor.',
     nav_dashboard:'Dashboard',nav_crm:'CRM',nav_proposals:'Propuestas',
     nav_library:'Biblioteca',nav_teams:'Equipos IA',nav_workspace:'Workspace',
-    nav_settings:'Configuración',nav_theme:'Cambiar tema',nav_lang:'Switch to English',
+    nav_settings:'Configuración',nav_pricing:'Planes',nav_theme:'Cambiar tema',nav_lang:'Switch to English',
     dash_hello:'Hola',dash_api_warn:'Configura tu API key',
     dash_kpi_clients:'Clientes',dash_kpi_proposals:'Propuestas pendientes',dash_kpi_teams:'Equipos IA',dash_kpi_prompts:'Prompts',
     dash_kpi_won:'captados',dash_kpi_total:'total',dash_kpi_active:'activos',dash_kpi_reusable:'reutilizables',
@@ -3113,7 +3466,7 @@ const TRANSLATIONS={
     auth_privacy_note:'By signing up you agree that your data is stored locally in your browser. Only your email is stored on our server.',
     nav_dashboard:'Dashboard',nav_crm:'CRM',nav_proposals:'Proposals',
     nav_library:'Library',nav_teams:'AI Teams',nav_workspace:'Workspace',
-    nav_settings:'Settings',nav_theme:'Toggle theme',nav_lang:'Cambiar a Español',
+    nav_settings:'Settings',nav_pricing:'Plans',nav_theme:'Toggle theme',nav_lang:'Cambiar a Español',
     dash_hello:'Hello',dash_api_warn:'Configure your API key',
     dash_kpi_clients:'Clients',dash_kpi_proposals:'Pending proposals',dash_kpi_teams:'AI Teams',dash_kpi_prompts:'Prompts',
     dash_kpi_won:'won',dash_kpi_total:'total',dash_kpi_active:'active',dash_kpi_reusable:'reusable',
@@ -3202,7 +3555,7 @@ function _syncDynamicStrings(){
   const h1a=document.getElementById('land-h1-a');if(h1a)h1a.textContent=t('land_h1_a');
   const h1b=document.getElementById('land-h1-b');if(h1b)h1b.textContent=t('land_h1_b');
   const tipMap={'nav-dash':'nav_dashboard','nav-crm':'nav_crm','nav-prop':'nav_proposals',
-    'nav-lib':'nav_library','nav-teams':'nav_teams','nav-ws':'nav_workspace','nav-settings':'nav_settings'};
+    'nav-lib':'nav_library','nav-teams':'nav_teams','nav-ws':'nav_workspace','nav-settings':'nav_settings','nav-pricing':'nav_pricing'};
   Object.entries(tipMap).forEach(([id,key])=>{const el=document.querySelector(`#${id} .nav-tip`);if(el)el.textContent=t(key);});
   if(typeof renderTimeline==='function'&&typeof CRM!=='undefined'&&CRM?.activeId)renderTimeline();
   if(typeof renderClientList==='function')renderClientList();
