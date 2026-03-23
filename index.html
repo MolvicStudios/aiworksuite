@@ -379,16 +379,29 @@ select.inp option{background:var(--bg3)}
 ═══════════════════════════════════════════════ */
 #screen-app{height:100vh;overflow:hidden}
 .app-shell{flex:1;display:flex;overflow:hidden;min-height:0}
-.sidenav{width:48px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:2px;flex-shrink:0;z-index:100;overflow:hidden}
-.nav-logo-btn{width:32px;height:32px;border-radius:var(--r);background:var(--abg);border:1px solid rgba(240,165,0,.25);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:11px;color:var(--accent);margin-bottom:8px;cursor:pointer;transition:all .15s;letter-spacing:.05em;user-select:none;flex-shrink:0}
+.sidenav{width:56px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:2px;flex-shrink:0;z-index:100;overflow:hidden}
+.nav-logo-btn{width:36px;height:32px;border-radius:var(--r);background:var(--abg);border:1px solid rgba(240,165,0,.25);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:11px;color:var(--accent);margin-bottom:8px;cursor:pointer;transition:all .15s;letter-spacing:.05em;user-select:none;flex-shrink:0}
 .nav-logo-btn:hover{background:var(--abg2)}
-.nav-item{width:34px;height:34px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid transparent;transition:all .15s;position:relative;flex-shrink:0}
-.nav-item svg{width:16px;height:16px;fill:none;stroke:var(--text2);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
-.nav-item:hover{background:var(--bg3);border-color:var(--border)}.nav-item:hover svg{stroke:var(--text)}
-.nav-item.active{background:var(--abg);border-color:rgba(240,165,0,.25)}.nav-item.active svg{stroke:var(--accent)}
+.nav-item{width:42px;height:38px;border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;border:1px solid transparent;transition:all .15s;position:relative;flex-shrink:0}
+.nav-item svg{width:14px;height:14px;fill:none;stroke:var(--text2);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
+.nav-label{font-size:7px;font-family:'JetBrains Mono',monospace;color:var(--text3);letter-spacing:.02em;line-height:1;white-space:nowrap;transition:color .15s}
+.nav-item:hover{background:var(--bg3);border-color:var(--border)}.nav-item:hover svg{stroke:var(--text)}.nav-item:hover .nav-label{color:var(--text)}
+.nav-item.active{background:var(--abg);border-color:rgba(240,165,0,.25)}.nav-item.active svg{stroke:var(--accent)}.nav-item.active .nav-label{color:var(--accent)}
+/* Nav module colors */
+#nav-crm svg{stroke:var(--teal)}#nav-crm.active svg{stroke:var(--teal)}#nav-crm .nav-label{color:var(--teal)}
+#nav-prop svg{stroke:var(--accent)}#nav-prop .nav-label{color:var(--accent)}
+#nav-teams svg{stroke:var(--purple)}#nav-teams.active svg{stroke:var(--purple)}#nav-teams .nav-label{color:var(--purple)}
+#nav-lib svg{stroke:var(--blue)}#nav-lib.active svg{stroke:var(--blue)}#nav-lib .nav-label{color:var(--blue)}
+#nav-ws svg{stroke:var(--green)}#nav-ws.active svg{stroke:var(--green)}#nav-ws .nav-label{color:var(--green)}
+#nav-pricing svg{stroke:var(--purple)}#nav-pricing .nav-label{color:var(--purple)}
+#nav-crm.active{background:var(--tbg);border-color:var(--tb)}
+#nav-prop.active{background:var(--abg);border-color:rgba(240,165,0,.25)}
+#nav-teams.active{background:var(--pbg);border-color:var(--pb)}
+#nav-lib.active{background:var(--bbg);border-color:var(--bbb)}
+#nav-ws.active{background:var(--gbg);border-color:var(--gbb)}
 .nav-badge{position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--red);border:1.5px solid var(--bg2)}
 .nav-sep{width:24px;height:1px;background:var(--border2);margin:4px 0}
-.nav-tip{position:absolute;left:44px;top:50%;transform:translateY(-50%);background:var(--bg4);border:1px solid var(--border2);color:var(--text);font-size:10px;padding:3px 8px;border-radius:4px;white-space:nowrap;font-family:'JetBrains Mono',monospace;pointer-events:none;opacity:0;transition:opacity .15s;z-index:300}
+.nav-tip{position:absolute;left:52px;top:50%;transform:translateY(-50%);background:var(--bg4);border:1px solid var(--border2);color:var(--text);font-size:10px;padding:3px 8px;border-radius:4px;white-space:nowrap;font-family:'JetBrains Mono',monospace;pointer-events:none;opacity:0;transition:opacity .15s;z-index:300}
 .nav-item:hover .nav-tip{opacity:1}
 .nav-bottom{margin-top:auto;flex-shrink:0}
 .content-area{flex:1;overflow:hidden;display:flex;flex-direction:column;min-width:0}
@@ -414,8 +427,14 @@ select.inp option{background:var(--bg3)}
 .dash-greeting h1{font-family:'Syne',sans-serif;font-size:18px;font-weight:700}
 .dash-greeting p{font-size:12px;color:var(--text3);margin-top:2px;font-family:'JetBrains Mono',monospace}
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
-.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:14px;cursor:pointer;transition:border-color .15s;position:relative}
-.kpi:hover{border-color:var(--border2)}
+.kpi{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--border);border-radius:var(--r2);padding:14px;cursor:pointer;transition:all .15s;position:relative}
+.kpi:hover{border-color:var(--border2);transform:translateY(-1px)}
+.kpi-arrow{position:absolute;top:12px;right:10px;font-size:11px;color:var(--text3);opacity:.4;transition:opacity .15s}
+.kpi:hover .kpi-arrow{opacity:.85}
+.kpi--crm{border-left-color:var(--teal)}
+.kpi--prop{border-left-color:var(--accent)}
+.kpi--teams{border-left-color:var(--purple)}
+.kpi--lib{border-left-color:var(--blue)}
 .kpi .dtip,.dash-mod .dtip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--bg4);border:1px solid var(--border2);color:var(--text2);font-size:10px;padding:4px 10px;border-radius:5px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:200;font-family:'JetBrains Mono',monospace;box-shadow:0 2px 8px rgba(0,0,0,.18)}
 .kpi:hover .dtip,.dash-mod:hover .dtip{opacity:1}
 .kpi-label{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
@@ -840,7 +859,7 @@ select.inp option{background:var(--bg3)}
 <div class="screen active" id="screen-landing">
 
   <nav class="land-nav">
-    <div class="land-logo">AIWork<span>Suite</span><a href="https://molvicstudios.pro" target="_blank" rel="noopener noreferrer" class="land-logo-by">by MolvicStudios</a></div>
+    <div class="land-logo">AIWork<span>Suite</span><span style="display:block;font-size:11px;font-weight:400;opacity:0.6;letter-spacing:0.03em;line-height:1;">by <a href="https://molvicstudios.pro" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">MolvicStudios.pro</a></span></div>
     <div class="land-nav-links">
       <a href="#pricing" style="font-size:12px;color:var(--text3);text-decoration:none;font-family:'JetBrains Mono',monospace;margin-right:8px;transition:color .15s" onmouseover="this.style.color='var(--text2)'" onmouseout="this.style.color='var(--text3)'">Planes</a>
       <button class="btn btn-ghost btn-sm" onclick="showAuth('login')" data-i18n="auth_btn_login">Entrar</button>
@@ -1259,8 +1278,12 @@ select.inp option{background:var(--bg3)}
         <a href="#" onclick="showLegalModal('privacy');return false" data-i18n="footer_privacy">Privacidad</a>
         <a href="#" onclick="showLegalModal('cookies');return false" data-i18n="footer_cookies">Cookies</a>
         <a href="#" onclick="showLegalModal('terms');return false"   data-i18n="footer_terms">Términos</a>
-        <a href="mailto:hola@molvicstudios.pro" data-i18n="footer_contact">Contacto</a>
+        <a href="mailto:molvicstudios@outlook.com" data-i18n="footer_contact">Contacto</a>
       </div>
+      <p style="font-size:11px;opacity:0.5;text-align:center;margin-top:16px;">
+        © 2026 <a href="https://molvicstudios.pro" target="_blank" rel="noopener" style="color:inherit;">MolvicStudios.pro</a> · 
+        <a href="mailto:molvicstudios@outlook.com" style="color:inherit;">molvicstudios@outlook.com</a>
+      </p>
     </footer>
   </div>
 </div>
@@ -1270,7 +1293,7 @@ select.inp option{background:var(--bg3)}
 ══════════════════════════════════════════════════════ -->
 <div class="screen" id="screen-auth">
   <nav class="land-nav" style="border-bottom:none;background:transparent;position:absolute;top:0;left:0;right:0;z-index:10">
-    <div class="land-logo" style="cursor:pointer" onclick="showLanding()">AIWork<span>Suite</span></div>
+    <div class="land-logo" style="cursor:pointer" onclick="showLanding()">AIWork<span>Suite</span><span style="display:block;font-size:11px;font-weight:400;opacity:0.6;letter-spacing:0.03em;line-height:1;">by <a href="https://molvicstudios.pro" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">MolvicStudios.pro</a></span></div>
   </nav>
   <div class="auth-screen">
     <div class="auth-card">
@@ -1327,27 +1350,33 @@ select.inp option{background:var(--bg3)}
   <div class="nav-logo-btn" id="nav-logo-btn" onclick="goTo('dash')" title="Dashboard">AI</div>
   <div class="nav-item active" id="nav-dash" onclick="goTo('dash')">
     <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+    <span class="nav-label">Inicio</span>
     <div class="nav-tip">Dashboard</div>
   </div>
   <div class="nav-item" id="nav-crm" onclick="goTo('crm')">
     <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span class="nav-label">CRM</span>
     <div class="nav-tip">CRM</div>
   </div>
   <div class="nav-item" id="nav-prop" onclick="goTo('prop')">
     <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    <span class="nav-label">Props</span>
     <div class="nav-tip">Propuestas</div>
   </div>
   <div class="nav-sep"></div>
   <div class="nav-item" id="nav-lib" onclick="goTo('lib')">
     <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    <span class="nav-label">Biblio</span>
     <div class="nav-tip">Biblioteca</div>
   </div>
   <div class="nav-item" id="nav-teams" onclick="goTo('teams')">
     <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+    <span class="nav-label">Equipos</span>
     <div class="nav-tip">Equipos IA</div>
   </div>
   <div class="nav-item" id="nav-ws" onclick="goTo('ws')" style="display:none">
     <svg viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+    <span class="nav-label">Work</span>
     <div class="nav-badge"></div>
     <div class="nav-tip">Workspace</div>
   </div>
@@ -1355,16 +1384,19 @@ select.inp option{background:var(--bg3)}
     <div class="nav-sep"></div>
     <div class="nav-item" id="nav-pricing" onclick="goTo('pricing')">
       <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-      <span id="tier-badge" class="tier-badge tier-badge--free" style="position:absolute;top:2px;right:2px;font-size:7px;padding:1px 4px">FREE</span>
+      <span class="nav-label">Planes</span>
+      <span id="tier-badge" class="tier-badge tier-badge--free" style="position:absolute;top:1px;right:1px;font-size:6px;padding:1px 3px">FREE</span>
       <div class="nav-tip">Planes</div>
     </div>
     <div class="nav-item" id="nav-aiden" onclick="typeof aiwsToggle==='function'&&aiwsToggle()" title="Aiden · Asistente IA">
       <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span class="nav-label">Aiden</span>
       <div class="nav-tip">Aiden · Asistente</div>
     </div>
     <div class="nav-sep"></div>
     <div class="nav-item" id="nav-settings" onclick="goTo('settings')" style="background:var(--bg3);border-color:var(--border2)">
       <svg viewBox="0 0 24 24" style="stroke:var(--text)!important"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span class="nav-label">Config</span>
       <div class="nav-tip">Configuración</div>
     </div>
   </div>
@@ -2414,7 +2446,7 @@ async function submitUpgradeInterest() {
     interests.push({ email, date: new Date().toISOString() });
     S.set('upgrade_interests', interests);
   }
-  showToast('✅ ' + t('upgrade_notify') + ' — ' + email, 'success');
+  showToast('✅ ' + t('upgrade_subscribe') + ' — ' + email, 'success');
   closeModal('modal-upgrade');
 }
 
@@ -2786,17 +2818,17 @@ function refreshDash() {
   const teams = getTeams(); const libItems = getLib();
   document.getElementById('dash-sub').textContent = `${cids.length} clientes · ${captados} captados · ${teams.length} equipos activos`;
   document.getElementById('kpi-grid').innerHTML = [
-    {label:t('dash_kpi_clients'),val:cids.length,sub:captados+' '+t('dash_kpi_won'),view:'crm',tip:'Ir al CRM · gestiona tu pipeline'},
-    {label:t('dash_kpi_proposals'),val:pendientes,sub:allProps.length+' '+t('dash_kpi_total'),view:'prop',tip:'Propuestas enviadas pendientes de respuesta'},
-    {label:t('dash_kpi_teams'),val:teams.length,sub:t('dash_kpi_active'),view:'teams',tip:'Equipos IA activos · haz clic para gestionar'},
-    {label:t('dash_kpi_prompts'),val:libItems.length,sub:t('dash_kpi_reusable'),view:'lib',tip:'Prompts guardados en tu biblioteca'},
-  ].map(k => `<div class="kpi" onclick="goTo('${k.view}')"><div class="dtip">${k.tip}</div><div class="kpi-label">${k.label}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
+    {label:t('dash_kpi_clients'),val:cids.length,sub:captados+' '+t('dash_kpi_won'),view:'crm',tip:'Ir al CRM · gestiona tu pipeline',cls:'kpi--crm'},
+    {label:t('dash_kpi_proposals'),val:pendientes,sub:allProps.length+' '+t('dash_kpi_total'),view:'prop',tip:'Propuestas enviadas pendientes de respuesta',cls:'kpi--prop'},
+    {label:t('dash_kpi_teams'),val:teams.length,sub:t('dash_kpi_active'),view:'teams',tip:'Equipos IA activos · haz clic para gestionar',cls:'kpi--teams'},
+    {label:t('dash_kpi_prompts'),val:libItems.length,sub:t('dash_kpi_reusable'),view:'lib',tip:'Prompts guardados en tu biblioteca',cls:'kpi--lib'},
+  ].map(k => `<div class="kpi ${k.cls}" onclick="goTo('${k.view}')"><div class="dtip">${k.tip}</div><span class="kpi-arrow">→</span><div class="kpi-label">${k.label}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
   document.getElementById('dash-modules').innerHTML = [
-    {icon:'◈',name:t('nav_crm'),desc:t('dash_mod_crm_desc'),cta:cids.length+' '+t('dash_mod_crm_cta'),view:'crm',tip:'Pipeline de ventas · '+cids.length+' clientes · '+captados+' captados'},
-    {icon:'◇',name:t('nav_proposals'),desc:t('dash_mod_prop_desc'),cta:t('prop_generate'),view:'prop',tip:'Genera propuestas profesionales con IA en segundos'},
-    {icon:'▣',name:t('nav_teams'),desc:t('dash_mod_teams_desc'),cta:teams.length+' '+t('dash_mod_teams_cta'),view:'teams',tip:'Configura agentes IA especializados para cada proyecto'},
-    {icon:'◉',name:t('nav_library'),desc:t('dash_mod_lib_desc'),cta:libItems.length+' prompts →',view:'lib',tip:'Guarda y reutiliza tus mejores prompts en cualquier módulo'},
-  ].map(m => `<div class="dash-mod" onclick="goTo('${m.view}')" style="cursor:pointer;border:1px solid var(--border);border-radius:var(--r2);padding:14px 16px;background:var(--bg2);transition:all .15s;position:relative"><div class="dtip">${m.tip}</div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px;color:var(--accent);opacity:.7">${m.icon}</span><div class="dash-mod-name">${m.name}</div></div><div class="dash-mod-desc">${m.desc}</div><div class="dash-mod-cta">${m.cta}</div></div>`).join('');
+    {icon:'👥',name:t('nav_crm'),desc:t('dash_mod_crm_desc'),cta:cids.length+' '+t('dash_mod_crm_cta'),view:'crm',tip:'Pipeline de ventas · '+cids.length+' clientes · '+captados+' captados',color:'var(--teal)'},
+    {icon:'📄',name:t('nav_proposals'),desc:t('dash_mod_prop_desc'),cta:t('prop_generate'),view:'prop',tip:'Genera propuestas profesionales con IA en segundos',color:'var(--accent)'},
+    {icon:'🤖',name:t('nav_teams'),desc:t('dash_mod_teams_desc'),cta:teams.length+' '+t('dash_mod_teams_cta'),view:'teams',tip:'Configura agentes IA especializados para cada proyecto',color:'var(--purple)'},
+    {icon:'📚',name:t('nav_library'),desc:t('dash_mod_lib_desc'),cta:libItems.length+' prompts →',view:'lib',tip:'Guarda y reutiliza tus mejores prompts en cualquier módulo',color:'var(--blue)'},
+  ].map(m => `<div class="dash-mod" onclick="goTo('${m.view}')" style="cursor:pointer;border:1px solid var(--border);border-left:3px solid ${m.color};border-radius:var(--r2);padding:14px 16px;background:var(--bg2);transition:all .15s;position:relative"><div class="dtip">${m.tip}</div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">${m.icon}</span><div class="dash-mod-name">${m.name}</div><span style="margin-left:auto;font-size:11px;color:var(--text3);opacity:.4">→</span></div><div class="dash-mod-desc">${m.desc}</div><div class="dash-mod-cta">${m.cta}</div></div>`).join('');
   const stages = ['CONTACTO','CALIF','DISCOVERY','PROPUESTA','PRESENTACIÓN','NEGOC','ONBOARDING'];
   const sc = Array(7).fill(0); cids.forEach(id => { sc[clients[id].activeStage||0]++; });
   const colors = ['#f0a500','#e8950a','#d08010','#1d9e75','#5b8dee','#8b7cf8','#4caf7d'];
@@ -3471,6 +3503,7 @@ const TRANSLATIONS={
     nav_dashboard:'Dashboard',nav_crm:'CRM',nav_proposals:'Propuestas',
     nav_library:'Biblioteca',nav_teams:'Equipos IA',nav_workspace:'Workspace',
     nav_settings:'Configuración',nav_pricing:'Planes',nav_theme:'Cambiar tema',nav_lang:'Switch to English',
+    nav_label_dash:'Inicio',nav_label_crm:'CRM',nav_label_prop:'Props',nav_label_lib:'Biblio',nav_label_teams:'Equipos',nav_label_ws:'Work',nav_label_pricing:'Planes',nav_label_aiden:'Aiden',nav_label_settings:'Config',
     dash_hello:'Hola',dash_api_warn:'Configura tu API key',
     dash_kpi_clients:'Clientes',dash_kpi_proposals:'Propuestas pendientes',dash_kpi_teams:'Equipos IA',dash_kpi_prompts:'Prompts',
     dash_kpi_won:'captados',dash_kpi_total:'total',dash_kpi_active:'activos',dash_kpi_reusable:'reutilizables',
@@ -3512,15 +3545,15 @@ const TRANSLATIONS={
     settings_import_label:'Importar datos',settings_import_sub:'Restaurar desde backup JSON',
     settings_reset_label:'Restablecer aplicación',settings_reset_sub:'Elimina todos los datos locales. Irreversible.',
     settings_save:'Guardar',settings_logout:'Cerrar sesión',settings_account:'Tu cuenta',
-    upgrade_title:'Actualiza a Pro',upgrade_coming:'✦ Pro — $19/mes · $180/año',
-    upgrade_coming_sub:'Desbloquea clientes, equipos y prompts ilimitados.',
-    upgrade_notify:'Notificarme — descuento early',upgrade_dismiss:'Ahora no',
+    upgrade_title:'Actualiza a Pro',upgrade_info:'✦ Pro — $19/mes · $180/año',
+    upgrade_info_sub:'Desbloquea clientes, equipos y prompts ilimitados.',
+    upgrade_subscribe:'Suscribirme a Pro',upgrade_dismiss:'Ahora no',
     btn_save:'Guardar',btn_cancel:'Cancelar',btn_edit:'Editar',btn_delete:'Eliminar',
     btn_copy:'Copiar',btn_copied:'✓ Copiado',btn_continue:'Continuar →',btn_back:'←',btn_confirm:'Confirmar',
     cookie_text:'Usamos cookies esenciales para el funcionamiento de la app y recordar tu sesión.',
     cookie_learn:'Política de cookies',cookie_accept:'Aceptar todo',cookie_essential:'Solo esenciales',
-    plan_free_tag:'Gratis para siempre',plan_pro_badge:'Q3 2026',
-    plan_free_start:'Empezar gratis',plan_pro_notify:'Suscribirme a Pro →',
+    plan_free_tag:'Gratis para siempre',plan_pro_badge:'Disponible',
+    plan_free_start:'Empezar gratis',plan_pro_subscribe:'Suscribirme a Pro →',
     footer_tagline:'BYOK · Tus datos, tu navegador',
     footer_privacy:'Privacidad',footer_cookies:'Cookies',footer_terms:'Términos',footer_contact:'Contacto',footer_by:'by',
     privacy_title:'Política de Privacidad',cookies_title:'Política de Cookies',terms_title:'Términos de Uso',
@@ -3559,6 +3592,7 @@ const TRANSLATIONS={
     nav_dashboard:'Dashboard',nav_crm:'CRM',nav_proposals:'Proposals',
     nav_library:'Library',nav_teams:'AI Teams',nav_workspace:'Workspace',
     nav_settings:'Settings',nav_pricing:'Plans',nav_theme:'Toggle theme',nav_lang:'Cambiar a Español',
+    nav_label_dash:'Home',nav_label_crm:'CRM',nav_label_prop:'Props',nav_label_lib:'Library',nav_label_teams:'Teams',nav_label_ws:'Work',nav_label_pricing:'Plans',nav_label_aiden:'Aiden',nav_label_settings:'Config',
     dash_hello:'Hello',dash_api_warn:'Configure your API key',
     dash_kpi_clients:'Clients',dash_kpi_proposals:'Pending proposals',dash_kpi_teams:'AI Teams',dash_kpi_prompts:'Prompts',
     dash_kpi_won:'won',dash_kpi_total:'total',dash_kpi_active:'active',dash_kpi_reusable:'reusable',
@@ -3600,15 +3634,15 @@ const TRANSLATIONS={
     settings_import_label:'Import data',settings_import_sub:'Restore from previously exported JSON backup',
     settings_reset_label:'Reset app',settings_reset_sub:'Deletes all local data. Irreversible.',
     settings_save:'Save',settings_logout:'Sign out',settings_account:'Your account',
-    upgrade_title:'Upgrade to Pro',upgrade_coming:'✦ Pro — $19/mo · $180/yr',
-    upgrade_coming_sub:'Unlock unlimited clients, teams and prompts.',
-    upgrade_notify:'Notify me — early discount',upgrade_dismiss:'Maybe later',
+    upgrade_title:'Upgrade to Pro',upgrade_info:'✦ Pro — $19/mo · $180/yr',
+    upgrade_info_sub:'Unlock unlimited clients, teams and prompts.',
+    upgrade_subscribe:'Subscribe to Pro',upgrade_dismiss:'Maybe later',
     btn_save:'Save',btn_cancel:'Cancel',btn_edit:'Edit',btn_delete:'Delete',
     btn_copy:'Copy',btn_copied:'✓ Copied',btn_continue:'Continue →',btn_back:'←',btn_confirm:'Confirm',
     cookie_text:'We use essential cookies to keep the app working and remember your session.',
     cookie_learn:'Cookie policy',cookie_accept:'Accept all',cookie_essential:'Essential only',
-    plan_free_tag:'Always free',plan_pro_badge:'Q3 2026',
-    plan_free_start:'Start free',plan_pro_notify:'Subscribe to Pro →',
+    plan_free_tag:'Always free',plan_pro_badge:'Available',
+    plan_free_start:'Start free',plan_pro_subscribe:'Subscribe to Pro →',
     footer_tagline:'BYOK · Your data, your browser',
     footer_privacy:'Privacy',footer_cookies:'Cookies',footer_terms:'Terms',footer_contact:'Contact',footer_by:'by',
     privacy_title:'Privacy Policy',cookies_title:'Cookie Policy',terms_title:'Terms of Use',
@@ -3657,6 +3691,9 @@ function _syncDynamicStrings(){
   const tipMap={'nav-dash':'nav_dashboard','nav-crm':'nav_crm','nav-prop':'nav_proposals',
     'nav-lib':'nav_library','nav-teams':'nav_teams','nav-ws':'nav_workspace','nav-settings':'nav_settings','nav-pricing':'nav_pricing'};
   Object.entries(tipMap).forEach(([id,key])=>{const el=document.querySelector(`#${id} .nav-tip`);if(el)el.textContent=t(key);});
+  const labelMap={'nav-dash':'nav_label_dash','nav-crm':'nav_label_crm','nav-prop':'nav_label_prop',
+    'nav-lib':'nav_label_lib','nav-teams':'nav_label_teams','nav-ws':'nav_label_ws','nav-pricing':'nav_label_pricing','nav-aiden':'nav_label_aiden','nav-settings':'nav_label_settings'};
+  Object.entries(labelMap).forEach(([id,key])=>{const el=document.querySelector(`#${id} .nav-label`);if(el)el.textContent=t(key);});
   if(typeof renderTimeline==='function'&&typeof CRM!=='undefined'&&CRM?.activeId)renderTimeline();
   if(typeof renderClientList==='function')renderClientList();
   if(typeof refreshDash==='function')refreshDash();
@@ -3701,7 +3738,7 @@ const LEGAL_CONTENT={
 <h5 style="margin:12px 0 4px;color:var(--text)">Almacenamiento local</h5>
 <p>Todos los datos de CRM, propuestas, equipos y biblioteca se almacenan <strong>exclusivamente en tu navegador</strong> (localStorage). Nunca se envían a nuestros servidores. Tu API key de IA tampoco sale de tu dispositivo.</p>
 <h5 style="margin:12px 0 4px;color:var(--text)">Tus derechos (RGPD)</h5>
-<p>Tienes derecho a acceder, rectificar, suprimir y portar tus datos. Para ejercerlos: <a href="mailto:hola@molvicstudios.pro" style="color:var(--accent)">hola@molvicstudios.pro</a></p>
+<p>Tienes derecho a acceder, rectificar, suprimir y portar tus datos. Para ejercerlos: <a href="mailto:molvicstudios@outlook.com" style="color:var(--accent)">molvicstudios@outlook.com</a></p>
 <h5 style="margin:12px 0 4px;color:var(--text)">Transferencias internacionales</h5>
 <p>Supabase opera en la UE (región Ireland). Cumple con el RGPD.</p>
 <p style="margin-top:12px;color:var(--text3);font-size:11px">AIWorkSuite · by <a href="https://molvicstudios.pro" target="_blank" style="color:var(--accent)">MolvicStudios</a></p>`,
@@ -3728,7 +3765,7 @@ const LEGAL_CONTENT={
 <p>Los datos locales se almacenan en el navegador del usuario. MolvicStudios no tiene acceso a estos datos y no es responsable de su pérdida por borrado del navegador. Se recomienda hacer export/import periódico como backup.</p>
 <h5 style="margin:12px 0 4px;color:var(--text)">5. Legislación aplicable</h5>
 <p>Estos términos se rigen por la legislación española.</p>
-<p style="margin-top:12px;color:var(--text3);font-size:11px">AIWorkSuite · by <a href="https://molvicstudios.pro" target="_blank" style="color:var(--accent)">MolvicStudios</a> · <a href="mailto:hola@molvicstudios.pro" style="color:var(--accent)">hola@molvicstudios.pro</a></p>`
+<p style="margin-top:12px;color:var(--text3);font-size:11px">AIWorkSuite · by <a href="https://molvicstudios.pro" target="_blank" style="color:var(--accent)">MolvicStudios</a> · <a href="mailto:molvicstudios@outlook.com" style="color:var(--accent)">molvicstudios@outlook.com</a></p>`
   },
   en:{
     privacy:`<h4 style="color:var(--accent);margin-bottom:8px">Privacy Policy</h4>
@@ -3742,7 +3779,7 @@ const LEGAL_CONTENT={
 <h5 style="margin:12px 0 4px;color:var(--text)">Local storage</h5>
 <p>All CRM, proposals, teams and library data is stored <strong>exclusively in your browser</strong> (localStorage). It is never sent to our servers. Your AI API key never leaves your device.</p>
 <h5 style="margin:12px 0 4px;color:var(--text)">Your rights (GDPR)</h5>
-<p>You have the right to access, rectify, delete and port your data. Contact: <a href="mailto:hola@molvicstudios.pro" style="color:var(--accent)">hola@molvicstudios.pro</a></p>
+<p>You have the right to access, rectify, delete and port your data. Contact: <a href="mailto:molvicstudios@outlook.com" style="color:var(--accent)">molvicstudios@outlook.com</a></p>
 <p style="margin-top:12px;color:var(--text3);font-size:11px">AIWorkSuite · by <a href="https://molvicstudios.pro" target="_blank" style="color:var(--accent)">MolvicStudios</a></p>`,
     cookies:`<h4 style="color:var(--accent);margin-bottom:8px">Cookie Policy</h4>
 <h5 style="margin:12px 0 4px;color:var(--text)">Essential cookies (always active)</h5>
