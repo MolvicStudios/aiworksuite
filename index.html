@@ -183,6 +183,10 @@ select.inp option{background:var(--bg3)}
 .lang-option:hover{border-color:var(--accent) !important;background:var(--abg) !important}
 .lang-option.selected{border-color:var(--accent) !important;background:var(--abg) !important;box-shadow:0 0 0 1px var(--accent)}
 .lang-option:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wg-lang{background:var(--bg3);border:2px solid var(--border);border-radius:var(--r);padding:12px 10px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:border-color .15s,background .15s}
+.wg-lang:hover{border-color:var(--accent);background:var(--abg)}
+.wg-lang.selected{border-color:var(--accent);background:var(--abg);box-shadow:0 0 0 1px var(--accent)}
+.wg-lang:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .frow{margin-bottom:10px}
 .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .notice{font-size:11px;padding:9px 12px;border-radius:var(--r);display:flex;align-items:flex-start;gap:7px;font-family:'JetBrains Mono',monospace;line-height:1.5}
@@ -855,6 +859,48 @@ select.inp option{background:var(--bg3)}
     <div style="display:flex;gap:10px;justify-content:center">
       <button class="btn btn-ghost" id="confirm-cancel">Cancelar</button>
       <button class="btn btn-accent" id="confirm-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     WELCOME GATE (first visit — pre-auth language selector + CTA)
+════════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-welcome" style="display:none" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+  <div class="modal" style="width:460px;text-align:center">
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px">
+      <span style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;background:var(--accent);color:#000;width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center">MS</span>
+      <span style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--text)">AIWorkSuite</span>
+    </div>
+    <h3 id="welcome-title" style="margin-bottom:6px;font-size:14px;line-height:1.8">
+      <span lang="es">Elige tu idioma</span> · <span lang="en">Choose your language</span><br>
+      <span lang="de" style="font-size:12px">Sprache wählen</span> · <span lang="fr" style="font-size:12px">Choisissez votre langue</span> · <span lang="zh" style="font-size:12px">选择语言</span>
+    </h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0" role="radiogroup" aria-label="Language selector">
+      <button class="wg-lang" data-lang="es" role="radio" aria-checked="false">
+        <span style="font-size:22px" aria-hidden="true">🇪🇸</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text)">Español</span>
+      </button>
+      <button class="wg-lang" data-lang="en" role="radio" aria-checked="false">
+        <span style="font-size:22px" aria-hidden="true">🇬🇧</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text)">English</span>
+      </button>
+      <button class="wg-lang" data-lang="de" role="radio" aria-checked="false">
+        <span style="font-size:22px" aria-hidden="true">🇩🇪</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text)">Deutsch</span>
+      </button>
+      <button class="wg-lang" data-lang="fr" role="radio" aria-checked="false">
+        <span style="font-size:22px" aria-hidden="true">🇫🇷</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text)">Français</span>
+      </button>
+      <button class="wg-lang" data-lang="zh" role="radio" aria-checked="false" style="grid-column:1/-1;justify-content:center">
+        <span style="font-size:22px" aria-hidden="true">🇨🇳</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text)">中文</span>
+      </button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:18px">
+      <button id="wg-register-btn" class="btn btn-accent" style="width:100%;padding:12px" disabled data-i18n="welcome_cta_register">Crear cuenta gratis</button>
+      <button id="wg-login-btn" class="btn btn-ghost" style="width:100%;padding:10px" disabled data-i18n="welcome_cta_login">Ya tengo cuenta</button>
     </div>
   </div>
 </div>
@@ -2377,12 +2423,16 @@ async function doLogout() {
 }
 
 // Check session on load
+function showLandingOrWelcome() {
+  showScreen('landing');
+  if (!localStorage.getItem('aws_welcomed')) { setTimeout(showWelcomeGate, 400); }
+}
 async function checkSession() {
   if (!supabase) {
     // Demo mode sin auth — permitir acceso directo para testing
     const demoUser = S.get('demo_user');
     if (demoUser) { CURRENT_USER = { id: 'demo', email: 'demo@aiworksuite.app' }; await launchApp(); return; }
-    showScreen('landing'); return;
+    showLandingOrWelcome(); return;
   }
   try {
     const { data } = await supabase.auth.getSession();
@@ -2390,7 +2440,7 @@ async function checkSession() {
       CURRENT_USER = data.session.user;
       await launchApp();
     } else {
-      showScreen('landing');
+      showLandingOrWelcome();
     }
     // Listen for auth changes
     supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -2405,7 +2455,37 @@ async function checkSession() {
       }
     });
   } catch(e) {
-    showScreen('landing');
+    showLandingOrWelcome();
+  }
+}
+
+// ── WELCOME GATE (first visit pre-auth) ───────────────────────────────
+function showWelcomeGate() {
+  const modal = document.getElementById('modal-welcome');
+  modal.style.display = 'flex';
+  const options = modal.querySelectorAll('.wg-lang');
+  const regBtn = document.getElementById('wg-register-btn');
+  const logBtn = document.getElementById('wg-login-btn');
+  const browserLang = navigator.language?.slice(0, 2).toLowerCase();
+  const preselect = SUPPORTED_LANGS.includes(browserLang) ? browserLang : 'es';
+  wgSelect(preselect);
+  options.forEach(btn => {
+    btn.addEventListener('click', () => wgSelect(btn.dataset.lang));
+    btn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); wgSelect(btn.dataset.lang); } });
+  });
+  regBtn.addEventListener('click', () => { wgApply(); closeModal('modal-welcome'); showAuth('register'); });
+  logBtn.addEventListener('click', () => { wgApply(); closeModal('modal-welcome'); showAuth('login'); });
+  function wgSelect(lang) {
+    options.forEach(b => { b.classList.toggle('selected', b.dataset.lang === lang); b.setAttribute('aria-checked', b.dataset.lang === lang ? 'true' : 'false'); });
+    regBtn.disabled = false; logBtn.disabled = false;
+    const labels = { es:['Crear cuenta gratis','Ya tengo cuenta'], en:['Create free account','I already have an account'], de:['Kostenloses Konto erstellen','Ich habe schon ein Konto'], fr:['Créer un compte gratuit','J\'ai déjà un compte'], zh:['创建免费账户','我已有账户'] };
+    const l = labels[lang] || labels.es;
+    regBtn.textContent = l[0]; logBtn.textContent = l[1];
+  }
+  function wgApply() {
+    const selected = modal.querySelector('.wg-lang.selected')?.dataset.lang;
+    if (selected) { setLang(selected); applyTranslations(); }
+    localStorage.setItem('aws_welcomed', '1');
   }
 }
 
@@ -3907,6 +3987,7 @@ const TRANSLATIONS={
     toast_confirm_delete_prop:'¿Eliminar esta propuesta del historial?',
     toast_confirm_create_team:'¿Crear equipo IA para "{{name}}"?',
     onb_lang_title_es:'Elige tu idioma',
+    welcome_cta_register:'Crear cuenta gratis',welcome_cta_login:'Ya tengo cuenta',
     toast_no_crm_clients:'No hay clientes en el CRM.',toast_prop_linked:'Vinculada a {{name}}.',toast_prop_unlinked:'Vínculo eliminado.',
     toast_title_content_required:'Título y contenido son obligatorios.',toast_brief_required:'Escribe el brief antes de continuar.',
     toast_ai_error:'❌ Error: {{msg}}',toast_select_role:'Selecciona al menos un rol adicional.',toast_team_saved:'✅ Equipo guardado.',
@@ -4193,6 +4274,7 @@ const TRANSLATIONS={
     toast_confirm_delete_prop:'Delete this proposal from history?',
     toast_confirm_create_team:'Create AI team for "{{name}}"?',
     onb_lang_title_es:'Elige tu idioma',
+    welcome_cta_register:'Create free account',welcome_cta_login:'I already have an account',
     toast_no_crm_clients:'No clients in CRM.',toast_prop_linked:'Linked to {{name}}.',toast_prop_unlinked:'Link removed.',
     toast_title_content_required:'Title and content are required.',toast_brief_required:'Write the brief before continuing.',
     toast_ai_error:'\u274c Error: {{msg}}',toast_select_role:'Select at least one additional role.',toast_team_saved:'\u2705 Team saved.',
@@ -4479,6 +4561,7 @@ const TRANSLATIONS={
     toast_confirm_delete_prop:'Dieses Angebot aus dem Verlauf löschen?',
     toast_confirm_create_team:'KI-Team für "{{name}}" erstellen?',
     onb_lang_title_es:'Elige tu idioma',
+    welcome_cta_register:'Kostenloses Konto erstellen',welcome_cta_login:'Ich habe schon ein Konto',
     toast_no_crm_clients:'Keine Kunden im CRM.',toast_prop_linked:'Verkn\u00fcpft mit {{name}}.',toast_prop_unlinked:'Verkn\u00fcpfung entfernt.',
     toast_title_content_required:'Titel und Inhalt sind erforderlich.',toast_brief_required:'Schreiben Sie das Briefing, bevor Sie fortfahren.',
     toast_ai_error:'\u274c Fehler: {{msg}}',toast_select_role:'W\u00e4hlen Sie mindestens eine weitere Rolle.',toast_team_saved:'\u2705 Team gespeichert.',
@@ -4765,6 +4848,7 @@ const TRANSLATIONS={
     toast_confirm_delete_prop:'Supprimer cette proposition de l\'historique ?',
     toast_confirm_create_team:'Créer une équipe IA pour « {{name}} » ?',
     onb_lang_title_es:'Elige tu idioma',
+    welcome_cta_register:'Créer un compte gratuit',welcome_cta_login:'J\'ai déjà un compte',
     toast_no_crm_clients:'Aucun client dans le CRM.',toast_prop_linked:'Li\u00e9 \u00e0 {{name}}.',toast_prop_unlinked:'Lien supprim\u00e9.',
     toast_title_content_required:'Le titre et le contenu sont obligatoires.',toast_brief_required:'\u00c9crivez le brief avant de continuer.',
     toast_ai_error:'\u274c Erreur : {{msg}}',toast_select_role:'S\u00e9lectionnez au moins un r\u00f4le suppl\u00e9mentaire.',toast_team_saved:'\u2705 \u00c9quipe enregistr\u00e9e.',
@@ -5051,6 +5135,7 @@ const TRANSLATIONS={
     toast_confirm_delete_prop:'从历史记录中删除此提案？',
     toast_confirm_create_team:'为「{{name}}」创建AI团队？',
     onb_lang_title_es:'Elige tu idioma',
+    welcome_cta_register:'创建免费账户',welcome_cta_login:'我已有账户',
     toast_no_crm_clients:'CRM\u4e2d\u6ca1\u6709\u5ba2\u6237\u3002',toast_prop_linked:'\u5df2\u94fe\u63a5\u5230{{name}}\u3002',toast_prop_unlinked:'\u94fe\u63a5\u5df2\u79fb\u9664\u3002',
     toast_title_content_required:'\u6807\u9898\u548c\u5185\u5bb9\u4e3a\u5fc5\u586b\u9879\u3002',toast_brief_required:'\u8bf7\u5148\u586b\u5199\u7b80\u4ecb\u518d\u7ee7\u7eed\u3002',
     toast_ai_error:'\u274c \u9519\u8bef\uff1a{{msg}}',toast_select_role:'\u8bf7\u81f3\u5c11\u9009\u62e9\u4e00\u4e2a\u989d\u5916\u89d2\u8272\u3002',toast_team_saved:'\u2705 \u56e2\u961f\u5df2\u4fdd\u5b58\u3002',
