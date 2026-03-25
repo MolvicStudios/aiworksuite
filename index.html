@@ -61,7 +61,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 
 <style>
 /* ═══════════════════════════════════════════════
@@ -159,15 +159,15 @@ html[lang="zh"] h1,html[lang="zh"] h2,html[lang="zh"] h3,html[lang="zh"] .modal 
 .btn-purple{background:var(--pbg);color:var(--purple);border:1px solid var(--pb)}
 .btn-red{background:var(--rbg);color:var(--red);border:1px solid var(--rb)}.btn-red:hover{background:rgba(224,85,85,.18)}
 .btn-green{background:var(--gbg);color:var(--green);border:1px solid var(--gbb)}
-.btn-xs{padding:3px 8px;font-size:10px}.btn-sm{padding:5px 11px;font-size:11px}.btn-lg{padding:12px 28px;font-size:14px;font-weight:600}
-.inp{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:9px 12px;outline:none;transition:border .15s}
-.inp:focus{border-color:rgba(240,165,0,.5)}
+.btn-xs{padding:6px 12px;font-size:14px;min-height:44px}.btn-sm{padding:8px 14px;font-size:14px;min-height:44px}.btn-lg{padding:12px 28px;font-size:14px;font-weight:600}
+.inp{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 12px;outline:none;transition:border .15s}
+.inp:focus{border-color:rgba(240,165,0,.5);outline:2px solid var(--accent);outline-offset:2px}
 textarea.inp{resize:vertical;line-height:1.65;min-height:80px}
 select.inp{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2355534f' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;height:40px}
 select.inp option{background:var(--bg3)}
 ::placeholder{color:var(--text3)}
-.lbl{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.08em;color:var(--text3);text-transform:uppercase;margin-bottom:6px;display:block}
-.tag{display:inline-flex;align-items:center;font-size:9px;padding:2px 7px;border-radius:20px;font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.lbl{font-family:'JetBrains Mono',monospace;font-size:14px;letter-spacing:.08em;color:var(--text3);text-transform:uppercase;margin-bottom:6px;display:block}
+.tag{display:inline-flex;align-items:center;font-size:14px;padding:2px 7px;border-radius:20px;font-family:'JetBrains Mono',monospace;white-space:nowrap}
 .tag-accent{background:var(--abg);color:var(--accent);border:1px solid rgba(240,165,0,.25)}
 .tag-teal{background:var(--tbg);color:var(--teal);border:1px solid var(--tb)}
 .tag-purple{background:var(--pbg);color:var(--purple);border:1px solid var(--pb)}
@@ -175,7 +175,7 @@ select.inp option{background:var(--bg3)}
 .tag-red{background:var(--rbg);color:var(--red);border:1px solid var(--rb)}
 .tag-green{background:var(--gbg);color:var(--green);border:1px solid var(--gbb)}
 .tag-gray{background:var(--bg4);color:var(--text2);border:1px solid var(--border)}
-.tag-pro{background:linear-gradient(135deg,#8b7cf8,#5b8dee);color:#fff;font-size:9px;padding:2px 7px;border-radius:20px;font-family:'JetBrains Mono',monospace}
+.tag-pro{background:linear-gradient(135deg,#8b7cf8,#5b8dee);color:#fff;font-size:14px;padding:2px 7px;border-radius:20px;font-family:'JetBrains Mono',monospace}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:800;backdrop-filter:blur(4px)}
 .modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r2);padding:22px;width:420px;max-width:96vw;max-height:90vh;overflow-y:auto}
 .modal h3{font-family:'Syne',sans-serif;font-size:14px;color:var(--accent);margin-bottom:14px}
@@ -189,19 +189,19 @@ select.inp option{background:var(--bg3)}
 .wg-lang:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .frow{margin-bottom:10px}
 .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.notice{font-size:11px;padding:9px 12px;border-radius:var(--r);display:flex;align-items:flex-start;gap:7px;font-family:'JetBrains Mono',monospace;line-height:1.5}
+.notice{font-size:14px;padding:9px 12px;border-radius:var(--r);display:flex;align-items:flex-start;gap:7px;font-family:'JetBrains Mono',monospace;line-height:1.5}
 .n-amber{background:var(--abg);color:var(--accent);border:1px solid rgba(240,165,0,.25)}
 .n-teal{background:var(--tbg);color:var(--teal);border:1px solid var(--tb)}
 .n-purple{background:var(--pbg);color:var(--purple);border:1px solid var(--pb)}
 .n-red{background:var(--rbg);color:var(--red);border:1px solid var(--rb)}
 .n-dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0;margin-top:3px}
 .sep{border-top:1px solid var(--border);margin:14px 0}
-.chip{padding:5px 12px;border-radius:20px;font-size:11px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;transition:all .15s;user-select:none}
+.chip{padding:8px 14px;border-radius:20px;font-size:14px;min-height:44px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;transition:all .15s;user-select:none}
 .chip:hover{border-color:rgba(240,165,0,.35);color:var(--text)}.chip.sel{border-color:var(--accent);background:var(--abg);color:var(--accent)}
 .dtag{display:inline-flex;padding:4px 10px;border-radius:20px;font-size:11px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;transition:all .15s;margin:2px;user-select:none}
 .dtag:hover{border-color:var(--tb);color:var(--text)}.dtag.sel{border-color:var(--teal);background:var(--tbg);color:var(--teal)}
 .pro-gate{opacity:.45;pointer-events:none;position:relative}
-.pro-gate::after{content:'PRO';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#8b7cf8,#5b8dee);color:#fff;font-size:9px;padding:2px 8px;border-radius:20px;font-family:'JetBrains Mono',monospace;pointer-events:none}
+.pro-gate::after{content:'PRO';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#8b7cf8,#5b8dee);color:#fff;font-size:14px;padding:2px 8px;border-radius:20px;font-family:'JetBrains Mono',monospace;pointer-events:none}
 
 /* ═══════════════════════════════════════════════
    SCREENS
@@ -392,9 +392,9 @@ select.inp option{background:var(--bg3)}
 .sidenav{width:56px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:2px;flex-shrink:0;z-index:100;overflow:hidden}
 .nav-logo-btn{width:36px;height:32px;border-radius:var(--r);background:var(--abg);border:1px solid rgba(240,165,0,.25);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:11px;color:var(--accent);margin-bottom:8px;cursor:pointer;transition:all .15s;letter-spacing:.05em;user-select:none;flex-shrink:0}
 .nav-logo-btn:hover{background:var(--abg2)}
-.nav-item{width:42px;height:38px;border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;border:1px solid transparent;transition:all .15s;position:relative;flex-shrink:0}
+.nav-item{width:48px;height:44px;border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;border:1px solid transparent;transition:all .15s;position:relative;flex-shrink:0}
 .nav-item svg{width:14px;height:14px;fill:none;stroke:var(--text2);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
-.nav-label{font-size:7px;font-family:'JetBrains Mono',monospace;color:var(--text3);letter-spacing:.02em;line-height:1;white-space:nowrap;transition:color .15s}
+.nav-label{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--text3);letter-spacing:.02em;line-height:1;white-space:nowrap;transition:color .15s}
 .nav-item:hover{background:var(--bg3);border-color:var(--border)}.nav-item:hover svg{stroke:var(--text)}.nav-item:hover .nav-label{color:var(--text)}
 .nav-item.active{background:var(--abg);border-color:rgba(240,165,0,.25)}.nav-item.active svg{stroke:var(--accent)}.nav-item.active .nav-label{color:var(--accent)}
 /* Nav module colors */
@@ -813,11 +813,20 @@ select.inp option{background:var(--bg3)}
 .assignment-seat-btn{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px;cursor:pointer;width:100%;text-align:left;transition:border-color .15s;color:var(--text1);font-size:12px}
 .assignment-seat-btn:hover{border-color:var(--accent)}
 .assignment-seat-avatar{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#000;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0}
+
+/* Focus-visible for interactive elements */
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible,[role="button"]:focus-visible,.nav-item:focus-visible,.chip:focus-visible,.dtag:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Overflow guard */
+html,body{overflow-x:hidden}
 </style>
 <!-- Tema temprano: evita flash al cargar -->
 <script>!function(){try{var k=Object.keys(localStorage).find(function(x){return x.endsWith('_theme')});var s=k?JSON.parse(localStorage.getItem(k)):null;var p=s||'system';var r=p==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r)}catch(e){}}()</script>
 </head>
 <body>
+
+<!-- Skip link -->
+<a href="#main-content" style="position:absolute;top:-100%;left:16px;z-index:3000;padding:12px 24px;background:var(--accent);color:#0c0d0f;font-weight:700;border-radius:8px;text-decoration:none;" onfocus="this.style.top='16px'" onblur="this.style.top='-100%'">Saltar al contenido</a>
 
 <!-- ── BANNER DE COOKIES (RGPD) ──────────────────────────────────────── -->
 <div id="cookie-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:2000;
@@ -910,7 +919,7 @@ select.inp option{background:var(--bg3)}
 ════════════════════════════════════════════════════════════════════ -->
 <div class="screen active" id="screen-landing">
 
-  <nav class="land-nav">
+  <nav class="land-nav" aria-label="Navegación principal">
     <div class="land-logo">AIWork<span>Suite</span><span style="display:block;font-size:11px;font-weight:400;opacity:0.6;letter-spacing:0.03em;line-height:1;">by <a href="https://molvicstudios.pro" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">MolvicStudios.pro</a></span></div>
     <div class="land-nav-links">
       <a href="#pricing" style="font-size:12px;color:var(--text3);text-decoration:none;font-family:'JetBrains Mono',monospace;margin-right:8px;transition:color .15s" onmouseover="this.style.color='var(--text2)'" onmouseout="this.style.color='var(--text3)'">Planes</a>
@@ -919,7 +928,7 @@ select.inp option{background:var(--bg3)}
     </div>
   </nav>
 
-  <div style="flex:1;overflow-y:auto">
+  <main id="main-content">  <div style="flex:1;overflow-y:auto">
     <!-- HERO -->
     <div class="land-hero">
       <div class="land-eyebrow" data-i18n="land_eyebrow">Sistema operativo para freelances IA</div>
@@ -1337,6 +1346,7 @@ select.inp option{background:var(--bg3)}
         <a href="mailto:molvicstudios@outlook.com" style="color:inherit;">molvicstudios@outlook.com</a>
       </p>
     </footer>
+  </main>
   </div>
 </div>
 
@@ -1355,9 +1365,9 @@ select.inp option{background:var(--bg3)}
       <!-- LOGIN -->
       <div id="auth-login">
         <div class="auth-title" data-i18n="auth_login_title">Accede a tu cuenta</div>
-        <div id="auth-error-login" class="auth-error" style="display:none"></div>
-        <div class="frow"><span class="lbl" data-i18n="auth_email">Email</span><input class="inp" type="email" id="login-email" placeholder="tu@email.com" autocomplete="email"></div>
-        <div class="frow" style="margin-top:8px"><span class="lbl" data-i18n="auth_password">Contraseña</span><input class="inp" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+        <div id="auth-error-login" class="auth-error" style="display:none" role="alert"></div>
+        <div class="frow"><label class="lbl" for="login-email" data-i18n="auth_email">Email</label><input class="inp" type="email" id="login-email" placeholder="tu@email.com" autocomplete="email"></div>
+        <div class="frow" style="margin-top:8px"><label class="lbl" for="login-pass" data-i18n="auth_password">Contraseña</label><input class="inp" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
         <div style="margin-top:14px"><button class="btn btn-accent" style="width:100%" id="btn-login" onclick="doLogin()" data-i18n="auth_btn_login">Entrar</button></div>
         <div class="auth-switch" data-i18n-html="auth_switch_reg">¿No tienes cuenta? <a onclick="toggleAuth('register')">Regístrate gratis</a></div>
         <div class="auth-switch" style="margin-top:4px"><a onclick="toggleAuth('reset')" data-i18n="auth_forgot">¿Olvidaste tu contraseña?</a></div>
@@ -1366,10 +1376,10 @@ select.inp option{background:var(--bg3)}
       <!-- REGISTER -->
       <div id="auth-register" style="display:none">
         <div class="auth-title" data-i18n="auth_reg_title">Crea tu cuenta gratis</div>
-        <div id="auth-error-reg" class="auth-error" style="display:none"></div>
-        <div id="auth-success-reg" class="auth-success" style="display:none"></div>
-        <div class="frow"><span class="lbl" data-i18n="auth_email">Email</span><input class="inp" type="email" id="reg-email" placeholder="tu@email.com" autocomplete="email"></div>
-        <div class="frow" style="margin-top:8px"><span class="lbl" data-i18n="auth_password">Contraseña (mínimo 6 caracteres)</span><input class="inp" type="password" id="reg-pass" placeholder="••••••••" autocomplete="new-password" onkeydown="if(event.key==='Enter')doRegister()"></div>
+        <div id="auth-error-reg" class="auth-error" style="display:none" role="alert"></div>
+        <div id="auth-success-reg" class="auth-success" style="display:none" role="status"></div>
+        <div class="frow"><label class="lbl" for="reg-email" data-i18n="auth_email">Email</label><input class="inp" type="email" id="reg-email" placeholder="tu@email.com" autocomplete="email"></div>
+        <div class="frow" style="margin-top:8px"><label class="lbl" for="reg-pass" data-i18n="auth_password">Contraseña (mínimo 6 caracteres)</label><input class="inp" type="password" id="reg-pass" placeholder="••••••••" autocomplete="new-password" onkeydown="if(event.key==='Enter')doRegister()"></div>
         <div style="font-size:11px;color:var(--text3);margin:8px 0 12px;line-height:1.6;font-family:'JetBrains Mono',monospace" data-i18n="auth_privacy_note">
           Al registrarte aceptas que tus datos se almacenan localmente en tu navegador. Solo tu email se guarda en nuestro servidor para gestionar tu cuenta.
         </div>
@@ -1398,7 +1408,7 @@ select.inp option{background:var(--bg3)}
 <div class="app-shell">
 
 <!-- NAV -->
-<nav class="sidenav">
+<nav class="sidenav" aria-label="Módulos del panel">
   <div class="nav-logo-btn" id="nav-logo-btn" onclick="goTo('dash')" title="Dashboard">AI</div>
   <div class="nav-item active" id="nav-dash" onclick="goTo('dash')">
     <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
