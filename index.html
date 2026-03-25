@@ -3729,7 +3729,7 @@ function exportData(){
 }
 function importData(event){
   const file=event.target.files[0];if(!file)return;const reader=new FileReader();
-  reader.onload=e=>{try{const data=JSON.parse(e.target.result);if(!data.version){showToast(t('toast_invalid_file'),'error');return;}showConfirm(t('confirm_import_data'),()=>{const key=getCFG().apiKey;if(data.crm)S.set('crm',data.crm);if(data.lib)S.set('lib',data.lib);if(data.teams)S.set('teams',data.teams);if(data.activity)S.set('activity',data.activity);if(data.config){data.config.apiKey=key;saveCFG(data.config);}initCRM();renderLib();refreshDash();applyUserSettings();showToast(t('toast_import_ok'),'success');});}catch(err){showToast(t('toast_import_err',{msg:err.message}),'error',5000);};
+  reader.onload=e=>{try{const data=JSON.parse(e.target.result);if(!data.version){showToast(t('toast_invalid_file'),'error');return;}showConfirm(t('confirm_import_data'),()=>{const key=getCFG().apiKey;if(data.crm)S.set('crm',data.crm);if(data.lib)S.set('lib',data.lib);if(data.teams)S.set('teams',data.teams);if(data.activity)S.set('activity',data.activity);if(data.config){data.config.apiKey=key;saveCFG(data.config);}initCRM();renderLib();refreshDash();applyUserSettings();showToast(t('toast_import_ok'),'success');});}catch(err){showToast(t('toast_import_err',{msg:err.message}),'error',5000);}};
   reader.readAsText(file);event.target.value='';
 }
 function resetApp(){showConfirm(t('confirm_reset_app'),()=>{showConfirm(t('confirm_reset_app_final'),()=>{['crm','lib','teams','activity','config','demo_user'].forEach(k=>S.del(k));location.reload();});});}
