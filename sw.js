@@ -21,7 +21,6 @@ const STATIC_ASSETS = [
 
 // Dominios que NUNCA se cachean — siempre pasan por la red
 const NEVER_CACHE = [
-  'supabase.co',
   'api.anthropic.com',
   'api.openai.com',
   'api.groq.com',

@@ -465,16 +465,7 @@ REGLAS DE COMPORTAMIENTO:
     var btn = g('wb');
     btn.disabled = true; btn.textContent = 'Guardando\u2026';
 
-    if (window.supabase) {
-      try {
-        await window.supabase.from('upgrade_interest').insert({
-          email: email, name: name || null, plan: 'pro',
-          user_id: (window.CURRENT_USER && window.CURRENT_USER.id) ? window.CURRENT_USER.id : null,
-          created_at: new Date().toISOString()
-        });
-      } catch(_) {}
-    }
-
+    // Waitlist stored locally only (Supabase removed)
     try {
       var stored = JSON.parse(localStorage.getItem('aiws_waitlist') || '[]');
       if (!stored.some(function(i) { return i.email === email; })) {

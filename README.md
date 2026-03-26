@@ -6,8 +6,8 @@
 ## Stack
 
 - HTML5 + CSS + JavaScript vanilla (sin frameworks, sin bundler)
-- Supabase Auth (registro, sesión, reset password)
-- BYOK: Anthropic · OpenAI · Groq · OpenRouter
+- Lemon Squeezy (licencias Pro — monthly/annual)
+- BYOK: Anthropic · OpenAI · Groq · OpenRouter · Gemini · Mistral · DeepSeek · Together · Cohere · xAI
 - Cloudflare Pages · dominio `aiworksuite.pro`
 - PWA offline-first con Service Worker
 
@@ -28,62 +28,21 @@ og-image.png           → 1200×630px Open Graph
 
 ## Configuración antes de desplegar
 
-### 1. Credenciales Supabase
+### 1. Variables de entorno — Cloudflare Pages
 
-Ya configuradas en `index.html` (líneas marcadas con 👈).  
-Si necesitas cambiarlas, busca:
-```javascript
-const SUPABASE_URL      = '...';  // 👈 sustituir
-const SUPABASE_ANON_KEY = '...';  // 👈 sustituir
-```
+En Cloudflare Pages → Settings → Environment variables, añadir:
 
-### 2. SQL en Supabase — ejecutar en SQL Editor
+| Variable | Descripción |
+|----------|-------------|
+| `LEMONSQUEEZY_API_KEY` | API Key de Lemon Squeezy (test o live) |
+| `GROQ_API_KEY` | API Key de Groq (ya configurada) |
 
-```sql
--- Tabla para interés en Pro
-CREATE TABLE IF NOT EXISTS public.upgrade_interest (
-  id         uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  email      text NOT NULL,
-  plan       text DEFAULT 'pro',
-  user_id    uuid REFERENCES auth.users(id) ON DELETE SET NULL,
-  created_at timestamptz DEFAULT now()
-);
-ALTER TABLE public.upgrade_interest ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "insert_own_or_anonymous"
-  ON public.upgrade_interest FOR INSERT TO authenticated, anon
-  WITH CHECK (user_id IS NULL OR (SELECT auth.uid()) = user_id);
-
-CREATE POLICY "select_own_interest"
-  ON public.upgrade_interest FOR SELECT TO authenticated
-  USING ((SELECT auth.uid()) = user_id);
-
--- Tabla optionals para métricas
-CREATE TABLE IF NOT EXISTS public.app_events (
-  id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id     uuid REFERENCES auth.users(id) ON DELETE CASCADE,
-  event_type  text NOT NULL,
-  metadata    jsonb,
-  created_at  timestamptz DEFAULT now()
-);
-ALTER TABLE public.app_events ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "insert_own_events" ON public.app_events FOR INSERT TO authenticated
-  WITH CHECK ((SELECT auth.uid()) = user_id);
-CREATE POLICY "select_own_events" ON public.app_events FOR SELECT TO authenticated
-  USING ((SELECT auth.uid()) = user_id);
-```
-
-### 3. Supabase Auth — URL Configuration
-
-En Supabase Dashboard → Authentication → URL Configuration:
-- **Site URL**: `https://aiworksuite.pro`
-- **Redirect URLs**: `https://aiworksuite.pro`, `https://www.aiworksuite.pro`
-
-### 4. Cloudflare Pages
+### 2. Cloudflare Pages
 
 - Subir carpeta completa como "Upload assets" o conectar repositorio Git
-- El archivo principal debe llamarse `index.html` (renombrar desde `aiworksuite-launch.html`)
+- El archivo principal debe llamarse `index.html`
 - Custom domain: `aiworksuite.pro`
+- Añadir `LEMONSQUEEZY_API_KEY` en Settings → Environment variables (Production + Preview)
 
 ## Iconos PWA — crear manualmente
 
@@ -94,19 +53,16 @@ Los iconos necesitan crearse con herramientas externas (Figma, Canva, etc.):
 
 ## Checklist de lanzamiento
 
-- [ ] Credenciales Supabase verificadas en el HTML
-- [ ] SQL de seguridad ejecutado en Supabase SQL Editor
-- [ ] Site URL configurada en Supabase Auth
-- [ ] Confirmación de email habilitada en Supabase Auth
+- [ ] `LEMONSQUEEZY_API_KEY` configurada en Cloudflare Pages
+- [ ] `GROQ_API_KEY` configurada en Cloudflare Pages
 - [ ] Iconos PWA creados (192, 512, apple-touch, og-image)
-- [ ] Archivo renombrado: `aiworksuite-launch.html` → `index.html`
-- [ ] Registro + confirmación de email funciona end-to-end
 - [ ] API key de un proveedor configurada y probada (Groq recomendado)
 - [ ] PWA instalable verificada en Chrome DevTools → Application → Manifest
 - [ ] Modo offline probado (DevTools → Network → Offline)
 - [ ] Banner de cookies visible en primera visita
 - [ ] Modo claro y oscuro funcionan correctamente
 - [ ] Toggle de idioma ES/EN funciona en toda la UI
+- [ ] Licencia de test de Lemon Squeezy verificada end-to-end
 
 ## Proveedor IA recomendado para empezar
 
