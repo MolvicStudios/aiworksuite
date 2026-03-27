@@ -349,32 +349,56 @@ select.inp option{background:var(--bg3)}
    APP SHELL
 ═══════════════════════════════════════════════ */
 #screen-app{height:100vh;overflow:hidden}
-.app-shell{flex:1;display:flex;overflow:hidden;min-height:0}
-.sidenav{width:56px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:2px;flex-shrink:0;z-index:100;overflow:hidden}
-.nav-logo-btn{width:36px;height:32px;border-radius:var(--r);background:var(--abg);border:1px solid rgba(240,165,0,.25);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:11px;color:var(--accent);margin-bottom:8px;cursor:pointer;transition:all .15s;letter-spacing:.05em;user-select:none;flex-shrink:0}
-.nav-logo-btn:hover{background:var(--abg2)}
-.nav-item{width:48px;height:44px;border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;border:1px solid transparent;transition:all .15s;position:relative;flex-shrink:0}
-.nav-item svg{width:14px;height:14px;fill:none;stroke:var(--text2);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
-.nav-label{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--text3);letter-spacing:.02em;line-height:1;white-space:nowrap;transition:color .15s}
-.nav-item:hover{background:var(--bg3);border-color:var(--border)}.nav-item:hover svg{stroke:var(--text)}.nav-item:hover .nav-label{color:var(--text)}
-.nav-item.active{background:var(--abg);border-color:rgba(240,165,0,.25)}.nav-item.active svg{stroke:var(--accent)}.nav-item.active .nav-label{color:var(--accent)}
-/* Nav module colors */
-#nav-crm svg{stroke:var(--teal)}#nav-crm.active svg{stroke:var(--teal)}#nav-crm .nav-label{color:var(--teal)}
-#nav-prop svg{stroke:var(--accent)}#nav-prop .nav-label{color:var(--accent)}
-#nav-teams svg{stroke:var(--purple)}#nav-teams.active svg{stroke:var(--purple)}#nav-teams .nav-label{color:var(--purple)}
-#nav-lib svg{stroke:var(--blue)}#nav-lib.active svg{stroke:var(--blue)}#nav-lib .nav-label{color:var(--blue)}
-#nav-ws svg{stroke:var(--green)}#nav-ws.active svg{stroke:var(--green)}#nav-ws .nav-label{color:var(--green)}
-#nav-pricing svg{stroke:var(--purple)}#nav-pricing .nav-label{color:var(--purple)}
-#nav-crm.active{background:var(--tbg);border-color:var(--tb)}
-#nav-prop.active{background:var(--abg);border-color:rgba(240,165,0,.25)}
-#nav-teams.active{background:var(--pbg);border-color:var(--pb)}
-#nav-lib.active{background:var(--bbg);border-color:var(--bbb)}
-#nav-ws.active{background:var(--gbg);border-color:var(--gbb)}
-.nav-badge{position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--red);border:1.5px solid var(--bg2)}
-.nav-sep{width:24px;height:1px;background:var(--border2);margin:4px 0}
-.nav-tip{position:absolute;left:52px;top:50%;transform:translateY(-50%);background:var(--bg4);border:1px solid var(--border2);color:var(--text);font-size:10px;padding:3px 8px;border-radius:4px;white-space:nowrap;font-family:'JetBrains Mono',monospace;pointer-events:none;opacity:0;transition:opacity .15s;z-index:300}
-.nav-item:hover .nav-tip{opacity:1}
-.nav-bottom{margin-top:auto;flex-shrink:0}
+.app-shell{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+/* ═══════════════════════════════════════════════
+   DOCK (macOS-style bottom bar)
+═══════════════════════════════════════════════ */
+.dock-bar{
+  display:flex;align-items:center;justify-content:center;gap:2px;
+  background:rgba(20,22,24,.85);backdrop-filter:blur(16px) saturate(1.6);-webkit-backdrop-filter:blur(16px) saturate(1.6);
+  border-top:1px solid var(--border2);
+  padding:6px 12px 8px;flex-shrink:0;z-index:100;position:relative;
+}
+[data-theme="light"] .dock-bar{background:rgba(244,243,239,.82)}
+[data-theme="midnight"] .dock-bar{background:rgba(0,0,0,.88)}
+.dock-group{display:flex;align-items:flex-end;gap:2px}
+.dock-sep{width:1px;height:32px;background:var(--border2);margin:0 8px;flex-shrink:0;border-radius:1px}
+.dock-item{
+  width:52px;min-height:52px;border-radius:12px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:2px;cursor:pointer;
+  border:1px solid transparent;transition:all .2s cubic-bezier(.34,1.56,.64,1);
+  position:relative;flex-shrink:0;padding:4px 0;
+}
+.dock-item svg{width:22px;height:22px;fill:none;stroke:var(--text2);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;transition:all .2s}
+.dock-label{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--text3);letter-spacing:.02em;line-height:1;white-space:nowrap;transition:all .2s}
+.dock-item:hover{transform:scale(1.18) translateY(-4px);background:var(--bg3);border-color:var(--border)}
+.dock-item:hover svg{stroke:var(--text);transform:scale(1.05)}
+.dock-item:hover .dock-label{color:var(--text)}
+/* Active state — colored pill indicator */
+.dock-item.active{transform:translateY(-2px)}
+.dock-item.active::after{content:'';position:absolute;bottom:1px;left:50%;transform:translateX(-50%);width:16px;height:3px;border-radius:2px;background:var(--accent);transition:all .2s}
+.dock-item.active svg{stroke:var(--accent)}
+.dock-item.active .dock-label{color:var(--accent)}
+/* Module-specific colors */
+#nav-crm svg{stroke:var(--teal)}#nav-crm.active svg{stroke:var(--teal)}#nav-crm .dock-label{color:var(--teal)}
+#nav-crm.active::after{background:var(--teal)}
+#nav-prop svg{stroke:var(--accent)}#nav-prop .dock-label{color:var(--accent)}
+#nav-prop.active::after{background:var(--accent)}
+#nav-teams svg{stroke:var(--purple)}#nav-teams.active svg{stroke:var(--purple)}#nav-teams .dock-label{color:var(--purple)}
+#nav-teams.active::after{background:var(--purple)}
+#nav-lib svg{stroke:var(--blue)}#nav-lib.active svg{stroke:var(--blue)}#nav-lib .dock-label{color:var(--blue)}
+#nav-lib.active::after{background:var(--blue)}
+#nav-ws svg{stroke:var(--green)}#nav-ws.active svg{stroke:var(--green)}#nav-ws .dock-label{color:var(--green)}
+#nav-ws.active::after{background:var(--green)}
+#nav-pricing svg{stroke:var(--purple)}#nav-pricing .dock-label{color:var(--purple)}
+#nav-pricing.active::after{background:var(--purple)}
+.dock-badge{position:absolute;top:2px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--red);border:1.5px solid var(--bg2)}
+.dock-tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--bg4);border:1px solid var(--border2);color:var(--text);font-size:10px;padding:4px 10px;border-radius:6px;white-space:nowrap;font-family:'JetBrains Mono',monospace;pointer-events:none;opacity:0;transition:opacity .15s;z-index:300;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.dock-item:hover .dock-tip{opacity:1}
+/* Logo in dock */
+.dock-logo{width:36px;height:36px;border-radius:10px;background:var(--abg);border:1px solid rgba(240,165,0,.3);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;color:var(--accent);cursor:pointer;transition:all .2s;letter-spacing:.05em;user-select:none;flex-shrink:0;margin-right:6px}
+.dock-logo:hover{background:var(--abg2);transform:scale(1.1)}
+.dock-bottom{margin-top:auto;flex-shrink:0}
 .content-area{flex:1;overflow:hidden;display:flex;flex-direction:column;min-width:0}
 .view{display:none;flex:1;overflow:hidden;flex-direction:column;animation:fadein .15s ease}
 .view.active{display:flex}
@@ -751,7 +775,7 @@ select.inp option{background:var(--bg3)}
 .assignment-seat-btn:hover{border-color:var(--accent)}
 .assignment-seat-avatar{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#000;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0}
 /* Focus-visible for interactive elements */
-button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible,[role="button"]:focus-visible,.nav-item:focus-visible,.chip:focus-visible,.dtag:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible,[role="button"]:focus-visible,.dock-item:focus-visible,.chip:focus-visible,.dtag:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* Overflow guard */
 html,body{overflow-x:hidden}
 </style>
@@ -1245,62 +1269,6 @@ html,body{overflow-x:hidden}
 ══════════════════════════════════════════════════════ -->
 <div class="screen" id="screen-app">
 <div class="app-shell">
-<!-- NAV -->
-<nav class="sidenav" aria-label="Módulos del panel">
-  <div class="nav-logo-btn" id="nav-logo-btn" onclick="goTo('dash')" title="Dashboard">AI</div>
-  <div class="nav-item active" id="nav-dash" onclick="goTo('dash')">
-    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-    <span class="nav-label">Inicio</span>
-    <div class="nav-tip">Dashboard</div>
-  </div>
-  <div class="nav-item" id="nav-crm" onclick="goTo('crm')">
-    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    <span class="nav-label">CRM</span>
-    <div class="nav-tip">CRM</div>
-  </div>
-  <div class="nav-item" id="nav-prop" onclick="goTo('prop')">
-    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-    <span class="nav-label">Props</span>
-    <div class="nav-tip">Propuestas</div>
-  </div>
-  <div class="nav-sep"></div>
-  <div class="nav-item" id="nav-lib" onclick="goTo('lib')">
-    <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-    <span class="nav-label">Biblio</span>
-    <div class="nav-tip">Biblioteca</div>
-  </div>
-  <div class="nav-item" id="nav-teams" onclick="goTo('teams')">
-    <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-    <span class="nav-label">Equipos</span>
-    <div class="nav-tip">Equipos IA</div>
-  </div>
-  <div class="nav-item" id="nav-ws" onclick="goTo('ws')" style="display:none">
-    <svg viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-    <span class="nav-label">Work</span>
-    <div class="nav-badge"></div>
-    <div class="nav-tip">Workspace</div>
-  </div>
-  <div class="nav-bottom">
-    <div class="nav-sep"></div>
-    <div class="nav-item" id="nav-pricing" onclick="goTo('pricing')">
-      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-      <span class="nav-label">Planes</span>
-      <span id="tier-badge" class="tier-badge tier-badge--free" style="position:absolute;top:1px;right:1px;font-size:6px;padding:1px 3px">FREE</span>
-      <div class="nav-tip">Planes</div>
-    </div>
-    <div class="nav-item" id="nav-aiden" onclick="typeof aiwsToggle==='function'&&aiwsToggle()" title="Aiden · Asistente IA">
-      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      <span class="nav-label">Aiden</span>
-      <div class="nav-tip">Aiden · Asistente</div>
-    </div>
-    <div class="nav-sep"></div>
-    <div class="nav-item" id="nav-settings" onclick="goTo('settings')" style="background:var(--bg3);border-color:var(--border2)">
-      <svg viewBox="0 0 24 24" style="stroke:var(--text)!important"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      <span class="nav-label">Config</span>
-      <div class="nav-tip">Configuración</div>
-    </div>
-  </div>
-</nav>
 <div class="content-area">
 <!-- Indicador de conexión offline -->
 <div id="offline-indicator" style="display:none;background:var(--rbg);border-bottom:1px solid var(--rb);
@@ -1790,6 +1758,62 @@ html,body{overflow-x:hidden}
   </div></div>
 </div>
 </div><!-- /content-area -->
+<!-- DOCK BAR (macOS-style bottom navigation) -->
+<nav class="dock-bar" aria-label="Módulos del panel">
+  <div class="dock-logo" id="nav-logo-btn" onclick="goTo('dash')" title="Dashboard">AI</div>
+  <div class="dock-group">
+    <div class="dock-item active" id="nav-dash" onclick="goTo('dash')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      <span class="dock-label">Inicio</span>
+      <div class="dock-tip">Dashboard</div>
+    </div>
+    <div class="dock-item" id="nav-crm" onclick="goTo('crm')">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span class="dock-label">CRM</span>
+      <div class="dock-tip">CRM · Clientes</div>
+    </div>
+    <div class="dock-item" id="nav-prop" onclick="goTo('prop')">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span class="dock-label">Props</span>
+      <div class="dock-tip">Propuestas</div>
+    </div>
+    <div class="dock-item" id="nav-lib" onclick="goTo('lib')">
+      <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <span class="dock-label">Biblio</span>
+      <div class="dock-tip">Biblioteca</div>
+    </div>
+    <div class="dock-item" id="nav-teams" onclick="goTo('teams')">
+      <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      <span class="dock-label">Equipos</span>
+      <div class="dock-tip">Equipos IA</div>
+    </div>
+    <div class="dock-item" id="nav-ws" onclick="goTo('ws')" style="display:none">
+      <svg viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      <span class="dock-label">Work</span>
+      <div class="dock-badge"></div>
+      <div class="dock-tip">Workspace</div>
+    </div>
+  </div>
+  <div class="dock-sep"></div>
+  <div class="dock-group">
+    <div class="dock-item" id="nav-pricing" onclick="goTo('pricing')">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      <span class="dock-label">Planes</span>
+      <span id="tier-badge" class="tier-badge tier-badge--free" style="position:absolute;top:0;right:4px;font-size:6px;padding:1px 3px">FREE</span>
+      <div class="dock-tip">Planes y precios</div>
+    </div>
+    <div class="dock-item" id="nav-aiden" onclick="typeof aiwsToggle==='function'&&aiwsToggle()" title="Aiden · Asistente IA">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span class="dock-label">Aiden</span>
+      <div class="dock-tip">Aiden · Asistente</div>
+    </div>
+    <div class="dock-item" id="nav-settings" onclick="goTo('settings')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span class="dock-label">Config</span>
+      <div class="dock-tip">Configuración</div>
+    </div>
+  </div>
+</nav>
 </div><!-- /app-shell -->
 </div><!-- /screen-app -->
 <!-- ══════════════════════════════════════════════════════
@@ -2472,10 +2496,7 @@ function togglePricingDisplay(isAnnual) {
 // ═══════════════════════════════════════════════════════════════════════
 const VIEWS = ['dash','crm','prop','lib','teams','ws','settings','pricing'];
 function goTo(id) {
-  // Guards para vistas premium
-  if (id === 'crm' && !tierSystem.requiresTier('pro', 'CRM Inteligente')) return;
-  if (id === 'prop' && !tierSystem.requiresTier('pro', 'Generador de Propuestas')) return;
-  if (id === 'teams' && !tierSystem.requiresTier('pro', 'Equipos IA')) return;
+  // Free plan: modules accessible with quantity limits (Pro = unlimited)
   VIEWS.forEach(v => {
     document.getElementById('view-' + v).classList.toggle('active', v === id);
     const n = document.getElementById('nav-' + v); if(n) n.classList.toggle('active', v === id);
@@ -2808,12 +2829,18 @@ function refreshDash() {
     {label:t('dash_kpi_teams'),val:teams.length,sub:t('dash_kpi_active'),view:'teams',tip:'Equipos IA activos · haz clic para gestionar',cls:'kpi--teams'},
     {label:t('dash_kpi_prompts'),val:libItems.length,sub:t('dash_kpi_reusable'),view:'lib',tip:'Prompts guardados en tu biblioteca',cls:'kpi--lib'},
   ].map(k => `<div class="kpi ${k.cls}" onclick="goTo('${k.view}')"><div class="dtip">${k.tip}</div><span class="kpi-arrow">→</span><div class="kpi-label">${k.label}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
+  const DASH_ICONS = {
+    crm:'<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    prop:'<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+    teams:'<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
+    lib:'<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+  };
   document.getElementById('dash-modules').innerHTML = [
-    {icon:'👥',name:t('nav_crm'),desc:t('dash_mod_crm_desc'),cta:cids.length+' '+t('dash_mod_crm_cta'),view:'crm',tip:'Pipeline de ventas · '+cids.length+' clientes · '+captados+' captados',color:'var(--teal)'},
-    {icon:'📄',name:t('nav_proposals'),desc:t('dash_mod_prop_desc'),cta:t('prop_generate'),view:'prop',tip:'Genera propuestas profesionales con IA en segundos',color:'var(--accent)'},
-    {icon:'🤖',name:t('nav_teams'),desc:t('dash_mod_teams_desc'),cta:teams.length+' '+t('dash_mod_teams_cta'),view:'teams',tip:'Configura agentes IA especializados para cada proyecto',color:'var(--purple)'},
-    {icon:'📚',name:t('nav_library'),desc:t('dash_mod_lib_desc'),cta:libItems.length+' prompts →',view:'lib',tip:'Guarda y reutiliza tus mejores prompts en cualquier módulo',color:'var(--blue)'},
-  ].map(m => `<div class="dash-mod" onclick="goTo('${m.view}')" style="cursor:pointer;border:1px solid var(--border);border-left:3px solid ${m.color};border-radius:var(--r2);padding:14px 16px;background:var(--bg2);transition:all .15s;position:relative"><div class="dtip">${m.tip}</div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">${m.icon}</span><div class="dash-mod-name">${m.name}</div><span style="margin-left:auto;font-size:11px;color:var(--text3);opacity:.4">→</span></div><div class="dash-mod-desc">${m.desc}</div><div class="dash-mod-cta">${m.cta}</div></div>`).join('');
+    {icon:DASH_ICONS.crm,name:t('nav_crm'),desc:t('dash_mod_crm_desc'),cta:cids.length+' '+t('dash_mod_crm_cta'),view:'crm',tip:'Pipeline de ventas · '+cids.length+' clientes · '+captados+' captados',color:'var(--teal)'},
+    {icon:DASH_ICONS.prop,name:t('nav_proposals'),desc:t('dash_mod_prop_desc'),cta:t('prop_generate'),view:'prop',tip:'Genera propuestas profesionales con IA en segundos',color:'var(--accent)'},
+    {icon:DASH_ICONS.teams,name:t('nav_teams'),desc:t('dash_mod_teams_desc'),cta:teams.length+' '+t('dash_mod_teams_cta'),view:'teams',tip:'Configura agentes IA especializados para cada proyecto',color:'var(--purple)'},
+    {icon:DASH_ICONS.lib,name:t('nav_library'),desc:t('dash_mod_lib_desc'),cta:libItems.length+' prompts →',view:'lib',tip:'Guarda y reutiliza tus mejores prompts en cualquier módulo',color:'var(--blue)'},
+  ].map(m => `<div class="dash-mod" onclick="goTo('${m.view}')" style="cursor:pointer;border:1px solid var(--border);border-left:3px solid ${m.color};border-radius:var(--r2);padding:16px 18px;background:var(--bg2);transition:all .15s;position:relative"><div class="dtip">${m.tip}</div><div style="display:flex;align-items:center;gap:10px"><span style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:${m.color.replace('var(','rgba(').replace(')',',.12)')};flex-shrink:0">${m.icon.replace('stroke-linejoin="round"','stroke-linejoin="round" style="stroke:'+m.color+'"')}</span><div style="flex:1"><div class="dash-mod-name">${m.name}</div><div class="dash-mod-desc">${m.desc}</div></div><span style="font-size:13px;color:var(--text3);opacity:.5">→</span></div><div class="dash-mod-cta">${m.cta}</div></div>`).join('');
   const stages = ['CONTACTO','CALIF','DISCOVERY','PROPUESTA','PRESENTACIÓN','NEGOC','ONBOARDING'];
   const sc = Array(7).fill(0); cids.forEach(id => { sc[clients[id].activeStage||0]++; });
   const colors = ['#f0a500','#e8950a','#d08010','#1d9e75','#5b8dee','#8b7cf8','#4caf7d'];
@@ -3118,7 +3145,7 @@ function renderLibGrid(){
   grid.innerHTML=f.map(p=>{const idx=items.indexOf(p);const tags=(p.tags||[]).slice(0,3).map(t=>`<span class="tag tag-gray">${esc(t)}</span>`).join('');return`<div class="prompt-card"><div class="pc-title">${esc(p.title)}</div><div class="pc-preview">${esc(p.content)}</div><div class="pc-tags"><span class="tag ${tagCls[p.category]||'tag-gray'}">${t(LIB_CATS[p.category])||p.category}</span>${tags}</div><div class="pc-actions"><button class="btn btn-ghost btn-xs" onclick="editPrompt(${idx})">${t('lib_edit')}</button><button class="btn btn-purple btn-xs" onclick="insertPromptToTeam(${idx})">${t('lib_to_teams')}</button><button class="btn btn-red btn-xs" onclick="deletePrompt(${idx})">×</button></div></div>`;}).join('');
 }
 function openNewPromptModal(){
-  if(tierSystem.isFree()&&getLib().length>=5){tierSystem.requiresTier('pro','Biblioteca ilimitada');return;}
+  if(tierSystem.isFree()&&getLib().length>=PLANS.free.prompts){tierSystem.requiresTier('pro','Biblioteca ilimitada');return;}
   document.getElementById('modal-prompt-title').textContent=t('lib_new_prompt_title');['np-title','np-content','np-tags'].forEach(id=>document.getElementById(id).value='');document.getElementById('np-cat').value='system';delete document.getElementById('modal-prompt').dataset.editIdx;document.getElementById('modal-prompt').style.display='flex';setTimeout(()=>document.getElementById('np-title').focus(),80);
 }
 function editPrompt(idx){const p=getLib()[idx];document.getElementById('modal-prompt-title').textContent=t('lib_edit_prompt_title');document.getElementById('np-title').value=p.title||'';document.getElementById('np-content').value=p.content||'';document.getElementById('np-cat').value=p.category||'system';document.getElementById('np-tags').value=(p.tags||[]).join(', ');document.getElementById('modal-prompt').dataset.editIdx=idx;document.getElementById('modal-prompt').style.display='flex';}
@@ -3126,7 +3153,7 @@ function savePrompt(){
   const title=document.getElementById('np-title').value.trim();const content=document.getElementById('np-content').value.trim();if(!title||!content){showToast(t('toast_title_content_required'),'warn');return;}
   const items=getLib();
   const editIdx=parseInt(document.getElementById('modal-prompt').dataset.editIdx);
-  if(!isNaN(editIdx)&&editIdx>=0){/* editing, no limit check */}else if(tierSystem.isFree()&&getLib().length>=5){tierSystem.requiresTier('pro','Biblioteca ilimitada');return;}
+  if(!isNaN(editIdx)&&editIdx>=0){/* editing, no limit check */}else if(tierSystem.isFree()&&getLib().length>=PLANS.free.prompts){tierSystem.requiresTier('pro','Biblioteca ilimitada');return;}
   const p={id:genId(),title,content,category:document.getElementById('np-cat').value,tags:document.getElementById('np-tags').value.split(',').map(t=>t.trim()).filter(Boolean),createdAt:fmtDate()};
   if(!isNaN(editIdx)&&editIdx>=0){items[editIdx]={...items[editIdx],...p};}else{items.unshift(p);}
   saveLib(items);closeModal('modal-prompt');renderLib();updateLimitLabels();logActivity(t('activity_prompt_saved',{title}),'var(--purple)');
@@ -3188,7 +3215,7 @@ function renderTeamsView() {
   }).join('') + `<div class="teams-new-btn" onclick="showNewTeamConfig()"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><div>${t('teams_new_title')}</div></div>`;
 }
 function showNewTeamConfig() {
-  if(!tierSystem.requiresTier('pro','Equipos IA'))return;
+  if(!checkPlanLimit('teams'))return;
   document.getElementById('config-panel').classList.add('active');
   document.getElementById('config-panel-title').textContent=t('teams_new_title');
   configReset();
@@ -4813,10 +4840,10 @@ function _syncDynamicStrings(){
   const h1b=document.getElementById('land-h1-b');if(h1b)h1b.textContent=t('land_h1_b');
   const tipMap={'nav-dash':'nav_dashboard','nav-crm':'nav_crm','nav-prop':'nav_proposals',
     'nav-lib':'nav_library','nav-teams':'nav_teams','nav-ws':'nav_workspace','nav-settings':'nav_settings','nav-pricing':'nav_pricing'};
-  Object.entries(tipMap).forEach(([id,key])=>{const el=document.querySelector(`#${id} .nav-tip`);if(el)el.textContent=t(key);});
+  Object.entries(tipMap).forEach(([id,key])=>{const el=document.querySelector(`#${id} .dock-tip`);if(el)el.textContent=t(key);});
   const labelMap={'nav-dash':'nav_label_dash','nav-crm':'nav_label_crm','nav-prop':'nav_label_prop',
     'nav-lib':'nav_label_lib','nav-teams':'nav_label_teams','nav-ws':'nav_label_ws','nav-pricing':'nav_label_pricing','nav-aiden':'nav_label_aiden','nav-settings':'nav_label_settings'};
-  Object.entries(labelMap).forEach(([id,key])=>{const el=document.querySelector(`#${id} .nav-label`);if(el)el.textContent=t(key);});
+  Object.entries(labelMap).forEach(([id,key])=>{const el=document.querySelector(`#${id} .dock-label`);if(el)el.textContent=t(key);});
   if(typeof renderTimeline==='function'&&typeof CRM!=='undefined'&&CRM?.activeId)renderTimeline();
   if(typeof renderClientList==='function')renderClientList();
   if(typeof refreshDash==='function')refreshDash();
@@ -4825,7 +4852,7 @@ function _updateLangToggle(){
   const btn=document.getElementById('nav-lang-toggle');
   if(btn){
     const span=btn.querySelector('span');if(span)span.textContent=LANG.toUpperCase();
-    const tip=btn.querySelector('.nav-tip');if(tip)tip.textContent=t('nav_lang');
+    const tip=btn.querySelector('.dock-tip');if(tip)tip.textContent=t('nav_lang');
   }
   document.querySelectorAll('[data-lang-chip]').forEach(el=>el.classList.toggle('sel',el.dataset.langChip===LANG));
   const settingsSelect=document.getElementById('settings-lang-select');
