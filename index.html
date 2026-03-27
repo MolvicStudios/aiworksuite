@@ -1177,7 +1177,7 @@ html,body{overflow-x:hidden}
             <div class="price-feat"><div class="pf-ok"></div>Detección IA de roles</div>
             <div class="price-feat"><div class="pf-ok"></div>Biblioteca ilimitada</div>
             <div class="price-feat"><div class="pf-ok"></div>Branding personalizable</div>
-            <div style="margin-top:12px"><a href="https://molvicstudios.lemonsqueezy.com/checkout/buy/1451161?test=true" target="_blank" rel="noopener" class="btn btn-accent" style="width:100%;display:block;text-align:center;text-decoration:none">🚀 Empezar 7 días gratis</a></div>
+            <div style="margin-top:12px"><a href="https://molvicstudios.lemonsqueezy.com/checkout/buy/1451161?checkout[custom][product]=aiworksuite" target="_blank" rel="noopener" class="btn btn-accent" style="width:100%;display:block;text-align:center;text-decoration:none">🚀 Empezar 7 días gratis</a></div>
             <p style="font-size:9px;color:var(--text3);text-align:center;margin-top:6px">Sin tarjeta hasta que decidas · Cancela cuando quieras</p>
           </div>
         </div>
@@ -1638,7 +1638,7 @@ html,body{overflow-x:hidden}
           <li style="padding:4px 0">✅ Biblioteca ilimitada</li>
           <li style="padding:4px 0">✅ Branding personalizable</li>
         </ul>
-        <a href="https://molvicstudios.lemonsqueezy.com/checkout/buy/1451161?test=true" target="_blank" rel="noopener" id="btn-pricing-checkout"
+        <a href="https://molvicstudios.lemonsqueezy.com/checkout/buy/1451161?checkout[custom][product]=aiworksuite" target="_blank" rel="noopener" id="btn-pricing-checkout"
            style="display:block;padding:12px 20px;background:var(--accent);color:#000;border-radius:var(--r);font-size:13px;font-weight:700;text-decoration:none;transition:opacity .15s"
            onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
           🚀 Empezar 7 días gratis
@@ -1864,7 +1864,7 @@ html,body{overflow-x:hidden}
       <div style="font-size:11px;color:var(--text3)" data-i18n="upgrade_info_sub">Desbloquea clientes, equipos y prompts ilimitados.</div>
     </div>
     <div style="display:flex;gap:8px">
-      <a href="https://molvicstudios.lemonsqueezy.com/checkout/buy/1451161?test=true" target="_blank" rel="noopener" class="btn btn-accent" style="flex:1;text-align:center;text-decoration:none" id="btn-upgrade-cta">🚀 Empezar 7 días gratis</a>
+      <a href="https://molvicstudios.lemonsqueezy.com/checkout/buy/1451161?checkout[custom][product]=aiworksuite" target="_blank" rel="noopener" class="btn btn-accent" style="flex:1;text-align:center;text-decoration:none" id="btn-upgrade-cta">🚀 Empezar 7 días gratis</a>
       <button class="btn btn-ghost" onclick="closeModal('modal-upgrade')" data-i18n="upgrade_dismiss">Ahora no</button>
     </div>
   </div>
@@ -1948,71 +1948,90 @@ html,body{overflow-x:hidden}
 // AIWORKSUITE — LICENSE SYSTEM (Lemon Squeezy)
 // Sin Supabase · Sin Gumroad · localStorage only
 // ═══════════════════════════════════════════════════════════════════════
+const LS_PLAN_KEY    = 'aiws_plan';
+const LS_LICENSE_KEY = 'aiws_license_key';
+const LS_BILLING_KEY = 'aiws_billing_period';
+const LS_LAST_CHECK  = 'aiws_last_check';
+const VALIDATE_URL   = '/api/validate-license';
+const CHECKOUT_MONTHLY = 'https://molvicstudios.lemonsqueezy.com/checkout/buy/1451161?checkout[custom][product]=aiworksuite';
+const CHECKOUT_YEARLY  = 'https://molvicstudios.lemonsqueezy.com/checkout/buy/1451168?checkout[custom][product]=aiworksuite';
+
+// Migrate old key names (aiws_pro_*) → new (aiws_*)
+(function migrateOldKeys() {
+  try {
+    const oldKey = localStorage.getItem('aiws_pro_license_key');
+    if (oldKey && !localStorage.getItem(LS_LICENSE_KEY)) {
+      localStorage.setItem(LS_LICENSE_KEY, oldKey);
+      localStorage.setItem(LS_PLAN_KEY, 'pro');
+      const oldPlan = localStorage.getItem('aiws_pro_plan');
+      localStorage.setItem(LS_BILLING_KEY, oldPlan === 'annual' ? 'yearly' : 'monthly');
+      const oldVerified = localStorage.getItem('aiws_pro_verified_at');
+      if (oldVerified) localStorage.setItem(LS_LAST_CHECK, oldVerified);
+    }
+    // Clean up old keys
+    ['aiws_pro_license_key','aiws_pro_plan','aiws_pro_status','aiws_pro_verified_at','aiws_pro_expires']
+      .forEach(k => localStorage.removeItem(k));
+  } catch {}
+})();
+
 const LICENSE = {
-  KEYS: {
-    key:         'aiws_pro_license_key',
-    plan:        'aiws_pro_plan',
-    status:      'aiws_pro_status',
-    verified_at: 'aiws_pro_verified_at',
-    expires:     'aiws_pro_expires',
-  },
-  CACHE_TTL: {
-    monthly: 24 * 60 * 60 * 1000,
-    annual:  7  * 24 * 60 * 60 * 1000,
-  },
+  KEYS: { key: LS_LICENSE_KEY, plan: LS_PLAN_KEY, billing: LS_BILLING_KEY, lastCheck: LS_LAST_CHECK },
   isPro() {
-    try {
-      const key  = localStorage.getItem(this.KEYS.key);
-      const plan = localStorage.getItem(this.KEYS.plan);
-      const verifiedAt = parseInt(localStorage.getItem(this.KEYS.verified_at) || '0');
-      if (!key || !plan) return false;
-      const ttl = this.CACHE_TTL[plan] || this.CACHE_TTL.monthly;
-      return Date.now() - verifiedAt < ttl;
-    } catch { return false; }
+    try { return localStorage.getItem(LS_PLAN_KEY) === 'pro'; }
+    catch { return false; }
   },
   getPlan() {
-    try { return localStorage.getItem(this.KEYS.plan) || null; }
+    try { return localStorage.getItem(LS_BILLING_KEY) || null; }
     catch { return null; }
   },
-  getStatus() {
-    try { return localStorage.getItem(this.KEYS.status) || null; }
-    catch { return null; }
-  },
-  async activate(license_key) {
+  getStatus() { return this.isPro() ? 'active' : null; },
+  async activate(licenseKey) {
     try {
-      const res  = await fetch('/api/verify-license', {
+      const res = await fetch(VALIDATE_URL, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ license_key }),
+        body:    JSON.stringify({ licenseKey }),
       });
       const data = await res.json();
-      if (!data.valid) {
-        return { success: false, error: data.reason || 'invalid_key' };
+      if (data.valid) {
+        localStorage.setItem(LS_PLAN_KEY,    'pro');
+        localStorage.setItem(LS_LICENSE_KEY, licenseKey);
+        localStorage.setItem(LS_BILLING_KEY, data.billingPeriod || 'monthly');
+        localStorage.setItem(LS_LAST_CHECK,  Date.now().toString());
+        return { success: true, billingPeriod: data.billingPeriod };
+      } else {
+        return { success: false, error: data.error || 'invalid_key' };
       }
-      localStorage.setItem(this.KEYS.key,         license_key);
-      localStorage.setItem(this.KEYS.plan,        data.plan);
-      localStorage.setItem(this.KEYS.status,      data.status);
-      localStorage.setItem(this.KEYS.verified_at, Date.now().toString());
-      if (data.expires) {
-        localStorage.setItem(this.KEYS.expires, data.expires);
-      }
-      return { success: true, plan: data.plan };
     } catch (err) {
       return { success: false, error: 'network_error' };
     }
   },
+  async validateOnLoad() {
+    const key         = localStorage.getItem(LS_LICENSE_KEY);
+    const lastChecked = parseInt(localStorage.getItem(LS_LAST_CHECK) || '0');
+    const now         = Date.now();
+    const sevenDays   = 7 * 24 * 60 * 60 * 1000;
+    if (!key) return;
+    if (now - lastChecked < sevenDays) return;
+    const result = await this.activate(key);
+    if (!result.success) {
+      this.deactivate();
+      console.warn('[AIWorkSuite] License invalid — downgraded to Free.');
+    }
+  },
   async refresh() {
-    try {
-      const key = localStorage.getItem(this.KEYS.key);
-      if (!key) return false;
-      const result = await this.activate(key);
-      return result.success;
-    } catch { return false; }
+    return this.validateOnLoad();
   },
   deactivate() {
     try {
-      Object.values(this.KEYS).forEach(k => localStorage.removeItem(k));
+      localStorage.removeItem(LS_PLAN_KEY);
+      localStorage.removeItem(LS_LICENSE_KEY);
+      localStorage.removeItem(LS_BILLING_KEY);
+      localStorage.removeItem(LS_LAST_CHECK);
     } catch {}
+  },
+  openCheckout(period) {
+    window.open(period === 'yearly' ? CHECKOUT_YEARLY : CHECKOUT_MONTHLY, '_blank');
   },
 };
 // Sesión simplificada (sin registro — solo para resetear licencia)
@@ -2277,7 +2296,7 @@ function showUpgradeModal(featureName) {
         <span id="upgrade-period" style="font-size:.85rem;opacity:.6;">/mes · IVA inc.</span>
       </div>
       <div class="upgrade-modal__ctas">
-        <a id="btn-upgrade-checkout" href="https://molvicstudios.lemonsqueezy.com/checkout/buy/1451161?test=true" target="_blank" rel="noopener" class="btn btn-accent" style="padding:12px 24px;font-size:14px;text-decoration:none;display:block;text-align:center">
+        <a id="btn-upgrade-checkout" href="https://molvicstudios.lemonsqueezy.com/checkout/buy/1451161?checkout[custom][product]=aiworksuite" target="_blank" rel="noopener" class="btn btn-accent" style="padding:12px 24px;font-size:14px;text-decoration:none;display:block;text-align:center">
           🚀 Empezar 7 días gratis
         </a>
       </div>
@@ -2318,13 +2337,13 @@ function toggleUpgradePrice(isAnnual) {
   if (isAnnual) {
     priceEl.textContent  = '249€';
     periodEl.textContent = '/año · IVA inc.';
-    if (btnEl) btnEl.href = 'https://molvicstudios.lemonsqueezy.com/checkout/buy/1451168?test=true';
+    if (btnEl) btnEl.href = CHECKOUT_YEARLY;
     if (lblM) { lblM.style.fontWeight = '400'; lblM.style.opacity = '.6'; }
     if (lblA) { lblA.style.fontWeight = '700'; lblA.style.opacity = '1'; }
   } else {
     priceEl.textContent  = '24,99€';
     periodEl.textContent = '/mes · IVA inc.';
-    if (btnEl) btnEl.href = 'https://molvicstudios.lemonsqueezy.com/checkout/buy/1451161?test=true';
+    if (btnEl) btnEl.href = CHECKOUT_MONTHLY;
     if (lblM) { lblM.style.fontWeight = '700'; lblM.style.opacity = '1'; }
     if (lblA) { lblA.style.fontWeight = '400'; lblA.style.opacity = '.6'; }
   }
@@ -2394,7 +2413,7 @@ function updatePlanBadge() {
   if (!el) return;
   if (LICENSE.isPro()) {
     const plan = LICENSE.getPlan();
-    el.innerHTML = (plan === 'annual' ? '✦ Pro Anual' : '✦ Pro') +
+    el.innerHTML = (plan === 'yearly' ? '✦ Pro Anual' : '✦ Pro') +
       ' · <a href="https://app.lemonsqueezy.com/my-orders" target="_blank" rel="noopener" style="color:var(--text3);font-size:10px">' + t('plan_manage_sub') + '</a>';
   } else {
     el.innerHTML = t('plan_label_free') + ' · <span style="cursor:pointer;color:var(--purple)" onclick="showUpgradeModal()">' + t('settings_upgrade_link') + '</span>';
@@ -2409,7 +2428,7 @@ function applyProUI() {
   document.body.dataset.tier = USER_PLAN;
   const badge = document.getElementById('dash-plan-badge');
   if (badge) {
-    badge.textContent = isPro ? (plan === 'annual' ? '✦ Pro Anual' : '✦ Pro') : 'Free';
+    badge.textContent = isPro ? (plan === 'yearly' ? '✦ Pro Anual' : '✦ Pro') : 'Free';
   }
   const btnUpgrade = document.getElementById('btn-upgrade');
   if (btnUpgrade) btnUpgrade.style.display = isPro ? 'none' : 'block';
@@ -2443,8 +2462,8 @@ function togglePricingDisplay(isAnnual) {
   document.getElementById('pricing-price').textContent = isAnnual ? '249€' : '24,99€';
   document.getElementById('pricing-period').textContent = isAnnual ? '/año · IVA inc.' : '/mes · IVA inc.';
   document.getElementById('btn-pricing-checkout').href = isAnnual
-    ? 'https://molvicstudios.lemonsqueezy.com/checkout/buy/1451168?test=true'
-    : 'https://molvicstudios.lemonsqueezy.com/checkout/buy/1451161?test=true';
+    ? CHECKOUT_YEARLY
+    : CHECKOUT_MONTHLY;
   const modalToggle = document.getElementById('toggle-annual-modal');
   if (modalToggle) { modalToggle.checked = isAnnual; toggleUpgradePrice(isAnnual); }
 }
@@ -4851,7 +4870,7 @@ const LEGAL_CONTENT={
 <table style="width:100%;font-size:11px;border-collapse:collapse">
   <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 0;color:var(--text);font-weight:500">Nombre</td><td style="padding:5px 0;color:var(--text);font-weight:500">Propósito</td><td style="padding:5px 0;color:var(--text);font-weight:500">Duración</td></tr>
   <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 0;font-family:'JetBrains Mono',monospace">aws_*</td><td style="padding:5px 0">Datos locales de la app (CRM, equipos, config)</td><td style="padding:5px 0">Hasta borrar manualmente</td></tr>
-  <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 0;font-family:'JetBrains Mono',monospace">aiws_pro_*</td><td style="padding:5px 0">Datos de licencia Pro (Lemon Squeezy)</td><td style="padding:5px 0">Hasta borrar manualmente</td></tr>
+  <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 0;font-family:'JetBrains Mono',monospace">aiws_*</td><td style="padding:5px 0">Datos de licencia Pro (Lemon Squeezy)</td><td style="padding:5px 0">Hasta borrar manualmente</td></tr>
   <tr><td style="padding:5px 0;font-family:'JetBrains Mono',monospace">aws_cookie_consent</td><td style="padding:5px 0">Guardar tu preferencia de cookies</td><td style="padding:5px 0">1 año</td></tr>
 </table>
 <h5 style="margin:12px 0 4px;color:var(--text)">Cookies analíticas / marketing</h5>
@@ -4887,7 +4906,7 @@ const LEGAL_CONTENT={
 <p style="margin-top:12px;color:var(--text3);font-size:11px">AIWorkSuite · by <a href="https://molvicstudios.pro" target="_blank" style="color:var(--accent)">MolvicStudios</a></p>`,
     cookies:`<h4 style="color:var(--accent);margin-bottom:8px">Cookie Policy</h4>
 <h5 style="margin:12px 0 4px;color:var(--text)">Essential cookies (always active)</h5>
-<p>We use only essential cookies: local app data (aws_*), license data (aiws_pro_*), and your cookie preference (aws_cookie_consent). We do <strong>not</strong> use analytics or advertising cookies.</p>
+<p>We use only essential cookies: local app data (aws_*), license data (aiws_*), and your cookie preference (aws_cookie_consent). We do <strong>not</strong> use analytics or advertising cookies.</p>
 <p style="margin-top:12px;color:var(--text3);font-size:11px">AIWorkSuite · by <a href="https://molvicstudios.pro" target="_blank" style="color:var(--accent)">MolvicStudios</a></p>`,
     terms:`<h4 style="color:var(--accent);margin-bottom:8px">Terms of Use</h4>
 <p><strong>Service:</strong> AIWorkSuite — aiworksuite.pro &nbsp;|&nbsp; <strong>Provider:</strong> MolvicStudios</p>
