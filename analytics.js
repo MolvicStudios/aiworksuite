@@ -15,6 +15,12 @@
     /bot|crawl|spider|slurp|bingbot|googlebot/i.test(navigator.userAgent)
   ) return
 
+  // X7: Respetar consentimiento de cookies (RGPD)
+  var consent = localStorage.getItem('cookie_consent')
+  if (!consent) return // No tracking sin consentimiento
+  // 'essential' = solo funcionalidad, sin analytics
+  if (consent === 'essential') return
+
   // Detectar usuario nuevo vs recurrente
   var isNewUser = !localStorage.getItem(USER_KEY)
   if (isNewUser) localStorage.setItem(USER_KEY, '1')

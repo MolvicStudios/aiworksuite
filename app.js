@@ -1,0 +1,3442 @@
+// ═══════════════════════════════════════════════════════════════════════
+// AIWORKSUITE — LICENSE SYSTEM (Lemon Squeezy)
+// Sin Supabase · Sin Gumroad · localStorage only
+// ═══════════════════════════════════════════════════════════════════════
+const LS_PLAN_KEY    = 'aiws_plan';
+const LS_LICENSE_KEY = 'aiws_license_key';
+const LS_BILLING_KEY = 'aiws_billing_period';
+const LS_LAST_CHECK  = 'aiws_last_check';
+const VALIDATE_URL   = '/api/validate-license';
+const CHECKOUT_MONTHLY = 'https://molvicstudios.lemonsqueezy.com/checkout/buy/1451161?checkout[custom][product]=aiworksuite';
+const CHECKOUT_YEARLY  = 'https://molvicstudios.lemonsqueezy.com/checkout/buy/1451168?checkout[custom][product]=aiworksuite';
+
+// Migrate old key names (aiws_pro_*) → new (aiws_*)
+(function migrateOldKeys() {
+  try {
+    const oldKey = localStorage.getItem('aiws_pro_license_key');
+    if (oldKey && !localStorage.getItem(LS_LICENSE_KEY)) {
+      localStorage.setItem(LS_LICENSE_KEY, oldKey);
+      localStorage.setItem(LS_PLAN_KEY, 'pro');
+      const oldPlan = localStorage.getItem('aiws_pro_plan');
+      localStorage.setItem(LS_BILLING_KEY, oldPlan === 'annual' ? 'yearly' : 'monthly');
+      const oldVerified = localStorage.getItem('aiws_pro_verified_at');
+      if (oldVerified) localStorage.setItem(LS_LAST_CHECK, oldVerified);
+    }
+    // Clean up old keys
+    ['aiws_pro_license_key','aiws_pro_plan','aiws_pro_status','aiws_pro_verified_at','aiws_pro_expires']
+      .forEach(k => localStorage.removeItem(k));
+  } catch {}
+})();
+
+const LICENSE = {
+  KEYS: { key: LS_LICENSE_KEY, plan: LS_PLAN_KEY, billing: LS_BILLING_KEY, lastCheck: LS_LAST_CHECK },
+  isPro() {
+    try { return localStorage.getItem(LS_PLAN_KEY) === 'pro'; }
+    catch { return false; }
+  },
+  getPlan() {
+    try { return localStorage.getItem(LS_BILLING_KEY) || null; }
+    catch { return null; }
+  },
+  getStatus() { return this.isPro() ? 'active' : null; },
+  async activate(licenseKey) {
+    try {
+      const res = await fetch(VALIDATE_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ licenseKey }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        localStorage.setItem(LS_PLAN_KEY,    'pro');
+        localStorage.setItem(LS_LICENSE_KEY, licenseKey);
+        localStorage.setItem(LS_BILLING_KEY, data.billingPeriod || 'monthly');
+        localStorage.setItem(LS_LAST_CHECK,  Date.now().toString());
+        return { success: true, billingPeriod: data.billingPeriod };
+      } else {
+        return { success: false, error: data.error || 'invalid_key' };
+      }
+    } catch (err) {
+      return { success: false, error: 'network_error' };
+    }
+  },
+  async validateOnLoad() {
+    const key         = localStorage.getItem(LS_LICENSE_KEY);
+    const lastChecked = parseInt(localStorage.getItem(LS_LAST_CHECK) || '0');
+    const now         = Date.now();
+    const sevenDays   = 7 * 24 * 60 * 60 * 1000;
+    if (!key) return;
+    if (now - lastChecked < sevenDays) return;
+    const result = await this.activate(key);
+    if (!result.success) {
+      this.deactivate();
+      console.warn('[AIWorkSuite] License invalid — downgraded to Free.');
+    }
+  },
+  async refresh() {
+    return this.validateOnLoad();
+  },
+  deactivate() {
+    try {
+      localStorage.removeItem(LS_PLAN_KEY);
+      localStorage.removeItem(LS_LICENSE_KEY);
+      localStorage.removeItem(LS_BILLING_KEY);
+      localStorage.removeItem(LS_LAST_CHECK);
+    } catch {}
+  },
+  openCheckout(period) {
+    window.open(period === 'yearly' ? CHECKOUT_YEARLY : CHECKOUT_MONTHLY, '_blank');
+  },
+};
+// Sesión simplificada (sin registro — solo para resetear licencia)
+const SESSION = {
+  logout() {
+    try {
+      LICENSE.deactivate();
+      window.location.reload();
+    } catch {}
+  },
+  isLoggedIn() { return true; },
+  getEmail() { return ''; },
+  getName() { return ''; },
+};
+// Límites Free
+const FREE_LIMITS = {
+  clientes:     5,
+  equipos:      3,
+  prompts:      10,
+  chats_equipo: 1,
+};
+function checkFreeLimit(resource, currentCount) {
+  if (LICENSE.isPro()) return true;
+  const limit = FREE_LIMITS[resource];
+  if (limit === undefined) return true;
+  return currentCount < limit;
+}
+// ═══════════════════════════════════════════════════════════════════════
+// PLAN LIMITS (compat layer for existing code)
+// ═══════════════════════════════════════════════════════════════════════
+const PLANS = {
+  free: { clients: 5, teams: 3, prompts: 10, chatsPerTeam: 1, aiRoles: false },
+  pro:  { clients: Infinity, teams: Infinity, prompts: Infinity, chatsPerTeam: 3, aiRoles: true },
+};
+let USER_PLAN = 'free';
+// Compat shim: tierSystem for code that still references it
+const tierSystem = {
+  isPro()  { return LICENSE.isPro(); },
+  isFree() { return !LICENSE.isPro(); },
+  getTier(){ return LICENSE.isPro() ? 'pro' : 'free'; },
+  getSeats(){ return 1; },
+  getPeriodEnd(){ return localStorage.getItem(LICENSE.KEYS.expires) || null; },
+  clearCache(){ LICENSE.deactivate(); },
+  requiresTier(minTier, featureName) {
+    if (minTier === 'free') return true;
+    if (LICENSE.isPro()) return true;
+    showUpgradeModal(featureName);
+    return false;
+  },
+  async load() {
+    await LICENSE.refresh();
+    USER_PLAN = LICENSE.isPro() ? 'pro' : 'free';
+  },
+};
+// Usuario local (sin registro — acceso directo)
+let CURRENT_USER = { id: 'local', email: '' };
+// ═══════════════════════════════════════════════════════════════════════
+// STORAGE — por usuario
+// ═══════════════════════════════════════════════════════════════════════
+const S = {
+  key: (k) => `aws_${CURRENT_USER?.id||'demo'}_${k}`,
+  get: (k) => { try { return JSON.parse(localStorage.getItem(S.key(k))) } catch(e) { return null } },
+  set: (k, v) => { try { localStorage.setItem(S.key(k), JSON.stringify(v)) } catch(e) {} },
+  del: (k) => { localStorage.removeItem(S.key(k)) }
+};
+const PROVIDERS = {
+  anthropic: { label:'Anthropic', model:'claude-sonnet-4-20250514', models:['claude-opus-4-5','claude-sonnet-4-5','claude-sonnet-4-20250514','claude-3-5-haiku-20241022'], endpoint:'https://api.anthropic.com/v1/messages', hint:'sk-ant-...' },
+  openai:    { label:'OpenAI',    model:'gpt-4o',                   models:['gpt-4o','gpt-4o-mini','gpt-4-turbo','o1-mini'],             endpoint:'https://api.openai.com/v1/chat/completions', hint:'sk-...' },
+  groq:      { label:'Groq',      model:'llama-3.3-70b-versatile',  models:['llama-3.3-70b-versatile','llama-3.1-8b-instant','mixtral-8x7b-32768','gemma2-9b-it'], endpoint:'https://api.groq.com/openai/v1/chat/completions', hint:'gsk_...' },
+  openrouter:{ label:'OpenRouter',model:'anthropic/claude-3.5-sonnet',models:['anthropic/claude-3.5-sonnet','openai/gpt-4o','meta-llama/llama-3.3-70b-instruct','google/gemini-flash-1.5'], endpoint:'https://openrouter.ai/api/v1/chat/completions', hint:'sk-or-...' },
+  gemini:    { label:'Google Gemini', model:'gemini-2.0-flash',      models:['gemini-2.0-flash','gemini-1.5-pro','gemini-1.5-flash'],    endpoint:'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', hint:'AIza...' },
+  mistral:   { label:'Mistral',   model:'mistral-small-latest',      models:['mistral-small-latest','mistral-medium-latest','mistral-large-latest','open-mistral-nemo'], endpoint:'https://api.mistral.ai/v1/chat/completions', hint:'...' },
+  deepseek:  { label:'DeepSeek',  model:'deepseek-chat',             models:['deepseek-chat','deepseek-reasoner'],                       endpoint:'https://api.deepseek.com/v1/chat/completions', hint:'sk-...' },
+  together:  { label:'Together AI',model:'meta-llama/Llama-3-70b-chat-hf', models:['meta-llama/Llama-3-70b-chat-hf','meta-llama/Llama-3-8b-chat-hf','mistralai/Mixtral-8x7B-Instruct-v0.1'], endpoint:'https://api.together.xyz/v1/chat/completions', hint:'...' },
+  cohere:    { label:'Cohere',    model:'command-r-plus',             models:['command-r-plus','command-r','command-light'],               endpoint:'https://api.cohere.com/v2/chat', hint:'...' },
+  xai:       { label:'xAI (Grok)',model:'grok-beta',                  models:['grok-beta','grok-2'],                                      endpoint:'https://api.x.ai/v1/chat/completions', hint:'xai-...' }
+};
+// ═══════════════════════════════════════════════════════════════════════
+// SCREEN NAV (sin auth — acceso directo)
+// ═══════════════════════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+function showLanding() { showScreen('landing'); checkCookieConsent(); }
+// Boot: mostrar landing o ir directo a la app
+function showLandingOrWelcome() {
+  showScreen('landing');
+  if (!localStorage.getItem('aws_welcomed')) { setTimeout(showWelcomeGate, 400); }
+}
+async function checkSession() {
+  // Migración: si el usuario ya tenía sesión antigua, adoptar su prefijo de storage
+  try {
+    const oldEmail = localStorage.getItem('aiws_session_email');
+    if (oldEmail) {
+      const oldId = oldEmail.replace(/[^a-z0-9]/gi, '_');
+      if (oldId && oldId !== 'local' && localStorage.getItem('aws_' + oldId + '_demo_user')) {
+        // Migrar: copiar datos del viejo prefijo al nuevo
+        const oldPrefix = 'aws_' + oldId + '_';
+        const newPrefix = 'aws_local_';
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith(oldPrefix)) {
+            const newK = newPrefix + k.slice(oldPrefix.length);
+            if (!localStorage.getItem(newK)) localStorage.setItem(newK, localStorage.getItem(k));
+          }
+        }
+      }
+      // Limpiar claves de sesión antigua
+      ['aiws_session_email','aiws_session_logged','aiws_session_name'].forEach(k => localStorage.removeItem(k));
+    }
+    // También comprobar prefijo aws_demo_ (usuarios que entraron sin cuenta)
+    if (localStorage.getItem('aws_demo_demo_user') && !localStorage.getItem('aws_local_demo_user')) {
+      const oldPrefix = 'aws_demo_';
+      const newPrefix = 'aws_local_';
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(oldPrefix)) {
+          const newK = newPrefix + k.slice(oldPrefix.length);
+          if (!localStorage.getItem(newK)) localStorage.setItem(newK, localStorage.getItem(k));
+        }
+      }
+    }
+  } catch(_) {}
+  // Si ya usó la app antes, entrar directo
+  const returning = S.get('demo_user');
+  if (returning) { await launchApp(); return; }
+  showLandingOrWelcome();
+}
+// ── WELCOME GATE (first visit — elegir idioma) ───────────────────────
+function showWelcomeGate() {
+  const modal = document.getElementById('modal-welcome');
+  modal.style.display = 'flex';
+  const options = modal.querySelectorAll('.wg-lang');
+  const startBtn = document.getElementById('wg-register-btn');
+  const browserLang = navigator.language?.slice(0, 2).toLowerCase();
+  const preselect = SUPPORTED_LANGS.includes(browserLang) ? browserLang : 'es';
+  wgSelect(preselect);
+  options.forEach(btn => {
+    btn.addEventListener('click', () => wgSelect(btn.dataset.lang));
+    btn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); wgSelect(btn.dataset.lang); } });
+  });
+  startBtn.addEventListener('click', () => { wgApply(); closeModal('modal-welcome'); launchApp(); });
+  function wgSelect(lang) {
+    options.forEach(b => { b.classList.toggle('selected', b.dataset.lang === lang); b.setAttribute('aria-checked', b.dataset.lang === lang ? 'true' : 'false'); });
+    startBtn.disabled = false;
+    const labels = { es:'Empezar gratis', en:'Start free', de:'Kostenlos starten', fr:'Commencer gratuitement', zh:'免费开始' };
+    startBtn.textContent = labels[lang] || labels.es;
+  }
+  function wgApply() {
+    const selected = modal.querySelector('.wg-lang.selected')?.dataset.lang;
+    if (selected) { setLang(selected); applyTranslations(); }
+    localStorage.setItem('aws_welcomed', '1');
+  }
+}
+async function launchApp() {
+  loadTheme();
+  loadLang();
+  applyTranslations();
+  S.set('demo_user', true);
+  showScreen('app');
+  applyUserSettings();
+  await fetchAndApplyPlan();
+  initCRM();
+  renderPropDB();
+  evalCL();
+  renderEqHist();
+  renderLib();
+  refreshDash();
+  updateLimitLabels();
+  handleDeepLink();
+  // Show language selector then onboarding on first launch
+  if (!S.get('onboarded')) {
+    const hasLang = localStorage.getItem('aws_lang');
+    if (!hasLang) {
+      setTimeout(() => { showLangSelector(); }, 600);
+    } else {
+      setTimeout(() => { document.getElementById('modal-onboarding').style.display = 'flex'; }, 600);
+    }
+  }
+}
+function showLangSelector() {
+  document.getElementById('modal-lang-select').style.display = 'flex';
+  const options = document.querySelectorAll('.lang-option');
+  const continueBtn = document.getElementById('lang-continue-btn');
+  const continueText = document.getElementById('lang-continue-text');
+  const browserLang = navigator.language?.slice(0, 2).toLowerCase();
+  const preselect = SUPPORTED_LANGS.includes(browserLang) ? browserLang : 'es';
+  selectLangOption(preselect);
+  options.forEach(btn => {
+    btn.addEventListener('click', () => selectLangOption(btn.dataset.lang));
+    btn.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectLangOption(btn.dataset.lang); }
+    });
+  });
+  continueBtn.addEventListener('click', async () => {
+    const selected = document.querySelector('.lang-option.selected')?.dataset.lang;
+    if (!selected) return;
+    continueBtn.disabled = true;
+    setLang(selected);
+    try { /* lang update — no server needed */ } catch(e) {}
+    closeModal('modal-lang-select');
+    setTimeout(() => { document.getElementById('modal-onboarding').style.display = 'flex'; }, 300);
+  });
+  function selectLangOption(lang) {
+    options.forEach(b => { b.classList.toggle('selected', b.dataset.lang === lang); b.setAttribute('aria-checked', b.dataset.lang === lang ? 'true' : 'false'); });
+    const labels = { es:'Continuar →', en:'Continue →', de:'Weiter →', fr:'Continuer →', zh:'继续 →' };
+    continueText.textContent = labels[lang] || 'Continue →';
+    continueBtn.disabled = false;
+  }
+}
+function dismissOnboarding() {
+  S.set('onboarded', true);
+  closeModal('modal-onboarding');
+}
+// ═══════════════════════════════════════════════════════════════════════
+// UPGRADE / PRO — Lemon Squeezy
+// ═══════════════════════════════════════════════════════════════════════
+function showUpgradeModal(featureName) {
+  featureName = featureName || '';
+  document.getElementById('upgrade-modal')?.remove();
+  const COPY = {
+    clientes:  { icon: '👥', title: 'Límite de clientes alcanzado',
+                 desc: 'El plan Free permite hasta 5 clientes en el CRM' },
+    equipos:   { icon: '🤖', title: 'Límite de equipos alcanzado',
+                 desc: 'El plan Free permite hasta 3 equipos IA' },
+    prompts:   { icon: '📚', title: 'Límite de prompts alcanzado',
+                 desc: 'El plan Free permite hasta 10 prompts en biblioteca' },
+    roles_ia:  { icon: '✦', title: 'Detección IA de roles — Plan Pro',
+                 desc: 'La detección automática de roles es exclusiva de Pro' },
+  };
+  const c = COPY[featureName] || { icon: '⚡', title: featureName ? esc(featureName) + ' es una función Pro' : 'Función exclusiva Pro', desc: t('upgrade_subtitle') };
+  const modal = document.createElement('div');
+  modal.id = 'upgrade-modal';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-label', 'Upgrade a Pro');
+  modal.innerHTML = `
+    <div class="upgrade-modal__backdrop" id="upgrade-modal-backdrop"></div>
+    <div class="upgrade-modal__card">
+      <button class="upgrade-modal__close" id="upgrade-modal-close" aria-label="Cerrar">✕</button>
+      <div class="upgrade-modal__icon">${c.icon}</div>
+      <h2 class="upgrade-modal__title">${c.title}</h2>
+      <p class="upgrade-modal__subtitle">${c.desc}</p>
+      <ul class="upgrade-modal__features">
+        <li>✅ Clientes ilimitados en CRM</li>
+        <li>✅ Equipos IA ilimitados</li>
+        <li>✅ Biblioteca de prompts ilimitada</li>
+        <li>✅ Detección IA de roles</li>
+        <li>✅ Branding personalizable</li>
+      </ul>
+      <div style="display:flex;align-items:center;justify-content:center;gap:.75rem;margin-bottom:1rem;font-size:.85rem;">
+        <span id="modal-lbl-monthly" style="font-weight:700;">Mensual</span>
+        <label style="position:relative;display:inline-block;width:44px;height:24px;">
+          <input type="checkbox" id="toggle-annual-modal" style="opacity:0;width:0;height:0;" onchange="toggleUpgradePrice(this.checked)">
+          <span style="position:absolute;inset:0;background:#444;border-radius:999px;cursor:pointer;transition:.2s;"></span>
+        </label>
+        <span id="modal-lbl-annual" style="opacity:.6;">Anual <small style="background:#f0a500;color:#000;border-radius:4px;padding:1px 6px;font-size:.7rem;font-weight:700;">-17%</small></span>
+      </div>
+      <div style="text-align:center;margin-bottom:1.25rem;">
+        <span id="upgrade-price" style="font-size:2rem;font-weight:800;color:#f0a500;">24,99€</span>
+        <span id="upgrade-period" style="font-size:.85rem;opacity:.6;">/mes · IVA inc.</span>
+      </div>
+      <div class="upgrade-modal__ctas">
+        <a id="btn-upgrade-checkout" href="https://molvicstudios.lemonsqueezy.com/checkout/buy/1451161?checkout[custom][product]=aiworksuite" target="_blank" rel="noopener" class="btn btn-accent" style="padding:12px 24px;font-size:14px;text-decoration:none;display:block;text-align:center">
+          🚀 Empezar 7 días gratis
+        </a>
+      </div>
+      <div style="border-top:1px solid rgba(255,255,255,.1);padding-top:1rem;margin-top:.75rem;">
+        <p style="font-size:.8rem;opacity:.6;text-align:center;margin-bottom:.5rem;">¿Ya tienes una licencia?</p>
+        <div style="display:flex;gap:.5rem;">
+          <input type="text" id="input-license-key" placeholder="Pega tu clave de licencia" style="flex:1;padding:.5rem .75rem;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:#0c0d0f;color:inherit;font-size:.85rem;outline:none;">
+          <button onclick="activateLicenseFromModal()" style="background:#f0a500;color:#000;border:none;border-radius:8px;padding:.5rem 1rem;font-weight:700;cursor:pointer;font-size:.85rem;">Activar</button>
+        </div>
+        <p id="license-msg" style="font-size:.8rem;margin-top:.5rem;text-align:center;display:none;"></p>
+      </div>
+      <p class="upgrade-modal__footnote">
+        Sin tarjeta hasta que decidas · Cancela cuando quieras
+      </p>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  trackConversion('upgrade_modal_shown');
+  requestAnimationFrame(() => modal.classList.add('upgrade-modal--visible'));
+  const close = () => {
+    modal.classList.remove('upgrade-modal--visible');
+    setTimeout(() => modal.remove(), 300);
+  };
+  document.getElementById('upgrade-modal-close').addEventListener('click', close);
+  document.getElementById('upgrade-modal-backdrop').addEventListener('click', close);
+  document.addEventListener('keydown', function _esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', _esc); } });
+}
+function closeUpgradeModal() {
+  const modal = document.getElementById('upgrade-modal');
+  if (modal) { modal.classList.remove('upgrade-modal--visible'); setTimeout(() => modal.remove(), 300); }
+}
+function toggleUpgradePrice(isAnnual) {
+  const priceEl  = document.getElementById('upgrade-price');
+  const periodEl = document.getElementById('upgrade-period');
+  const btnEl    = document.getElementById('btn-upgrade-checkout');
+  const lblM     = document.getElementById('modal-lbl-monthly');
+  const lblA     = document.getElementById('modal-lbl-annual');
+  if (!priceEl) return;
+  if (isAnnual) {
+    priceEl.textContent  = '249€';
+    periodEl.textContent = '/año · IVA inc.';
+    if (btnEl) btnEl.href = CHECKOUT_YEARLY;
+    if (lblM) { lblM.style.fontWeight = '400'; lblM.style.opacity = '.6'; }
+    if (lblA) { lblA.style.fontWeight = '700'; lblA.style.opacity = '1'; }
+  } else {
+    priceEl.textContent  = '24,99€';
+    periodEl.textContent = '/mes · IVA inc.';
+    if (btnEl) btnEl.href = CHECKOUT_MONTHLY;
+    if (lblM) { lblM.style.fontWeight = '700'; lblM.style.opacity = '1'; }
+    if (lblA) { lblA.style.fontWeight = '400'; lblA.style.opacity = '.6'; }
+  }
+}
+async function activateLicenseFromModal() {
+  const key    = document.getElementById('input-license-key')?.value.trim();
+  const msgEl  = document.getElementById('license-msg');
+  if (!key || !msgEl) return;
+  msgEl.style.display = 'block';
+  msgEl.style.color   = '#f0a500';
+  msgEl.textContent   = 'Verificando...';
+  const result = await LICENSE.activate(key);
+  if (result.success) {
+    msgEl.style.color = '#4ade80';
+    msgEl.textContent = '✅ Licencia activada — cargando Pro...';
+    setTimeout(() => { closeUpgradeModal(); applyProUI(); }, 1200);
+  } else {
+    msgEl.style.color = '#f87171';
+    const errors = {
+      invalid_key:         '❌ Clave no válida',
+      invalid_or_inactive: '❌ Clave inactiva o no reconocida',
+      network_error:       '❌ Error de conexión. Inténtalo de nuevo.',
+    };
+    msgEl.textContent = errors[result.error] || '❌ Error al verificar la clave';
+  }
+}
+function showUpgradeInterest() { showUpgradeModal(); }
+function checkPlanLimit(type) {
+  if (LICENSE.isPro()) return true;
+  const plan = PLANS.free;
+  if (type === 'clients') { const c = Object.keys(getCRMData()).length; return c < plan.clients; }
+  if (type === 'teams')   { const t = getTeams().length; return t < plan.teams; }
+  if (type === 'prompts') { const p = getLib().length; return p < plan.prompts; }
+  return true;
+}
+function showLimitWarning(type) {
+  const names = { clients: 'clientes', teams: 'equipos', prompts: 'prompts' };
+  showUpgradeModal(names[type] || '');
+}
+function updateLimitLabels() {
+  const clients = Object.keys(getCRMData()).length;
+  const teams   = getTeams().length;
+  const prompts = getLib().length;
+  const plan    = PLANS[USER_PLAN];
+  const el = document.getElementById('banner-clients'); if(el) el.textContent = `${clients}/${plan.clients === Infinity ? '∞' : plan.clients}`;
+  const et = document.getElementById('banner-teams');   if(et) et.textContent = `${teams}/${plan.teams === Infinity ? '∞' : plan.teams}`;
+  const ep = document.getElementById('banner-prompts'); if(ep) ep.textContent = `${prompts}/${plan.prompts === Infinity ? '∞' : plan.prompts}`;
+  const cl = document.getElementById('crm-limit-label'); if(cl) cl.textContent = `${clients}/${plan.clients === Infinity ? '∞' : plan.clients} clientes`;
+  const tl = document.getElementById('teams-limit-label'); if(tl) tl.textContent = `${teams}/${plan.teams === Infinity ? '∞' : plan.teams} equipos`;
+  const ll = document.getElementById('lib-limit-label'); if(ll) ll.textContent = `${prompts}/${plan.prompts === Infinity ? '∞' : plan.prompts} prompts`;
+  const banner = document.getElementById('dash-limit-banner');
+  if (banner) {
+    if (LICENSE.isPro()) {
+      banner.style.display = 'none';
+    } else {
+      banner.style.display = '';
+      const txt = banner.querySelector('.limit-banner-text');
+      if (txt) txt.innerHTML = `${t('plan_label_free')} · ${t('limit_clients').trim().replace(/^./,c=>c.toUpperCase())}: <span id="banner-clients">${el ? el.textContent : ''}</span> · ${t('limit_teams').trim().replace(/^./,c=>c.toUpperCase())}: <span id="banner-teams">${et ? et.textContent : ''}</span> · ${t('limit_prompts').trim().replace(/^./,c=>c.toUpperCase())}: <span id="banner-prompts">${ep ? ep.textContent : ''}</span>`;
+    }
+  }
+}
+// ═══════════════════════════════════════════════════════════════════════
+// PRO PLAN — badge + UI
+// ═══════════════════════════════════════════════════════════════════════
+function updatePlanBadge() {
+  const el = document.getElementById('user-plan-display');
+  if (!el) return;
+  if (LICENSE.isPro()) {
+    const plan = LICENSE.getPlan();
+    el.innerHTML = (plan === 'yearly' ? '✦ Pro Anual' : '✦ Pro') +
+      ' · <a href="https://app.lemonsqueezy.com/my-orders" target="_blank" rel="noopener" style="color:var(--text3);font-size:10px">' + t('plan_manage_sub') + '</a>';
+  } else {
+    el.innerHTML = t('plan_label_free') + ' · <span style="cursor:pointer;color:var(--purple)" onclick="showUpgradeModal()">' + t('settings_upgrade_link') + '</span>';
+  }
+  const badge = document.getElementById('dash-plan-badge');
+  if (badge) badge.textContent = LICENSE.isPro() ? '✦ Pro' : 'Free';
+}
+function applyProUI() {
+  const isPro = LICENSE.isPro();
+  const plan  = LICENSE.getPlan();
+  USER_PLAN = isPro ? 'pro' : 'free';
+  document.body.dataset.tier = USER_PLAN;
+  const badge = document.getElementById('dash-plan-badge');
+  if (badge) {
+    badge.textContent = isPro ? (plan === 'yearly' ? '✦ Pro Anual' : '✦ Pro') : 'Free';
+  }
+  const btnUpgrade = document.getElementById('btn-upgrade');
+  if (btnUpgrade) btnUpgrade.style.display = isPro ? 'none' : 'block';
+  const limitsEl = document.getElementById('free-limits-info');
+  if (limitsEl && !isPro) {
+    const clients = Object.keys(getCRMData?.() || {}).length;
+    const teams   = getTeams?.()?.length || 0;
+    const prompts = getLib?.()?.length || 0;
+    limitsEl.textContent = `Clientes: ${clients}/5 · Equipos: ${teams}/3 · Prompts: ${prompts}/10`;
+  } else if (limitsEl && isPro) {
+    limitsEl.textContent = 'Acceso Pro ilimitado ✦';
+  }
+  document.querySelectorAll('[data-pro-feature]').forEach(el => {
+    el.classList.toggle('locked', !isPro);
+  });
+  updateLimitLabels();
+  updatePlanBadge();
+}
+async function fetchAndApplyPlan() {
+  try {
+    await LICENSE.refresh();
+    USER_PLAN = LICENSE.isPro() ? 'pro' : 'free';
+    document.body.dataset.tier = USER_PLAN;
+    updateLimitLabels();
+    updatePlanBadge();
+    refreshDash();
+    if (LICENSE.isPro()) renderTeamsView();
+  } catch(_e) {}
+}
+function togglePricingDisplay(isAnnual) {
+  document.getElementById('pricing-price').textContent = isAnnual ? '249€' : '24,99€';
+  document.getElementById('pricing-period').textContent = isAnnual ? '/año · IVA inc.' : '/mes · IVA inc.';
+  document.getElementById('btn-pricing-checkout').href = isAnnual
+    ? CHECKOUT_YEARLY
+    : CHECKOUT_MONTHLY;
+  const modalToggle = document.getElementById('toggle-annual-modal');
+  if (modalToggle) { modalToggle.checked = isAnnual; toggleUpgradePrice(isAnnual); }
+}
+// ═══════════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════════════
+const VIEWS = ['dash','crm','prop','lib','teams','ws','settings','pricing'];
+function goTo(id) {
+  // Free plan: modules accessible with quantity limits (Pro = unlimited)
+  VIEWS.forEach(v => {
+    document.getElementById('view-' + v).classList.toggle('active', v === id);
+    const n = document.getElementById('nav-' + v); if(n) n.classList.toggle('active', v === id);
+  });
+  if (id === 'dash')   refreshDash();
+  if (id === 'lib')    renderLib();
+  if (id === 'teams')  renderTeamsView();
+  if (id === 'crm')    pollCaptadoSignal();
+  if (id === 'pricing') updatePricingView();
+}
+// ═══════════════════════════════════════════════════════════════════════
+// PRICING — toggle mensual/anual + estado de plan
+// ═══════════════════════════════════════════════════════════════════════
+function updatePricingView() {
+  const tier = tierSystem.getTier();
+  const freeBtn = document.getElementById('current-plan-free');
+  if (freeBtn) freeBtn.textContent = tier === 'free' ? t('plan_current') : '';
+  if (freeBtn) freeBtn.style.display = tier === 'free' ? 'block' : 'none';
+}
+document.addEventListener('click', function(e) {
+  if (e.target.id !== 'billing-toggle' && e.target.id !== 'toggle-thumb') return;
+  const btn = document.getElementById('billing-toggle');
+  if (!btn) return;
+  const isAnnual = btn.getAttribute('aria-pressed') === 'true';
+  btn.setAttribute('aria-pressed', String(!isAnnual));
+  const thumb = document.getElementById('toggle-thumb');
+  if (thumb) thumb.style.transform = !isAnnual ? 'translateX(18px)' : 'translateX(0)';
+  togglePricingDisplay(!isAnnual);
+});
+// ═══════════════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════════════
+function esc(s) { if(!s)return''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDate() { return new Date().toLocaleDateString('es-ES'); }
+function genId() { return '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
+function logActivity(text, color='var(--accent)') {
+  const acts = S.get('activity') || [];
+  acts.unshift({ text, color, time: new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}) });
+  S.set('activity', acts.slice(0,20));
+}
+function showToast(msg, type='info', duration=3500) {
+  const c = document.getElementById('toast-container');
+  if (!c) return;
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  requestAnimationFrame(() => { requestAnimationFrame(() => t.classList.add('show')); });
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, duration);
+}
+function showConfirm(msg, onOk, onCancel) {
+  const modal = document.getElementById('modal-confirm');
+  const msgEl = document.getElementById('confirm-msg');
+  const okBtn = document.getElementById('confirm-ok');
+  const cancelBtn = document.getElementById('confirm-cancel');
+  msgEl.textContent = msg;
+  const close = () => { modal.style.display = 'none'; };
+  okBtn.onclick = () => { close(); onOk(); };
+  cancelBtn.onclick = () => { close(); if (onCancel) onCancel(); };
+  modal.style.display = 'flex';
+  okBtn.focus();
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = 'none';
+  if (el._trapFn) { el.removeEventListener('keydown', el._trapFn); delete el._trapFn; }
+  if (el._openerEl) { try { el._openerEl.focus(); } catch(e){} delete el._openerEl; }
+}
+function openModal(id, openerEl) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (openerEl) el._openerEl = openerEl;
+  el.style.display = 'flex';
+  // Focus first focusable element inside
+  const focusable = el.querySelectorAll('button,input,select,textarea,[tabindex]:not([tabindex="-1"])');
+  if (focusable.length) setTimeout(() => focusable[0].focus(), 60);
+  // Trap Tab focus within modal
+  el._trapFn = function(e) {
+    if (e.key !== 'Tab') return;
+    const items = Array.from(el.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'));
+    if (!items.length) return;
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last)  { e.preventDefault(); first.focus(); }
+  };
+  el.addEventListener('keydown', el._trapFn);
+}
+['modal-client','modal-captado','modal-nota','modal-prompt','modal-lib-picker','modal-upgrade','modal-legal','modal-confirm'].forEach(id => {
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('click', function(e) { if(e.target===this) closeModal(id); });
+});
+// ═══════════════════════════════════════════════════════════════════════
+// USER SETTINGS
+// ═══════════════════════════════════════════════════════════════════════
+function getCFG() { return S.get('config') || { provider:'anthropic', apiKey:'', model:'', userName:'', email:'', phone:'', telegram:'', web:'' }; }
+function saveCFG(cfg) { S.set('config', cfg); }
+function applyUserSettings() {
+  const cfg = getCFG();
+  document.getElementById('dash-title').textContent = 'AIWorkSuite';
+  document.getElementById('nav-logo-btn').textContent = (cfg.userName || 'AI').slice(0,2).toUpperCase();
+  // load settings form
+  const prov = document.getElementById('s-provider'); if(prov) prov.value = cfg.provider || 'anthropic';
+  const key  = document.getElementById('s-api-key');  if(key)  key.value  = cfg.apiKey || '';
+  const uname= document.getElementById('s-user-name');if(uname)uname.value= cfg.userName || '';
+  const em   = document.getElementById('s-email');    if(em)   em.value   = cfg.email || '';
+  const ph   = document.getElementById('s-phone');    if(ph)   ph.value   = cfg.phone || '';
+  const tg   = document.getElementById('s-telegram'); if(tg)   tg.value   = cfg.telegram || '';
+  const wb   = document.getElementById('s-web');      if(wb)   wb.value   = cfg.web || '';
+  const cm   = document.getElementById('s-custom-model'); if(cm) cm.value = '';
+  updateProviderLabel();
+  // Set custom model field if current model is custom
+  if(cfg.model) {
+    const sel = document.getElementById('s-model-select');
+    if(sel) {
+      const pSelect = cfg.provider || 'anthropic';
+      const models = PROVIDERS[pSelect]?.models || [];
+      if(!models.includes(cfg.model)) {
+        sel.value = '__custom';
+        const cm2 = document.getElementById('s-custom-model'); if(cm2) cm2.value = cfg.model;
+        _onModelSelectChange();
+      } else { sel.value = cfg.model; }
+    }
+  }
+  updateApiStatusBadge(cfg.apiKey ? 'ok' : 'no');
+  // sync theme select with saved preference
+  const thSel = document.getElementById('s-theme-select');
+  if(thSel) thSel.value = S.get('theme') || 'system';
+  // Init manual API section
+  initManualApiSection();
+}
+function updateProviderLabel() {
+  const prov = document.getElementById('s-provider')?.value || 'anthropic';
+  const lbl = document.getElementById('s-key-label');
+  const mlbl = document.getElementById('s-model-label');
+  if(lbl) lbl.textContent = `API Key (${PROVIDERS[prov]?.hint || '...'})`;
+  if(mlbl) mlbl.textContent = `Modelo por defecto: ${PROVIDERS[prov]?.model || ''}`;
+  // Populate model select with options for the chosen provider
+  const sel = document.getElementById('s-model-select');
+  if(sel) {
+    const models = PROVIDERS[prov]?.models || [];
+    sel.innerHTML = models.map(m => `<option value="${m}">${m}</option>`).join('') +
+      '<option value="__custom">\u2014 Modelo personalizado \u2014</option>';
+    sel.value = PROVIDERS[prov]?.model || models[0] || '';
+  }
+  _onModelSelectChange();
+}
+function onModelSelectChange() { _onModelSelectChange(); }
+function _onModelSelectChange() {
+  const sel = document.getElementById('s-model-select');
+  const row = document.getElementById('s-custom-model-row');
+  if(row) row.style.display = (sel && sel.value === '__custom') ? 'flex' : 'none';
+}
+function updateApiStatusBadge(status) {
+  const el = document.getElementById('api-status-badge'); if(!el) return;
+  el.className = 'api-status ' + (status === 'ok' ? 'api-ok' : status === 'testing' ? 'api-testing' : 'api-no');
+  el.textContent = status === 'ok' ? t('settings_api_status_ok') : status === 'testing' ? '● ...' : t('settings_api_status_no');
+}
+function toggleKeyVis() { const el = document.getElementById('s-api-key'); if(el) el.type = el.type === 'password' ? 'text' : 'password'; }
+async function testApiKey() {
+  const key = document.getElementById('s-api-key').value.trim();
+  const prov = document.getElementById('s-provider').value;
+  if (!key) { showToast(t('toast_api_key_required'), 'warn'); return; }
+  updateApiStatusBadge('testing');
+  const orig = getCFG(); saveCFG({...orig, provider:prov, apiKey:key, model:''});
+  try {
+    await callAI('Di solo la palabra OK.', [{role:'user',content:'Test'}], 10);
+    updateApiStatusBadge('ok'); showToast(t('toast_api_ok'), 'success');
+  } catch(e) { updateApiStatusBadge('no'); showToast(t('toast_api_err',{msg:e.message}), 'error', 5000); }
+  saveCFG(orig);
+}
+function saveApiSettings() {
+  const cfg = getCFG();
+  const sel = document.getElementById('s-model-select');
+  cfg.provider = document.getElementById('s-provider').value;
+  cfg.apiKey   = document.getElementById('s-api-key').value.trim();
+  if(sel && sel.value === '__custom') {
+    cfg.model = (document.getElementById('s-custom-model')?.value || '').trim();
+  } else {
+    cfg.model = sel ? sel.value : '';
+  }
+  saveCFG(cfg); updateApiStatusBadge(cfg.apiKey ? 'ok' : 'no');
+  showToast(t('toast_api_saved'), 'success');
+}
+function saveProfileSettings() {
+  const cfg = getCFG();
+  cfg.userName = document.getElementById('s-user-name').value.trim();
+  cfg.email    = document.getElementById('s-email').value.trim();
+  cfg.phone    = document.getElementById('s-phone').value.trim();
+  cfg.telegram = document.getElementById('s-telegram').value.trim();
+  cfg.web      = document.getElementById('s-web').value.trim();
+  saveCFG(cfg); applyUserSettings(); refreshDash();
+  showToast(t('toast_profile_saved'), 'success');
+}
+// ═══════════════════════════════════════════════════════════════════════
+// MANUAL API — Custom provider
+// ═══════════════════════════════════════════════════════════════════════
+const MANUAL_API_KEY = 'aws_manual_api';
+function initManualApiSection() {
+  const toggle = document.getElementById('manual-api-toggle');
+  const form = document.getElementById('manual-api-form');
+  if (!toggle || !form) return;
+  toggle.addEventListener('click', () => {
+    const expanded = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', !expanded);
+    form.hidden = expanded;
+    toggle.querySelector('.toggle-arrow').style.transform = expanded ? '' : 'rotate(90deg)';
+  });
+  // Load saved manual config
+  try {
+    const stored = JSON.parse(localStorage.getItem(MANUAL_API_KEY) || 'null');
+    if (stored) {
+      const pn = document.getElementById('manual-provider-name'); if(pn) pn.value = stored.name || '';
+      const au = document.getElementById('manual-api-url'); if(au) au.value = stored.apiUrl || '';
+      const ak = document.getElementById('manual-api-key'); if(ak) ak.value = stored.apiKey || '';
+      const mm = document.getElementById('manual-model'); if(mm) mm.value = stored.model || '';
+      if (stored.active) { toggle.setAttribute('aria-expanded', 'true'); form.hidden = false; toggle.querySelector('.toggle-arrow').style.transform = 'rotate(90deg)'; }
+    }
+  } catch(e) {}
+}
+function toggleManualKeyVis() { const el = document.getElementById('manual-api-key'); if(el) el.type = el.type === 'password' ? 'text' : 'password'; }
+function getManualFormValues() {
+  return {
+    name: (document.getElementById('manual-provider-name')?.value || '').trim(),
+    apiUrl: (document.getElementById('manual-api-url')?.value || '').trim().replace(/\/$/, ''),
+    apiKey: (document.getElementById('manual-api-key')?.value || '').trim(),
+    model: (document.getElementById('manual-model')?.value || '').trim()
+  };
+}
+function validateManualConfig(cfg) {
+  if (!cfg.apiUrl) { showToast(t('toast_required'), 'warn'); return false; }
+  if (!cfg.apiKey) { showToast(t('toast_required'), 'warn'); return false; }
+  if (!cfg.model) { showToast(t('toast_required'), 'warn'); return false; }
+  try { new URL(cfg.apiUrl); } catch { showToast(t('toast_invalid_url'), 'warn'); return false; }
+  return true;
+}
+async function testManualApi() {
+  const cfg = getManualFormValues();
+  if (!validateManualConfig(cfg)) return;
+  const btn = document.getElementById('manual-api-test');
+  const result = document.getElementById('manual-api-test-result');
+  btn.disabled = true; result.hidden = false;
+  result.style.color = 'var(--text3)'; result.textContent = '⏳...';
+  try {
+    const res = await fetch(cfg.apiUrl + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.apiKey },
+      body: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: 'ping' }], max_tokens: 5 }),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (res.ok || res.status === 400) {
+      result.style.color = 'var(--green)'; result.textContent = t('toast_api_ok');
+    } else { throw new Error('HTTP ' + res.status); }
+  } catch(e) {
+    result.style.color = 'var(--red)'; result.textContent = t('toast_api_err', { msg: e.message });
+  }
+  btn.disabled = false;
+}
+function saveManualApi() {
+  const cfg = getManualFormValues();
+  if (!validateManualConfig(cfg)) return;
+  cfg.active = true;
+  localStorage.setItem(MANUAL_API_KEY, JSON.stringify(cfg));
+  // Also update main config to use manual provider
+  const appCfg = getCFG();
+  appCfg.provider = 'manual';
+  appCfg.apiKey = cfg.apiKey;
+  appCfg.model = cfg.model;
+  appCfg.manualUrl = cfg.apiUrl;
+  appCfg.manualName = cfg.name;
+  saveCFG(appCfg);
+  updateApiStatusBadge('ok');
+  showToast(t('toast_api_saved'), 'success');
+}
+// ═══════════════════════════════════════════════════════════════════════
+// AI API CALL — multi-provider
+// ═══════════════════════════════════════════════════════════════════════
+function _aiHttpError(status) {
+  if (status === 401) throw new Error('API key inválida (401). Revisa tu configuración en Ajustes.');
+  if (status === 429) throw new Error('Límite de peticiones alcanzado (429). Espera un momento o cambia de proveedor.');
+  if (status === 500) throw new Error('Error interno del servidor IA (500). Inténtalo de nuevo.');
+  if (status === 503) throw new Error('Servicio IA no disponible (503). Inténtalo más tarde.');
+  throw new Error(`Error HTTP ${status} del proveedor IA.`);
+}
+async function callAI(systemPrompt, messages, maxTokens=1200) {
+  const cfg = getCFG();
+  // Manual provider support
+  if (cfg.provider === 'manual' && cfg.manualUrl) {
+    const msgs = [{role:'system', content:systemPrompt}, ...messages];
+    const hdrs = {'Content-Type':'application/json', 'Authorization':'Bearer '+cfg.apiKey};
+    const r = await fetch(cfg.manualUrl + '/chat/completions', { method:'POST', headers:hdrs, body: JSON.stringify({model:cfg.model, max_tokens:maxTokens, messages:msgs}) });
+    if (!r.ok) _aiHttpError(r.status);
+    const d = await r.json(); if(d.error) throw new Error(d.error.message || JSON.stringify(d.error));
+    return d.choices[0].message.content;
+  }
+  const prov = PROVIDERS[cfg.provider] || PROVIDERS.anthropic;
+  const model = cfg.model || prov.model;
+  const key = cfg.apiKey;
+  if (!key) throw new Error('API key no configurada. Ve a Configuración → Proveedor IA.');
+  if (cfg.provider === 'anthropic') {
+    const r = await fetch(prov.endpoint, { method:'POST', headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'}, body: JSON.stringify({model, max_tokens:maxTokens, system:systemPrompt, messages}) });
+    if (!r.ok) _aiHttpError(r.status);
+    const d = await r.json(); if(d.error) throw new Error(d.error.message);
+    return d.content[0].text;
+  }
+  const msgs = [{role:'system', content:systemPrompt}, ...messages];
+  const hdrs = {'Content-Type':'application/json', 'Authorization':'Bearer '+key};
+  if (cfg.provider === 'openrouter') { hdrs['HTTP-Referer'] = 'https://aiworksuite.pro'; hdrs['X-Title'] = 'AIWorkSuite'; }
+  const r = await fetch(prov.endpoint, { method:'POST', headers:hdrs, body: JSON.stringify({model, max_tokens:maxTokens, messages:msgs}) });
+  if (!r.ok) _aiHttpError(r.status);
+  const d = await r.json(); if(d.error) throw new Error(d.error.message || JSON.stringify(d.error));
+  return d.choices[0].message.content;
+}
+// ═══════════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════════════
+function refreshDash() {
+  document.getElementById('dash-date').textContent = new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+  const cfg = getCFG();
+  document.getElementById('dash-h1').textContent = t('dash_hello') + ', ' + (cfg.userName || 'amigo') + ' 👋';
+  const clients = getCRMData(); const cids = Object.keys(clients);
+  const captados = cids.filter(id => clients[id].captado).length;
+  const allProps = cids.flatMap(id => clients[id].propuestas || []);
+  const pendientes = allProps.filter(p => p.status === 'enviada').length;
+  const teams = getTeams(); const libItems = getLib();
+  document.getElementById('dash-sub').textContent = `${cids.length} clientes · ${captados} captados · ${teams.length} equipos activos`;
+  document.getElementById('kpi-grid').innerHTML = [
+    {label:t('dash_kpi_clients'),val:cids.length,sub:captados+' '+t('dash_kpi_won'),view:'crm',tip:'Ir al CRM · gestiona tu pipeline',cls:'kpi--crm'},
+    {label:t('dash_kpi_proposals'),val:pendientes,sub:allProps.length+' '+t('dash_kpi_total'),view:'prop',tip:'Propuestas enviadas pendientes de respuesta',cls:'kpi--prop'},
+    {label:t('dash_kpi_teams'),val:teams.length,sub:t('dash_kpi_active'),view:'teams',tip:'Equipos IA activos · haz clic para gestionar',cls:'kpi--teams'},
+    {label:t('dash_kpi_prompts'),val:libItems.length,sub:t('dash_kpi_reusable'),view:'lib',tip:'Prompts guardados en tu biblioteca',cls:'kpi--lib'},
+  ].map(k => `<div class="kpi ${k.cls}" onclick="goTo('${k.view}')"><div class="dtip">${k.tip}</div><span class="kpi-arrow">→</span><div class="kpi-label">${k.label}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
+  const DASH_ICONS = {
+    crm:'<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    prop:'<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+    teams:'<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
+    lib:'<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+  };
+  document.getElementById('dash-modules').innerHTML = [
+    {icon:DASH_ICONS.crm,name:t('nav_crm'),desc:t('dash_mod_crm_desc'),cta:cids.length+' '+t('dash_mod_crm_cta'),view:'crm',tip:'Pipeline de ventas · '+cids.length+' clientes · '+captados+' captados',color:'var(--teal)'},
+    {icon:DASH_ICONS.prop,name:t('nav_proposals'),desc:t('dash_mod_prop_desc'),cta:t('prop_generate'),view:'prop',tip:'Genera propuestas profesionales con IA en segundos',color:'var(--accent)'},
+    {icon:DASH_ICONS.teams,name:t('nav_teams'),desc:t('dash_mod_teams_desc'),cta:teams.length+' '+t('dash_mod_teams_cta'),view:'teams',tip:'Configura agentes IA especializados para cada proyecto',color:'var(--purple)'},
+    {icon:DASH_ICONS.lib,name:t('nav_library'),desc:t('dash_mod_lib_desc'),cta:libItems.length+' prompts →',view:'lib',tip:'Guarda y reutiliza tus mejores prompts en cualquier módulo',color:'var(--blue)'},
+  ].map(m => `<div class="dash-mod" onclick="goTo('${m.view}')" style="cursor:pointer;border:1px solid var(--border);border-left:3px solid ${m.color};border-radius:var(--r2);padding:16px 18px;background:var(--bg2);transition:all .15s;position:relative"><div class="dtip">${m.tip}</div><div style="display:flex;align-items:center;gap:10px"><span style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:${m.color.replace('var(','rgba(').replace(')',',.12)')};flex-shrink:0">${m.icon.replace('stroke-linejoin="round"','stroke-linejoin="round" style="stroke:'+m.color+'"')}</span><div style="flex:1"><div class="dash-mod-name">${m.name}</div><div class="dash-mod-desc">${m.desc}</div></div><span style="font-size:13px;color:var(--text3);opacity:.5">→</span></div><div class="dash-mod-cta">${m.cta}</div></div>`).join('');
+  const stages = ['CONTACTO','CALIF','DISCOVERY','PROPUESTA','PRESENTACIÓN','NEGOC','ONBOARDING'];
+  const sc = Array(7).fill(0); cids.forEach(id => { sc[clients[id].activeStage||0]++; });
+  const colors = ['#f0a500','#e8950a','#d08010','#1d9e75','#5b8dee','#8b7cf8','#4caf7d'];
+  document.getElementById('dash-pipeline').innerHTML = cids.length
+    ? `<div style="display:flex;gap:1px;height:6px;border-radius:4px;overflow:hidden">${sc.map((c,i)=>`<div style="flex:${Math.max(c,.1)};background:${colors[i]};opacity:${c?1:.15}" title="${stages[i]}: ${c}"></div>`).join('')}</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${stages.map((s,i)=>`<span style="font-size:9px;font-family:'JetBrains Mono',monospace;color:${sc[i]?colors[i]:'var(--text3)'}">${s}: ${sc[i]}</span>`).join('')}</div>`
+    : `<div style="color:var(--text3);font-size:12px;text-align:center;padding:8px">${t('dash_pipeline_empty')}</div>`;
+  const acts = S.get('activity') || [];
+  document.getElementById('dash-activity').innerHTML = acts.length
+    ? acts.slice(0,8).map(a=>`<div class="activity-item"><div class="activity-dot" style="background:${a.color}"></div><div class="activity-text">${a.text}</div><div class="activity-time">${a.time}</div></div>`).join('')
+    : `<div style="padding:14px 0;text-align:center;color:var(--text3);font-size:12px">${t('dash_activity_empty')}</div>`;
+  updateLimitLabels();
+  renderOnboardingChecklist();
+}
+// ═══════════════════════════════════════════════════════════════════════
+// CRM
+// ═══════════════════════════════════════════════════════════════════════
+const STAGES=[{id:0,get name(){return t('stage_0')},tag:'CONTACTO'},{id:1,get name(){return t('stage_1')},tag:'CALIF'},{id:2,get name(){return t('stage_2')},tag:'DISCOVERY'},{id:3,get name(){return t('stage_3')},tag:'PROPUESTA'},{id:4,get name(){return t('stage_4')},tag:'PRESENTACIÓN'},{id:5,get name(){return t('stage_5')},tag:'NEGOC'},{id:6,get name(){return t('stage_6')},tag:'ONBOARDING'}];
+const CRM_SYS=[
+`Eres un consultor de ventas senior. ETAPA: Primer contacto. Redacta mensajes cortos (3-4 líneas) para LinkedIn, WhatsApp o email frío. Tono profesional y cercano, en español.`,
+`Eres consultor experto en calificación. ETAPA: Calificación. Propón preguntas clave sobre necesidad, urgencia y presupuesto. Si no califica, guía un descarte educado.`,
+`Eres consultor de discovery. ETAPA: Reunión descubrimiento. Propón preguntas para extraer el problema real, público y restricciones. Organiza notas en resumen estructurado.`,
+`Eres redactor de propuestas. ETAPA: Elaboración propuesta. Convierte notas en propuesta: alcance, entregables, plazos, precio. 50% anticipo / 50% entrega.`,
+`Eres consultor de presentación. ETAPA: Presentación. Prepara respuestas a objeciones de precio, plazo y tecnología. Detecta señales de compra caliente.`,
+`Eres negociador comercial. ETAPA: Negociación. Evalúa concesiones aceptables. Diseña follow-ups. Recomienda el siguiente paso.`,
+`Eres responsable de onboarding. ETAPA: Onboarding. Diseña kick-off, hitos, frecuencia de updates. Identifica oportunidades de upsell.`
+];
+let CRM = { clients:{}, activeId:null, editId:null, notaIdx:null, captadoPropId:null, loading:false, activeTab:'datos' };
+function getCRMData() { return S.get('crm') || {}; }
+function saveCRMData() { S.set('crm', CRM.clients); updateLimitLabels(); }
+function initCRM() { CRM.clients = getCRMData(); renderClientList(); }
+function renderClientList() {
+  const q = (document.getElementById('crm-search')||{}).value?.toLowerCase()||'';
+  const ids = Object.keys(CRM.clients);
+  document.getElementById('crm-count').textContent = ids.length + ' cliente' + (ids.length!==1?'s':'');
+  const list = document.getElementById('client-list');
+  const f = ids.filter(id => { const c=CRM.clients[id]; return !q||c.name?.toLowerCase().includes(q)||c.company?.toLowerCase().includes(q); });
+  if (!f.length) { list.innerHTML = `<div class="crm-empty">${ids.length?t('crm_no_results'):t('crm_empty')}</div>`; return; }
+  list.innerHTML = f.map(id => { const c=CRM.clients[id]; const s=STAGES[c.activeStage||0]; const act=id===CRM.activeId; return `<div class="client-item${act?' active':''}" onclick="selectClient('${id}')"><div class="ci-name">${c.captado?'✅ ':''}${esc(c.name)}</div><div class="ci-meta">${esc(c.company||'—')}</div><div class="ci-tag">${s.tag}</div></div>`; }).join('');
+}
+function selectClient(id) { CRM.activeId=id; CRM.activeTab='datos'; renderClientList(); document.getElementById('crm-welcome').style.display='none'; document.getElementById('crm-client-view').style.display='flex'; renderClientView(); }
+function renderClientView() {
+  const c = CRM.clients[CRM.activeId]; if(!c) return;
+  document.getElementById('f-name').textContent=c.name; document.getElementById('f-co').textContent=c.company||'—'; document.getElementById('f-contact').textContent=c.contact||'—'; document.getElementById('f-service').textContent=c.service||'—'; document.getElementById('f-budget').textContent=c.budget||'—';
+  const cr=document.getElementById('f-captado-row'),pr=document.getElementById('f-precio-row');
+  if(c.captado){cr.style.display='flex';document.getElementById('f-captado').textContent=t('crm_captado_label',{date:c.captadoFecha});if(c.precioCerrado){pr.style.display='flex';document.getElementById('f-precio').textContent=c.precioCerrado;}}else{cr.style.display='none';pr.style.display='none';}
+  document.querySelectorAll('.ftab').forEach((t,i)=>t.classList.toggle('active',['datos','flujo','propuestas'][i]===CRM.activeTab));
+  document.querySelectorAll('.ftab-content').forEach((t,i)=>t.classList.toggle('active',['tab-datos','tab-flujo','tab-propuestas'][i]==='tab-'+CRM.activeTab));
+  renderTimeline(); renderPropList(); renderCRMChatHead(); renderCRMChatMsgs();
+}
+function switchTab(tab) { CRM.activeTab=tab; document.querySelectorAll('.ftab').forEach((t,i)=>t.classList.toggle('active',['datos','flujo','propuestas'][i]===tab)); document.querySelectorAll('.ftab-content').forEach((t,i)=>t.classList.toggle('active',['tab-datos','tab-flujo','tab-propuestas'][i]==='tab-'+tab)); }
+function renderTimeline() {
+  const c=CRM.clients[CRM.activeId]; const active=c.activeStage||0;
+  document.getElementById('timeline-steps').innerHTML=STAGES.map((s,i)=>{ const isDone=i<active,isAct=i===active; const note=(c.notes&&c.notes[i])||'',date=(c.dates&&c.dates[i])||''; return `<div class="tl-step ${isDone?'done-s':isAct?'act-s':''}" onclick="tlClick(${i})"><div class="tl-line"><div class="tl-dot ${isDone?'done':isAct?'act':''}">${isDone?'✓':i+1}</div>${i<STAGES.length-1?`<div class="tl-conn${isDone?' done':''}"></div>`:''}</div><div class="tl-body"><div class="tl-sname">${s.name}</div>${date?`<div style="font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-top:1px">${esc(date)}</div>`:''}<div class="tl-snote${note?'':' empty'}" onclick="event.stopPropagation();openNota(${i})">${note?esc(note):t('crm_add_note')}</div></div></div>`; }).join('');
+}
+function tlClick(i) { const c=CRM.clients[CRM.activeId];if(!c)return;if(i<=(c.activeStage||0)+1){c.activeStage=i;if(!c.dates)c.dates={};if(!c.dates[i])c.dates[i]=fmtDate();saveCRMData();renderTimeline();renderCRMChatHead();renderCRMChatMsgs();} }
+function renderPropList() {
+  const c=CRM.clients[CRM.activeId]; const props=c.propuestas||[]; const cont=document.getElementById('propuestas-list');
+  if(c.captado){cont.innerHTML=`<div class="captado-mini"><div class="title">${t('crm_captado_title')}</div><div class="sub">${esc(c.captadoFecha||'—')}${c.precioCerrado?' · '+esc(c.precioCerrado):''}</div></div>`;return;}
+  if(!props.length){cont.innerHTML=`<div class="prop-empty">${t('crm_no_props')}</div>`;return;}
+  const tc={borrador:'tag-accent',enviada:'tag-blue',aceptada:'tag-green',rechazada:'tag-red'};
+  const sl={borrador:t('prop_status_borrador'),enviada:t('prop_status_enviada'),aceptada:t('prop_status_aceptada'),rechazada:t('prop_status_rechazada')};
+  cont.innerHTML=props.map(p=>`<div class="prop-card-mini"><div class="pcm-top"><div class="pcm-title">${esc(p.titulo)}</div><div class="pcm-date">${esc(p.fecha)}</div></div><span class="tag ${tc[p.status]||'tag-gray'}">${sl[p.status]||p.status}</span><div class="pcm-acts">${p.status==='borrador'?`<button class="btn btn-ghost btn-xs" onclick="changeProp('${p.id}','enviada')">${t('prop_status_enviada')}</button>`:''}${p.status==='enviada'?`<button class="btn btn-teal btn-xs" onclick="propAceptada('${p.id}')">${t('prop_status_aceptada')}</button><button class="btn btn-red btn-xs" onclick="changeProp('${p.id}','rechazada')">${t('prop_status_rechazada')}</button>`:''}${p.status==='rechazada'?`<button class="btn btn-ghost btn-xs" onclick="changeProp('${p.id}','borrador')">${t('prop_reactivate')}</button>`:''}</div></div>`).join('');
+}
+function abrirGenerador() {
+  const c=CRM.clients[CRM.activeId];if(!c)return;
+  const map={'p-nombre':c.name,'p-empresa':c.company,'p-contacto':c.contact,'p-servicio':c.service,'p-presupuesto':c.budget};
+  Object.entries(map).forEach(([id,val])=>{if(val){const el=document.getElementById(id);el.value=val;el.classList.add('prefilled');}});
+  PROP.clienteIdFromCRM=CRM.activeId;
+  document.getElementById('prop-crm-badge').style.display='block';document.getElementById('prop-crm-banner').style.display='flex';document.getElementById('btn-captado').style.display='inline-flex';
+  if(!c.propuestas)c.propuestas=[];c.propuestas.push({id:genId(),titulo:'Propuesta para '+c.name,fecha:fmtDate(),status:'borrador'});
+  saveCRMData();renderPropList();goTo('prop');logActivity(t('activity_proposal_for',{name:c.name}),'var(--accent)');
+}
+function changeProp(propId,status){const c=CRM.clients[CRM.activeId];if(!c||!c.propuestas)return;const p=c.propuestas.find(x=>x.id===propId);if(p)p.status=status;saveCRMData();renderPropList();}
+function propAceptada(propId){CRM.captadoPropId=propId;const c=CRM.clients[CRM.activeId];document.getElementById('captado-precio').value=c.budget||'';document.getElementById('captado-notas').value='';document.getElementById('modal-captado').style.display='flex';}
+function confirmarCaptado(){
+  const c=CRM.clients[CRM.activeId];if(!c)return;const precio=document.getElementById('captado-precio').value.trim();const notas=document.getElementById('captado-notas').value.trim();
+  if(CRM.captadoPropId&&c.propuestas){const p=c.propuestas.find(x=>x.id===CRM.captadoPropId);if(p)p.status='aceptada';}
+  c.captado=true;c.captadoFecha=fmtDate();if(precio)c.precioCerrado=precio;if(notas){if(!c.notes)c.notes={};c.notes[6]=(c.notes[6]?c.notes[6]+'\n':'')+notas;}
+  c.activeStage=6;if(!c.dates)c.dates={};c.dates[6]=fmtDate();saveCRMData();closeModal('modal-captado');renderClientList();renderClientView();
+  logActivity(t('activity_client_won',{name:c.name}),'var(--green)');
+  showToast(t('toast_captado',{name:c.name}),'success');
+  showConfirm(t('toast_confirm_create_team',{name:esc(c.name)}),()=>{crmToTeams();});
+}
+function renderCRMChatHead(){const c=CRM.clients[CRM.activeId];if(!c)return;const s=STAGES[c.activeStage||0];document.getElementById('chat-stage-tag').textContent=s.tag;document.getElementById('chat-stage-lbl').textContent=s.name;document.getElementById('chat-client-tag').textContent=c.name;}
+function renderCRMChatMsgs(){
+  const c=CRM.clients[CRM.activeId];if(!c)return;const stage=c.activeStage||0;const hist=(c.chatHistory&&c.chatHistory[stage])||[];const cont=document.getElementById('chat-messages');
+  if(!hist.length){cont.innerHTML=`<div class="cmsg snote">${t('crm_chat_empty',{stage:STAGES[stage].name})}</div>`;return;}
+  cont.innerHTML=hist.map(m=>{
+    if(m.role==='error')return`<div class="cmsg err">${esc(m.content)}</div>`;
+    const cls=m.role==='assistant'?'assistant':'user';
+    const safeContent=esc(m.content).replace(/\n/g,'<br>');
+    return`<div class="cmsg ${cls}">${safeContent}</div>`;
+  }).join('');
+  cont.scrollTop=cont.scrollHeight;
+}
+async function crmSend(){
+  if(CRM.loading)return;const input=document.getElementById('chat-input');const text=input.value.trim();if(!text||!CRM.activeId)return;
+  const c=CRM.clients[CRM.activeId];const stage=c.activeStage||0;
+  if(!c.chatHistory)c.chatHistory={};if(!c.chatHistory[stage])c.chatHistory[stage]=[];
+  c.chatHistory[stage].push({role:'user',content:text});input.value='';crmResize(input);saveCRMData();CRM.loading=true;
+  document.getElementById('btn-send').disabled=true;renderCRMChatMsgs();
+  const cont=document.getElementById('chat-messages');const typ=document.createElement('div');typ.className='crm-typing-ind';typ.id='crm-typ';typ.innerHTML='<span></span><span></span><span></span>';cont.appendChild(typ);cont.scrollTop=cont.scrollHeight;
+  const cfg=getCFG(); const sys=CRM_SYS[stage]+`\n\nProfesional: ${cfg.userName||'Jose'}\nCLIENTE: ${c.name} | Empresa: ${c.company||'—'} | Servicio: ${c.service||'—'} | Presupuesto: ${c.budget||'—'}`;
+  const msgs=c.chatHistory[stage].slice(-20).map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content}));
+  try{const reply=await callAI(sys,msgs,1000);c.chatHistory[stage].push({role:'assistant',content:reply});saveCRMData();}
+  catch(e){c.chatHistory[stage].push({role:'error',content:e.message});saveCRMData();}
+  CRM.loading=false;document.getElementById('btn-send').disabled=false;const t=document.getElementById('crm-typ');if(t)t.remove();renderCRMChatMsgs();
+}
+function crmKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();crmSend();}}
+function crmResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,90)+'px';}
+function openNewClientModal(){
+  if(!checkPlanLimit('clients')){showLimitWarning('clients');return;}
+  CRM.editId=null;document.getElementById('modal-client-title').textContent=t('crm_new_client_title');['m-name','m-co','m-contact','m-service','m-budget'].forEach(id=>document.getElementById(id).value='');document.getElementById('modal-client').style.display='flex';setTimeout(()=>document.getElementById('m-name').focus(),80);
+}
+function openEditModal(){if(!CRM.activeId)return;const c=CRM.clients[CRM.activeId];CRM.editId=CRM.activeId;document.getElementById('modal-client-title').textContent=t('crm_edit_client_title');document.getElementById('m-name').value=c.name||'';document.getElementById('m-co').value=c.company||'';document.getElementById('m-contact').value=c.contact||'';document.getElementById('m-service').value=c.service||'';document.getElementById('m-budget').value=c.budget||'';document.getElementById('modal-client').style.display='flex';}
+function saveClient(){
+  const name=document.getElementById('m-name').value.trim();if(!name){showToast(t('toast_name_required'), 'warn');return;}
+  if(!CRM.editId&&!checkPlanLimit('clients')){showLimitWarning('clients');return;}
+  if(CRM.editId){const c=CRM.clients[CRM.editId];c.name=name;c.company=document.getElementById('m-co').value.trim();c.contact=document.getElementById('m-contact').value.trim();c.service=document.getElementById('m-service').value.trim();c.budget=document.getElementById('m-budget').value.trim();}
+  else{const id=genId();CRM.clients[id]={name,company:document.getElementById('m-co').value.trim(),contact:document.getElementById('m-contact').value.trim(),service:document.getElementById('m-service').value.trim(),budget:document.getElementById('m-budget').value.trim(),activeStage:0,notes:{},dates:{},chatHistory:{},propuestas:[]};CRM.activeId=id;logActivity(t('activity_new_client',{name}),'var(--blue)');}
+  saveCRMData();closeModal('modal-client');renderClientList();if(CRM.editId){renderClientView();}else{selectClient(CRM.activeId);trackConversion('client_created');}CRM.editId=null;
+}
+function deleteClient(){if(!CRM.activeId)return;const c=CRM.clients[CRM.activeId];showConfirm(t('toast_confirm_delete_client',{name:esc(c.name)}),()=>{delete CRM.clients[CRM.activeId];CRM.activeId=null;saveCRMData();renderClientList();document.getElementById('crm-welcome').style.display='flex';document.getElementById('crm-client-view').style.display='none';});}
+function openNota(i){const c=CRM.clients[CRM.activeId];CRM.notaIdx=i;document.getElementById('nota-title').textContent=t('crm_note_title',{stage:STAGES[i].name});document.getElementById('nota-txt').value=(c.notes&&c.notes[i])||'';document.getElementById('modal-nota').style.display='flex';setTimeout(()=>document.getElementById('nota-txt').focus(),80);}
+function saveNota(){const c=CRM.clients[CRM.activeId];if(!c.notes)c.notes={};c.notes[CRM.notaIdx]=document.getElementById('nota-txt').value.trim();saveCRMData();closeModal('modal-nota');renderTimeline();}
+function crmToTeams(){const c=CRM.clients[CRM.activeId];if(!c)return;document.getElementById('c-proj-name').value=t('crm_project_name',{name:c.name});document.getElementById('c-brief').value=`Cliente: ${c.name}\nEmpresa: ${c.company||'—'}\nServicio: ${c.service||'—'}\nPresupuesto: ${c.budget||'—'}\nContacto: ${c.contact||'—'}`;document.getElementById('config-crm-label').textContent=t('crm_data_loaded',{name:c.name});document.getElementById('config-from-crm-banner').style.display='flex';evalCL();goTo('teams');showNewTeamConfig();}
+function pollCaptadoSignal(){try{const sig=S.get('captado_signal');if(sig&&sig.clienteId&&CRM.clients[sig.clienteId]&&!CRM.clients[sig.clienteId].captado){const c=CRM.clients[sig.clienteId];c.captado=true;c.captadoFecha=sig.fecha||fmtDate();if(sig.precio)c.precioCerrado=sig.precio;c.activeStage=6;if(!c.dates)c.dates={};c.dates[6]=fmtDate();saveCRMData();S.set('captado_signal',null);renderClientList();if(CRM.activeId===sig.clienteId)renderClientView();}}catch(e){}}
+// ═══════════════════════════════════════════════════════════════════════
+// PROPUESTAS
+// ═══════════════════════════════════════════════════════════════════════
+const PROP = { clienteIdFromCRM:null, generada:'' };
+function getSysProp(){const cfg=getCFG();return`Eres redactor de propuestas comerciales senior especializado en el mercado freelance hispanohablante.\nProfesional: ${cfg.userName||'—'} | Email: ${cfg.email||'—'} | WhatsApp: ${cfg.phone||'—'} | Web: ${cfg.web||'—'}\nTAREA: Propuesta comercial profesional en español.\nESTRUCTURA: 1)Saludo y resumen ejecutivo 2)Entendimiento del proyecto 3)Alcance y entregables 4)Metodología de trabajo 5)Cronograma por fases (incluye siempre semanas estimadas por fase) 6)Inversión (incluye siempre un rango de precio si no se especificó precio fijo, justificando el valor) 7)Por qué nosotros 8)Próximos pasos 9)Firma.\nPRECIOS: Si el precio no está definido estima un rango justo para el mercado freelance hispanohablante basándote en tipo de trabajo, complejidad y entregables. Muéstralo como rango ej: €1.500 – €2.500.\nESTILO: Profesional pero cercano. 450-650 palabras. Sin asteriscos markdown.`;}
+async function estimarCondiciones(){
+  const servicio=document.getElementById('p-servicio').value.trim();
+  const tipo=document.getElementById('p-tipo')?.value||'';
+  const desc=document.getElementById('p-desc').value.trim();
+  const ents=getEnts();
+  if(!servicio){showToast(t('toast_service_required'),'warn');return;}
+  const btn=document.getElementById('btn-estimar');
+  if(btn){btn.disabled=true;btn.textContent=t('prop_estimating');}
+  const q=`Servicio: ${servicio}${tipo?' | Tipo: '+tipo:''}\nDescripción: ${desc||'Sin descripción'}\nEntregables: ${ents.length?ents.join(', '):'Sin especificar'}\n\nResponde SOLO con este formato exacto, sin texto adicional:\nPRECIO: €X.XXX – €X.XXX\nPLAZO: X-X semanas`;
+  try{
+    const r=await callAI('Eres un consultor de precios freelance experto en el mercado hispanohablante. Estima precio de mercado justo y plazo realista. Responde ÚNICAMENTE con el formato solicitado: PRECIO: ... y PLAZO: ..., sin ningún texto adicional.',[{role:'user',content:q}],80);
+    const pm=r.match(/PRECIO:\s*(.+)/i);const tm=r.match(/PLAZO:\s*(.+)/i);
+    let filled=0;
+    if(pm){const el=document.getElementById('p-precio');if(el&&!el.value){el.value=pm[1].trim();el.classList.add('prefilled');filled++;}}
+    if(tm){const el=document.getElementById('p-plazo');if(el&&!el.value){el.value=tm[1].trim();el.classList.add('prefilled');filled++;}}
+    if(filled>0)showToast(t('toast_estimate_ok'),'success');
+    else showToast(t('toast_estimate_existing'),'info');
+  }catch(e){showToast(t('toast_estimate_err',{msg:e.message}),'error',4000);}
+  if(btn){btn.disabled=false;btn.textContent=t('prop_estimate_btn');}
+}
+function getEnts(){return Array.from(document.querySelectorAll('#ent-list input')).map(i=>i.value.trim()).filter(Boolean);}
+function addEnt(){const r=document.createElement('div');r.className='ent-row';r.innerHTML=`<input class="inp" placeholder="Entregable..."><button class="btn-rem" onclick="remEnt(this)">×</button>`;document.getElementById('ent-list').appendChild(r);r.querySelector('input').focus();}
+function remEnt(btn){const rows=document.querySelectorAll('.ent-row');if(rows.length>1)btn.parentElement.remove();}
+async function generarPropuesta(){
+  if (!tierSystem.requiresTier('pro', 'Generador de Propuestas')) return;
+  const nombre=document.getElementById('p-nombre').value.trim();const servicio=document.getElementById('p-servicio').value.trim();
+  if(!nombre||!servicio){showToast(t('toast_name_service_required'),'warn');return;}
+  const tipo=document.getElementById('p-tipo')?.value||'';
+  const d={empresa:document.getElementById('p-empresa').value.trim(),contacto:document.getElementById('p-contacto').value.trim(),presupuesto:document.getElementById('p-presupuesto').value.trim(),desc:document.getElementById('p-desc').value.trim(),plazo:document.getElementById('p-plazo').value.trim(),precio:document.getElementById('p-precio').value.trim(),anticipo:document.getElementById('p-anticipo').value.trim(),final:document.getElementById('p-final').value.trim(),notas:document.getElementById('p-notas').value.trim(),ents:getEnts()};
+  const precioVacio=!d.precio;const plazoVacio=!d.plazo;
+  document.getElementById('result-sec').style.display='block';const box=document.getElementById('result-box');box.style.color='var(--text3)';box.style.fontStyle='italic';box.style.fontFamily="'JetBrains Mono',monospace";box.style.fontSize='11px';box.innerHTML='<span style="display:inline-flex;gap:4px;align-items:center"><span style="width:5px;height:5px;background:var(--accent);border-radius:50%;animation:blink 1.2s infinite;display:inline-block"></span><span style="width:5px;height:5px;background:var(--accent);border-radius:50%;animation:blink 1.2s infinite .2s;display:inline-block"></span><span style="width:5px;height:5px;background:var(--accent);border-radius:50%;animation:blink 1.2s infinite .4s;display:inline-block"></span> '+t('prop_generating')+'</span>';
+  document.getElementById('btn-generar').disabled=true;
+  const precioStr=d.precio||(precioVacio?'SIN ESPECIFICAR — estima un rango de mercado justo y justifícalo':'');
+  const plazoStr=d.plazo||(plazoVacio?'SIN ESPECIFICAR — estima un cronograma realista por fases':'');
+  const prompt=`Genera propuesta:\nCLIENTE: ${nombre} | Empresa: ${d.empresa||'—'}\nSERVICIO: ${servicio}${tipo?' | Tipo: '+tipo:''}\nDESCRIPCIÓN: ${d.desc||'Sin descripción'}\nPLAZO: ${plazoStr}\nENTREGABLES:\n${d.ents.length?d.ents.map((e,i)=>`${i+1}. ${e}`).join('\n'):'A definir'}\nCONDICIONES: Precio: ${precioStr} | Anticipo: ${d.anticipo} | Final: ${d.final}\nNOTAS: ${d.notas||'Ninguna'}`;
+  try{PROP.generada=await callAI(getSysProp(),[{role:'user',content:prompt}],1200);box.style.color='var(--text)';box.style.fontStyle='normal';box.style.fontFamily="'DM Sans',sans-serif";box.style.fontSize='12px';box.textContent=PROP.generada;box.scrollIntoView({behavior:'smooth',block:'start'});logActivity(t('activity_prop_generated',{name:nombre}),'var(--accent)');trackConversion('proposal_generated');}
+  catch(e){box.style.color='var(--red)';box.textContent='Error: '+e.message;}
+  document.getElementById('btn-generar').disabled=false;
+}
+function copyProp(){if(!PROP.generada)return;navigator.clipboard.writeText(PROP.generada).then(()=>{const b=document.querySelector('#result-sec .btn');if(b){b.textContent=t('prop_copied');setTimeout(()=>b.textContent=t('prop_copy'),1800);}});}
+function limpiarProp(){showConfirm(t('toast_confirm_clear_prop'),()=>{['p-nombre','p-empresa','p-contacto','p-presupuesto','p-servicio','p-plazo','p-desc','p-precio','p-notas'].forEach(id=>{const el=document.getElementById(id);if(el){el.value='';el.classList.remove('prefilled');}});const tipo=document.getElementById('p-tipo');if(tipo)tipo.value='';document.getElementById('p-anticipo').value='50% al inicio';document.getElementById('p-final').value='50% en entrega';document.getElementById('ent-list').innerHTML=`<div class="ent-row"><input class="inp" placeholder="Entregable..."><button class="btn-rem" onclick="remEnt(this)">×</button></div>`;document.getElementById('result-sec').style.display='none';PROP.generada='';const gs=document.getElementById('btn-guardar-prop');if(gs){gs.textContent='💾 Guardar';gs.disabled=false;}clearPropCRM();});}
+function clearPropCRM(){PROP.clienteIdFromCRM=null;document.getElementById('prop-crm-badge').style.display='none';document.getElementById('prop-crm-banner').style.display='none';document.getElementById('btn-captado').style.display='none';}
+function marcarCaptado(){if(!PROP.clienteIdFromCRM){showToast(t('toast_no_client_gen'),'warn');return;}try{S.set('captado_signal',{clienteId:PROP.clienteIdFromCRM,precio:document.getElementById('p-precio').value.trim(),fecha:fmtDate()});showToast(t('toast_signal_sent'),'success');}catch(e){}}
+// ═══════════════════════════════════════════════════════════════════════
+// PROPUESTAS DATABASE
+// ═══════════════════════════════════════════════════════════════════════
+function getPropDB(){ return S.get('proposals') || []; }
+function savePropDB(items){ S.set('proposals', items); }
+function renderPropDB(){
+  const filter = document.getElementById('ps-filter')?.value || '';
+  const all = getPropDB();
+  const items = filter ? all.filter(p => p.status === filter) : all;
+  const list = document.getElementById('ph-list'); if(!list) return;
+  if(!items.length){
+    list.innerHTML = `<div class="ph-empty">${all.length===0 ? t('prop_empty_saved')+'<br>'+t('prop_empty_saved_hint') : t('prop_empty_filter')}</div>`;
+    return;
+  }
+  const sc={borrador:'tag-accent',enviada:'tag-blue',aceptada:'tag-teal',rechazada:'tag-red'};
+  const sl={borrador:t('prop_status_borrador'),enviada:t('prop_status_enviada'),aceptada:t('prop_status_aceptada'),rechazada:t('prop_status_rechazada')};
+  list.innerHTML=[...items].reverse().map(p=>{
+    const clientName=p.clienteId&&CRM.clients[p.clienteId]?esc(CRM.clients[p.clienteId].name):'';
+    return `<div class="ph-card">
+      <div class="ph-card-title">${esc(p.servicio||'Propuesta')}${p.nombre?' &ndash; '+esc(p.nombre):''}</div>
+      <div class="ph-card-meta">${esc(p.fecha)}${p.precio?' · '+esc(p.precio):''}</div>
+      ${clientName?`<div class="ph-card-client">🔗 ${clientName}</div>`:''}
+      <span class="tag ${sc[p.status]||'tag-gray'}" style="font-size:9px">${sl[p.status]||p.status}</span>
+      <div class="ph-card-acts">
+        <button class="btn btn-ghost btn-xs" onclick="loadPropFromDB('${p.id}')">${t('prop_reuse')}</button>
+        <select onchange="changePropDBStatus('${p.id}',this.value);this.value=''" style="font-size:10px;padding:1px 3px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text)">
+          <option value="">${t('prop_status_label')}</option>
+          <option value="borrador">${t('prop_status_borrador')}</option><option value="enviada">${t('prop_status_enviada')}</option><option value="aceptada">${t('prop_status_aceptada')}</option><option value="rechazada">${t('prop_status_rechazada')}</option>
+        </select>
+        <button class="btn btn-ghost btn-xs" onclick="openLinkPropModal('${p.id}')">🔗</button>
+        <button class="btn btn-red btn-xs" onclick="deletePropFromDB('${p.id}')">×</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function saveCurrentProp(){
+  const nombre=document.getElementById('p-nombre').value.trim();
+  const servicio=document.getElementById('p-servicio').value.trim();
+  if(!PROP.generada){showToast(t('toast_gen_first'),'warn');return;}
+  const items=getPropDB();
+  items.push({
+    id:genId(), fecha:fmtDate(), status:'borrador',
+    clienteId:PROP.clienteIdFromCRM||null,
+    nombre, empresa:document.getElementById('p-empresa').value.trim(),
+    contacto:document.getElementById('p-contacto').value.trim(),
+    presupuesto:document.getElementById('p-presupuesto').value.trim(),
+    servicio, tipo:document.getElementById('p-tipo')?.value||'',
+    desc:document.getElementById('p-desc').value.trim(),
+    plazo:document.getElementById('p-plazo').value.trim(),
+    precio:document.getElementById('p-precio').value.trim(),
+    anticipo:document.getElementById('p-anticipo').value.trim(),
+    final:document.getElementById('p-final').value.trim(),
+    notas:document.getElementById('p-notas').value.trim(),
+    entregables:getEnts(), texto:PROP.generada
+  });
+  savePropDB(items); renderPropDB();
+  showToast(t('toast_prop_saved'),'success');trackConversion('proposal_saved');
+  const btn=document.getElementById('btn-guardar-prop');
+  if(btn){btn.textContent=t('prop_saved_label');btn.disabled=true;setTimeout(()=>{btn.textContent=t('prop_save');btn.disabled=false;},2500);}
+}
+function loadPropFromDB(id){
+  const p=getPropDB().find(x=>x.id===id);if(!p)return;
+  const fields={'p-nombre':p.nombre,'p-empresa':p.empresa,'p-contacto':p.contacto,'p-presupuesto':p.presupuesto,'p-servicio':p.servicio,'p-desc':p.desc,'p-plazo':p.plazo,'p-precio':p.precio,'p-anticipo':p.anticipo,'p-final':p.final,'p-notas':p.notas};
+  Object.entries(fields).forEach(([fid,val])=>{const el=document.getElementById(fid);if(el)el.value=val||'';});
+  const tipo=document.getElementById('p-tipo');if(tipo)tipo.value=p.tipo||'';
+  if(p.entregables?.length){document.getElementById('ent-list').innerHTML=p.entregables.map(e=>`<div class="ent-row"><input class="inp" value="${esc(e)}"><button class="btn-rem" onclick="remEnt(this)">×</button></div>`).join('');}
+  if(p.texto){
+    document.getElementById('result-sec').style.display='block';
+    const box=document.getElementById('result-box');box.style.color='var(--text)';box.style.fontStyle='normal';box.style.fontFamily="'DM Sans',sans-serif";box.style.fontSize='12px';
+    box.textContent=p.texto;PROP.generada=p.texto;
+  }
+  if(p.clienteId&&CRM.clients[p.clienteId]){
+    PROP.clienteIdFromCRM=p.clienteId;
+    document.getElementById('prop-crm-badge').style.display='block';
+    document.getElementById('prop-crm-banner').style.display='flex';
+    document.getElementById('btn-captado').style.display='inline-flex';
+  }
+  showToast(t('toast_prop_loaded'),'success');
+  document.querySelector('.prop-form-area')?.scrollTo({top:0,behavior:'smooth'});
+}
+function deletePropFromDB(id){
+  showConfirm(t('toast_confirm_delete_prop'),()=>{
+    savePropDB(getPropDB().filter(p=>p.id!==id));renderPropDB();showToast(t('toast_prop_deleted'),'info');
+  });
+}
+function changePropDBStatus(id,status){
+  if(!status)return;
+  const items=getPropDB();const p=items.find(x=>x.id===id);if(!p)return;
+  p.status=status;savePropDB(items);renderPropDB();
+  const sl={borrador:t('prop_status_borrador'),enviada:t('prop_status_enviada'),aceptada:t('prop_status_aceptada'),rechazada:t('prop_status_rechazada')};
+  showToast(t('prop_status_label')+': '+( sl[status]||status),'success');
+}
+function openLinkPropModal(id){
+  const clients=Object.keys(CRM.clients);
+  if(!clients.length){showToast(t('toast_no_crm_clients'),'warn');return;}
+  PROP._linkTargetId=id;
+  const sel=document.getElementById('link-prop-client-sel');
+  const p=getPropDB().find(x=>x.id===id);
+  sel.innerHTML='<option value="">\u2014 Sin vincular \u2014</option>'+clients.map(cid=>`<option value="${cid}"${p?.clienteId===cid?' selected':''}>${esc(CRM.clients[cid].name)}${CRM.clients[cid].company?' \u2013 '+esc(CRM.clients[cid].company):''}</option>`).join('');
+  document.getElementById('modal-link-prop').style.display='flex';
+}
+function confirmLinkProp(){
+  const cid=document.getElementById('link-prop-client-sel').value;
+  const items=getPropDB();const p=items.find(x=>x.id===PROP._linkTargetId);if(!p)return;
+  p.clienteId=cid||null;savePropDB(items);renderPropDB();closeModal('modal-link-prop');
+  showToast(cid?`Vinculada a ${esc(CRM.clients[cid]?.name||'cliente')}.`:'Vínculo eliminado.','success');
+}
+// ═══════════════════════════════════════════════════════════════════════
+// BIBLIOTECA
+// ═══════════════════════════════════════════════════════════════════════
+const LIB_CATS={all:'lib_cat_all',system:'lib_cat_system',tarea:'lib_cat_task',crm:'lib_cat_crm',contenido:'lib_cat_content',codigo:'lib_cat_code',estrategia:'lib_cat_strategy',otro:'lib_cat_other'};
+let LIB_CAT='all', LIB_PICKER_TARGET=null;
+function getLib(){return S.get('lib')||[];}
+function saveLib(items){S.set('lib',items);}
+function renderLib(){renderLibCats();renderLibGrid();}
+function renderLibCats(){
+  const items=getLib();const counts={all:items.length};items.forEach(p=>{counts[p.category]=(counts[p.category]||0)+1;});
+  document.getElementById('lib-cats').innerHTML=Object.entries(LIB_CATS).map(([k,v])=>`<div class="lib-cat${LIB_CAT===k?' active':''}" onclick="setLibCat('${k}')">${t(v)}<span class="lib-cat-count">${counts[k]||0}</span></div>`).join('');
+}
+function setLibCat(cat){LIB_CAT=cat;renderLibCats();renderLibGrid();}
+function renderLibGrid(){
+  const q=(document.getElementById('lib-search')||{}).value?.toLowerCase()||'';const items=getLib();
+  const f=items.filter(p=>(LIB_CAT==='all'||p.category===LIB_CAT)&&(!q||p.title?.toLowerCase().includes(q)||p.content?.toLowerCase().includes(q)||p.tags?.some(t=>t.toLowerCase().includes(q))));
+  document.getElementById('lib-count').textContent=t('lib_prompt_count',{count:f.length});
+  const grid=document.getElementById('lib-grid');
+  if(!f.length){grid.innerHTML=`<div class="lib-empty" style="grid-column:1/-1"><div style="font-size:24px;opacity:.2">◈</div><div>${t('lib_empty')}</div><div style="font-size:10px;margin-top:4px;color:var(--text3)">${t('lib_empty_hint')}</div></div>`;return;}
+  const tagCls={system:'tag-purple',tarea:'tag-accent',crm:'tag-blue',contenido:'tag-teal',codigo:'tag-accent',estrategia:'tag-gray',otro:'tag-gray'};
+  grid.innerHTML=f.map(p=>{const idx=items.indexOf(p);const tags=(p.tags||[]).slice(0,3).map(t=>`<span class="tag tag-gray">${esc(t)}</span>`).join('');return`<div class="prompt-card"><div class="pc-title">${esc(p.title)}</div><div class="pc-preview">${esc(p.content)}</div><div class="pc-tags"><span class="tag ${tagCls[p.category]||'tag-gray'}">${t(LIB_CATS[p.category])||p.category}</span>${tags}</div><div class="pc-actions"><button class="btn btn-ghost btn-xs" onclick="editPrompt(${idx})">${t('lib_edit')}</button><button class="btn btn-purple btn-xs" onclick="insertPromptToTeam(${idx})">${t('lib_to_teams')}</button><button class="btn btn-red btn-xs" onclick="deletePrompt(${idx})">×</button></div></div>`;}).join('');
+}
+function openNewPromptModal(){
+  if(tierSystem.isFree()&&getLib().length>=PLANS.free.prompts){tierSystem.requiresTier('pro','Biblioteca ilimitada');return;}
+  document.getElementById('modal-prompt-title').textContent=t('lib_new_prompt_title');['np-title','np-content','np-tags'].forEach(id=>document.getElementById(id).value='');document.getElementById('np-cat').value='system';delete document.getElementById('modal-prompt').dataset.editIdx;document.getElementById('modal-prompt').style.display='flex';setTimeout(()=>document.getElementById('np-title').focus(),80);
+}
+function editPrompt(idx){const p=getLib()[idx];document.getElementById('modal-prompt-title').textContent=t('lib_edit_prompt_title');document.getElementById('np-title').value=p.title||'';document.getElementById('np-content').value=p.content||'';document.getElementById('np-cat').value=p.category||'system';document.getElementById('np-tags').value=(p.tags||[]).join(', ');document.getElementById('modal-prompt').dataset.editIdx=idx;document.getElementById('modal-prompt').style.display='flex';}
+function savePrompt(){
+  const title=document.getElementById('np-title').value.trim();const content=document.getElementById('np-content').value.trim();if(!title||!content){showToast(t('toast_title_content_required'),'warn');return;}
+  const items=getLib();
+  const editIdx=parseInt(document.getElementById('modal-prompt').dataset.editIdx);
+  if(!isNaN(editIdx)&&editIdx>=0){/* editing, no limit check */}else if(tierSystem.isFree()&&getLib().length>=PLANS.free.prompts){tierSystem.requiresTier('pro','Biblioteca ilimitada');return;}
+  const p={id:genId(),title,content,category:document.getElementById('np-cat').value,tags:document.getElementById('np-tags').value.split(',').map(t=>t.trim()).filter(Boolean),createdAt:fmtDate()};
+  if(!isNaN(editIdx)&&editIdx>=0){items[editIdx]={...items[editIdx],...p};}else{items.unshift(p);}
+  saveLib(items);closeModal('modal-prompt');renderLib();updateLimitLabels();logActivity(t('activity_prompt_saved',{title}),'var(--purple)');
+}
+function deletePrompt(idx){showConfirm(t('confirm_delete_prompt'),()=>{const items=getLib();items.splice(idx,1);saveLib(items);renderLib();updateLimitLabels();});}
+function insertPromptToTeam(idx){const p=getLib()[idx];const el=document.getElementById('c-brief');if(el){el.value=(el.value?el.value+'\n\n':'')+p.content;goTo('teams');evalCL();}}
+function openLibPicker(target){LIB_PICKER_TARGET=target;document.getElementById('lib-picker-search').value='';renderLibPicker();document.getElementById('modal-lib-picker').style.display='flex';}
+function renderLibPicker(){const q=document.getElementById('lib-picker-search').value.toLowerCase();const items=getLib().filter(p=>!q||p.title?.toLowerCase().includes(q)||p.content?.toLowerCase().includes(q));const cont=document.getElementById('lib-picker-list');if(!items.length){cont.innerHTML=`<div style="color:var(--text3);font-size:12px;text-align:center;padding:16px">${t('lib_picker_empty')}</div>`;return;}cont.innerHTML=items.map((p,i)=>`<div style="border:1px solid var(--border);border-radius:var(--r);padding:10px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'" onclick="pickerInsert(${getLib().indexOf(p)})"><div style="font-size:12px;font-weight:500;margin-bottom:3px">${esc(p.title)}</div><div style="font-size:11px;color:var(--text3);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${esc(p.content)}</div></div>`).join('');}
+function pickerInsert(idx){const p=getLib()[idx];if(!p)return;const el=document.getElementById(LIB_PICKER_TARGET==='brief'?'c-brief':'c-extra');if(el){el.value=(el.value?el.value+'\n\n':'')+p.content;if(LIB_PICKER_TARGET==='brief')evalCL();}closeModal('modal-lib-picker');}
+// ═══════════════════════════════════════════════════════════════════════
+// EQUIPOS IA — LANZADOR
+// ═══════════════════════════════════════════════════════════════════════
+const CFX={nombre:'Senior Prompt Engineer',area:'IA',prioridad:'fijo',justificacion:'Rol obligatorio. Optimiza toda instrucción, estructura de prompt y flujo IA de la sesión.'};
+const CTC={esencial:'te',recomendado:'tr',opcional:'to',fijo:'tf'};
+const CL_CHECKS=[
+  {label:'Objetivo claro del proyecto',re:/objetivo|meta|fin|propós|busca|quiere|necesita/i},
+  {label:'Entregables definidos',re:/entregable|pág|page|documento|diseño|código|app|web|informe|producto/i},
+  {label:'Audiencia o cliente objetivo',re:/audiencia|cliente|usuario|público|perfil|sector|mercado/i},
+  {label:'Plataforma o tecnología',re:/web|app|móvil|figma|wordpress|html|plataforma|herramienta|software/i},
+  {label:'Plazo o fecha de entrega',re:/plazo|fecha|semana|mes|día|entrega|deadline|urgente/i},
+  {label:'Referencias o ejemplos',re:/referencia|ejemplo|estilo|similar|inspiración|como|tipo/i},
+  {label:'Restricciones o condiciones',re:/restricción|presupuesto|limitación|condición|no puede|sin|evitar|obligatorio/i},
+];
+// Manual roles for Free plan
+const MANUAL_ROLES = [
+  {nombre:'Senior UI/UX Designer',area:'Diseño',justificacion:'Diseño de interfaces y experiencia de usuario.'},
+  {nombre:'Senior Frontend Developer',area:'Desarrollo',justificacion:'Desarrollo frontend con HTML/CSS/JS o frameworks.'},
+  {nombre:'Senior Backend Developer',area:'Desarrollo',justificacion:'APIs, bases de datos y lógica de servidor.'},
+  {nombre:'Senior Copywriter',area:'Contenido',justificacion:'Redacción de textos persuasivos y copy web.'},
+  {nombre:'Senior SEO Strategist',area:'Marketing',justificacion:'Optimización para motores de búsqueda.'},
+  {nombre:'Senior Marketing Digital',area:'Marketing',justificacion:'Estrategia de marketing digital y campañas.'},
+  {nombre:'Senior Brand Strategist',area:'Marca',justificacion:'Estrategia de marca e identidad corporativa.'},
+  {nombre:'Senior Project Manager',area:'Gestión',justificacion:'Planificación, seguimiento y entrega de proyectos.'},
+  {nombre:'Senior Data Analyst',area:'Datos',justificacion:'Análisis de datos y generación de insights.'},
+  {nombre:'Senior Business Analyst',area:'Negocio',justificacion:'Análisis de negocio y requisitos del cliente.'},
+];
+let CONFIG = { roles:[], brief:'', proj:'', client:{}, cx:{}, sel:[], phase:1 };
+function getTeams(){return S.get('teams')||[];}
+function setTeams(v){S.set('teams',v);}
+function renderTeamsView() {
+  const teams = getTeams();
+  const grid = document.getElementById('teams-grid');
+  const plan = PLANS[USER_PLAN];
+  // Update AI roles button visibility
+  const aiBtn = document.getElementById('btn-analyze-ia');
+  const manBtn = document.getElementById('btn-manual-roles');
+  const note = document.getElementById('roles-plan-note');
+  if(aiBtn) aiBtn.style.display = plan.aiRoles ? 'inline-flex' : 'none';
+  if(manBtn) manBtn.style.display = 'inline-flex';
+  if(note) note.style.display = plan.aiRoles ? 'none' : 'inline';
+  if(!teams.length) {
+    grid.innerHTML = `<div class="teams-new-btn" onclick="showNewTeamConfig()"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><div>${t('teams_create_first')}</div><div style="font-size:11px;color:var(--text3)">${t('teams_create_first_hint')}</div></div>`;
+    return;
+  }
+  grid.innerHTML = teams.map((tm,i)=>{
+    const roleChips = tm.roles.slice(0,3).map(r=>`<span class="tag tag-gray" style="font-size:9px">${r}</span>`).join('');
+    const extra = tm.roles.length > 3 ? `<span class="tag tag-gray" style="font-size:9px">+${tm.roles.length-3}</span>` : '';
+    return `<div class="team-card"><div class="tc-header"><div><div class="tc-name">${esc(tm.name)}</div><div class="tc-meta">${tm.date} · ${tm.roles.length} roles</div></div><span class="tag tag-teal" style="font-size:9px">${tm.cx||'medio'}</span></div><div class="tc-roles">${roleChips}${extra}</div><div class="tc-actions"><button class="btn btn-accent btn-sm" onclick="launchExistingTeam(${i})">${t('teams_launch')}</button><button class="btn btn-ghost btn-xs" onclick="editTeam(${i})">${t('teams_edit')}</button><button class="btn btn-red btn-xs" onclick="deleteTeam(${i})">×</button></div></div>`;
+  }).join('') + `<div class="teams-new-btn" onclick="showNewTeamConfig()"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><div>${t('teams_new_title')}</div></div>`;
+}
+function showNewTeamConfig() {
+  if(!checkPlanLimit('teams'))return;
+  document.getElementById('config-panel').classList.add('active');
+  document.getElementById('config-panel-title').textContent=t('teams_new_title');
+  configReset();
+}
+function closeConfig() {
+  document.getElementById('config-panel').classList.remove('active');
+}
+function deleteTeam(i){showConfirm(t('confirm_delete_team'),()=>{const teams=getTeams();teams.splice(i,1);setTeams(teams);renderTeamsView();updateLimitLabels();});}
+function editTeam(i){const tm=getTeams()[i];document.getElementById('c-proj-name').value=tm.name;document.getElementById('c-brief').value=tm.brief||'';evalCL();document.getElementById('config-panel').classList.add('active');document.getElementById('config-panel-title').textContent=t('teams_edit_title');}
+function launchExistingTeam(i){const tm=getTeams()[i];CONFIG.proj=tm.name;openWorkspace(tm.systemPrompt||buildSystemPrompt(tm));}
+function buildSystemPrompt(t){return `## INICIO DE SESIÓN — ${t.name.toUpperCase()}\n\n### ROLES ACTIVOS\n${t.roles.map(r=>`- ${r}`).join('\n')}\n\n### BRIEF DEL PROYECTO\n${t.brief||'Sin brief específico'}\n\n### INSTRUCCIONES\n1. Operas desde todos los roles activos simultáneamente.\n2. Como Senior Prompt Engineer, optimiza cualquier prompt o flujo IA que surja.\n3. Sé directo y técnico. Presenta un plan breve antes de desarrollar cualquier entregable.\n4. Responde en español salvo que se cambie de idioma.\n\n---\nConfirma con: "Equipo activo para ${t.name}. ¿Empezamos?"`;}
+// CONFIGURADOR STEPS
+function evalCL(){
+  const txt=document.getElementById('c-brief').value;let sc=0;
+  const items=CL_CHECKS.map(c=>{const ok=c.re.test(txt);if(ok)sc++;return{label:c.label,ok};});
+  const el=document.getElementById('cl-items');if(!el)return;el.innerHTML='';items.forEach(it=>{const d=document.createElement('div');d.className='cl-item '+(it.ok?'ok':'warn');d.innerHTML=`<div class="cl-dot"></div><span>${it.label}</span>`;el.appendChild(d);});
+  const se=document.getElementById('cl-score');if(se){se.textContent=`${sc}/7`;const p=sc/7;se.style.color=p>=.75?'var(--green)':p>=.5?'var(--accent)':'var(--red)';}
+}
+function csStep(n){[1,2,3,4].forEach(i=>{const e=document.getElementById('s'+i);if(e)e.className='cstep'+(i===n?' active':i<n?' done':'');});}
+function csPhase(p){['brief','client','cload','roles','launch'].forEach(x=>{const el=document.getElementById('ph-'+x);if(el)el.style.display=x===p?'block':'none';});}
+function cgB(to){const m={1:'brief',2:'client',3:'roles'};csPhase(m[to]);csStep(to);}
+function cs1to2(){CONFIG.brief=document.getElementById('c-brief').value.trim();CONFIG.proj=document.getElementById('c-proj-name').value.trim()||t('teams_unnamed_project');if(!CONFIG.brief){showToast(t('toast_brief_required'),'warn');return;}csPhase('client');csStep(2);}
+function selTone(el){document.querySelectorAll('#tone-chips .chip').forEach(c=>c.classList.remove('sel'));el.classList.add('sel');}
+function togDel(el){el.classList.toggle('sel');}
+function getClientData(){const tone=document.querySelector('#tone-chips .chip.sel');const dels=[...document.querySelectorAll('#c-dels .dtag.sel')].map(d=>d.textContent.trim());return{sector:document.getElementById('c-sector').value,size:document.getElementById('c-size').value,tech:document.getElementById('c-tech').value,tone:tone?tone.textContent.trim():'Profesional',deliverables:dels};}
+// FREE: selección manual de roles
+function cs2to3_manual(){
+  CONFIG.client=getClientData();csPhase('roles');csStep(3);
+  document.getElementById('cx-box').style.display='none';
+  document.getElementById('manual-role-picker').style.display='block';
+  document.getElementById('ia-roles-list').innerHTML='';
+  const list=document.getElementById('manual-roles-list');
+  list.innerHTML='';
+  // Fixed role
+  const fc=document.createElement('div');fc.className='rc fx';fc.innerHTML=`<div class="rh"><div class="chk">✓</div><div><span class="rn">${CFX.nombre}</span><span class="rt tf">${t('teams_role_fixed')}</span><p class="rw">${CFX.justificacion}</p></div></div>`;list.appendChild(fc);
+  MANUAL_ROLES.forEach((role,i)=>{const c=document.createElement('div');c.className='rc';c.dataset.mi=i;c.onclick=()=>togManualRole(i);c.innerHTML=`<div class="rh"><div class="chk" id="mck${i}"></div><div><span class="rn">${role.nombre}</span><span class="rt to">${role.area}</span><p class="rw">${role.justificacion}</p></div></div>`;list.appendChild(c);});
+}
+function togManualRole(i){const c=document.querySelector(`[data-mi="${i}"]`);const chk=document.getElementById('mck'+i);const on=c.classList.toggle('on');chk.textContent=on?'✓':'';}
+// PRO: detección IA de roles
+async function cs2to3_pro(){
+  if(!PLANS[USER_PLAN].aiRoles){showUpgradeModal();return;}
+  CONFIG.client=getClientData();csPhase('cload');csStep(3);
+  const cc=`Sector: ${CONFIG.client.sector||'N/A'}\nTamaño: ${CONFIG.client.size||'N/A'}\nNivel técnico: ${CONFIG.client.tech||'N/A'}\nTono: ${CONFIG.client.tone}\nEntregables: ${CONFIG.client.deliverables.join(', ')||'N/A'}`;
+  const sys=`Arquitecto de equipos IA. Analiza el brief. NO incluyas Prompt Engineer/IA/Prompting. SOLO JSON sin backticks:\n{"roles":[{"nombre":"...","area":"...","prioridad":"esencial"|"recomendado"|"opcional","justificacion":"1-2 frases"}],"resumen":"Una frase","complejidad":{"nivel":"simple"|"medio"|"complejo","descripcion":"2 frases","fases_estimadas":2}}\nMáx 5 roles.`;
+  try{
+    const txt=await callAI(sys,[{role:'user',content:`Brief:\n${CONFIG.brief}\n\nCliente:\n${cc}`}],1100);
+    const p=JSON.parse(txt.replace(/```json|```/g,'').trim());CONFIG.roles=p.roles;CONFIG.cx=p.complejidad;
+    renderCx(p.complejidad);renderCRoles_ia(p);
+    document.getElementById('manual-role-picker').style.display='none';document.getElementById('cx-box').style.display='flex';
+    csPhase('roles');csStep(3);
+  }catch(e){csPhase('client');csStep(2);showToast(t('toast_ai_error',{msg:e.message}),'error',6000);}
+}
+function renderCx(cx){const cfg={simple:{cls:'cx-s',ch:'S',txtKey:'teams_cx_simple'},medio:{cls:'cx-m',ch:'M',txtKey:'teams_cx_medium'},complejo:{cls:'cx-c',ch:'C',txtKey:'teams_cx_complex'}};const c=cfg[cx.nivel]||cfg.medio;const ic=document.getElementById('cx-icon');ic.className='cx-icon '+c.cls;ic.textContent=c.ch;document.getElementById('cx-lbl').textContent=t('teams_cx_phases',{txt:t(c.txtKey),phases:cx.fases_estimadas});document.getElementById('cx-desc').textContent=cx.descripcion;const box=document.getElementById('cx-box');box.style.borderColor=cx.nivel==='simple'?'var(--tb)':cx.nivel==='complejo'?'var(--rb)':'rgba(240,165,0,.25)';box.style.background=cx.nivel==='simple'?'var(--tbg)':cx.nivel==='complejo'?'var(--rbg)':'var(--abg)';}
+function renderCRoles_ia(p){const list=document.getElementById('ia-roles-list');list.innerHTML='';const fc=document.createElement('div');fc.className='rc fx';fc.innerHTML=`<div class="rh"><div class="chk">✓</div><div><span class="rn">${CFX.nombre}</span><span class="rt tf">${t('teams_role_fixed')}</span><p class="rw">${CFX.justificacion}</p></div></div>`;list.appendChild(fc);p.roles.forEach((role,i)=>{const on=role.prioridad==='esencial';const c=document.createElement('div');c.className='rc'+(on?' on':'');c.dataset.i=i;c.onclick=()=>ctog(i);c.innerHTML=`<div class="rh"><div class="chk" id="ck${i}">${on?'✓':''}</div><div><span class="rn">${role.nombre}</span><span class="rt ${CTC[role.prioridad]}">${role.prioridad}</span><p class="rw">${role.justificacion}</p></div></div>`;list.appendChild(c);});}
+function ctog(i){const c=document.querySelector(`[data-i="${i}"]`);const chk=document.getElementById('ck'+i);const on=c.classList.toggle('on');chk.textContent=on?'✓':'';}
+function cs3to4(){
+  const plan=PLANS[USER_PLAN];
+  if(plan.aiRoles){
+    // IA roles
+    CONFIG.sel=[CFX];document.querySelectorAll('#ia-roles-list .rc:not(.fx).on').forEach(c=>CONFIG.sel.push(CONFIG.roles[+c.dataset.i]));
+  } else {
+    // Manual roles
+    CONFIG.sel=[CFX];document.querySelectorAll('#manual-roles-list .rc:not(.fx).on').forEach(c=>{const idx=+c.dataset.mi;if(MANUAL_ROLES[idx])CONFIG.sel.push({...MANUAL_ROLES[idx],prioridad:'esencial'});});
+  }
+  if(CONFIG.sel.length<2){showToast(t('toast_select_role'),'warn');return;}
+  const rv=document.getElementById('c-rev-list');rv.innerHTML='';
+  CONFIG.sel.forEach(r=>{const d=document.createElement('div');d.className='cri';d.innerHTML=`<div class="crd"></div><span class="crnn">${r.nombre}</span><span class="rt ${CTC[r.prioridad||'esencial']}">${r.prioridad||'seleccionado'}</span>`;rv.appendChild(d);});
+  csPhase('launch');csStep(4);
+}
+function buildPromptFromConfig(){
+  const extra=document.getElementById('c-extra').value.trim();
+  const rl=CONFIG.sel.map(r=>`- ${r.nombre}`).join('\n');
+  const cfg=getCFG();
+  const eb=extra?`\n### CONTEXTO ADICIONAL\n${extra}`:'';
+  return `## INICIO DE SESIÓN — ${CONFIG.proj.toUpperCase()}\n\n### ROLES ACTIVOS EN ESTA SESIÓN\n${rl}\n\n### BRIEF DEL PROYECTO\n${CONFIG.brief}${eb}\n\n### INSTRUCCIONES DE COMPORTAMIENTO\n1. Operas simultáneamente desde todos los roles activos. Integra perspectivas sin separarlas en bloques.\n2. Como Senior Prompt Engineer, optimiza cualquier prompt, instrucción o flujo IA que surja en la sesión.\n3. ${cfg.userName||'Jose'} actúa como enlace con el cliente — orienta tus propuestas a lo que él necesita comunicar y entregar.\n4. Sé directo y técnico. No expliques lo básico salvo petición explícita.\n5. Presenta PRIMERO un plan de 2-3 líneas y espera aprobación antes de desarrollar cualquier entregable.\n6. Si hay conflicto entre criterios de distintos roles, señálalo y propón solución de compromiso.\n7. Responde en español salvo que se cambie de idioma.\n\n### COMANDOS RÁPIDOS\n- "cambia rol" → nuevos roles activos (Prompt Engineer permanece)\n- "modo código" → solo código\n- "modo estrategia" → solo análisis\n- "modo cliente" → lenguaje para el cliente\n- "reset" → vuelve a esta configuración\n\n---\nConfirma con: "Equipo activo para ${CONFIG.proj}. ¿Empezamos?"`;
+}
+function saveTeamOnly(){
+  const prompt=buildPromptFromConfig();
+  const teams=getTeams();
+  teams.unshift({name:CONFIG.proj,date:fmtDate(),roles:CONFIG.sel.map(r=>r.nombre),cx:CONFIG.cx.nivel||'libre',brief:CONFIG.brief,systemPrompt:prompt,status:'activo'});
+  if(teams.length>20)teams.length=20;setTeams(teams);
+  closeConfig();renderTeamsView();updateLimitLabels();
+  logActivity(t('activity_team_saved',{name:CONFIG.proj}),'var(--teal)');
+  showToast(t('toast_team_saved'),'success');
+}
+function launchTeam(){
+  const prompt=buildPromptFromConfig();
+  const teams=getTeams();
+  teams.unshift({name:CONFIG.proj,date:fmtDate(),roles:CONFIG.sel.map(r=>r.nombre),cx:CONFIG.cx.nivel||'libre',brief:CONFIG.brief,systemPrompt:prompt,status:'activo'});
+  if(teams.length>20)teams.length=20;setTeams(teams);
+  updateLimitLabels();closeConfig();
+  openWorkspace(prompt);
+  logActivity(t('activity_team_launched',{name:CONFIG.proj}),'var(--blue)');
+}
+function configReset(){
+  CONFIG={roles:[],brief:'',proj:'',client:{},cx:{},sel:[],phase:1};
+  ['c-proj-name','c-brief','c-extra'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.querySelectorAll('.chip.sel,.dtag.sel').forEach(el=>el.classList.remove('sel'));
+  ['c-sector','c-size','c-tech'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('config-from-crm-banner').style.display='none';
+  evalCL();csPhase('brief');csStep(1);
+}
+function renderEqHist(){} // legacy compat
+// ═══════════════════════════════════════════════════════════════════════
+// WORKSPACE
+// ═══════════════════════════════════════════════════════════════════════
+const WS_MAX_CHATS = ()=> PLANS[USER_PLAN].chatsPerTeam;
+const WS_MODES={
+  estrategia:{labelKey:'ws_mode_strategy',cls:'tag-purple',extra:'MODO ESTRATEGIA: Solo análisis, planes y documentos estratégicos.'},
+  codigo:{labelKey:'ws_mode_code',cls:'tag-blue',extra:'MODO CÓDIGO: Principalmente código y soluciones técnicas.'},
+  cliente:{labelKey:'ws_mode_client',cls:'tag-teal',extra:'MODO CLIENTE: Lenguaje comprensible y presentable directamente al cliente final.'},
+  libre:{labelKey:'ws_mode_free',cls:'tag-gray',extra:'MODO LIBRE: Responde sin restricción de formato o enfoque.'},
+};
+function wsLabel(mode){ return t(WS_MODES[mode].labelKey); }
+let WS={chats:[],active:0,systemPrompt:''};
+function openWorkspace(customPrompt){
+  WS.systemPrompt=customPrompt||'';if(!WS.systemPrompt){showToast(t('toast_no_system_prompt'),'warn');return;}
+  WS.chats=[];document.getElementById('ws-tabs').innerHTML='';document.getElementById('ws-panels').innerHTML='';
+  document.getElementById('ws-proj-label').textContent=CONFIG.proj||'Workspace';
+  document.getElementById('nav-ws').style.display='flex';
+  goTo('ws');wsAddChat();
+}
+function wsAddChat(){
+  if(WS.chats.length>=WS_MAX_CHATS()){showUpgradeModal();return;}
+  const id=Date.now();const num=WS.chats.length+1;const chat={id,name:`Chat ${num}`,mode:'libre',history:[]};
+  WS.chats.push(chat);wsCreateTab(chat);wsCreatePanel(chat);wsActivate(id);
+  const btn=document.getElementById('ws-add-btn');
+  const atMax=WS.chats.length>=WS_MAX_CHATS();
+  btn.style.opacity=atMax?'0.3':'1';btn.style.pointerEvents=atMax?'none':'auto';
+  // Show pro hint if at limit
+  if(atMax&&USER_PLAN==='free'){btn.title='Pro permite hasta 3 chats por equipo';}
+}
+function wsCreateTab(chat){const el=document.createElement('div');el.className='ws-tab';el.id=`wt-${chat.id}`;el.onclick=()=>wsActivate(chat.id);el.innerHTML=`<span class="tag ${WS_MODES[chat.mode].cls}" id="wtb-${chat.id}" style="font-size:9px">${wsLabel(chat.mode)}</span><span id="wtn-${chat.id}" style="font-size:11px">${chat.name}</span><span class="ws-tx" onclick="event.stopPropagation();wsClose(${chat.id})">×</span>`;document.getElementById('ws-tabs').appendChild(el);}
+function wsCreatePanel(chat){const p=document.createElement('div');p.className='ws-panel';p.id=`wp-${chat.id}`;p.innerHTML=`<div class="ws-modebar"><span class="ws-mode-lbl">modo:</span>${Object.keys(WS_MODES).map(m=>`<button class="ws-mbtn${chat.mode===m?' am':''}" data-m="${m}" onclick="wsSetMode(${chat.id},'${m}')">${wsLabel(m)}</button>`).join('')}<input class="ws-chat-name" value="${chat.name}" onchange="wsRename(${chat.id},this.value)">${USER_PLAN==='free'&&WS.chats.length>=1?`<span style="font-size:10px;color:var(--purple);font-family:'JetBrains Mono',monospace;margin-left:8px;cursor:pointer" onclick="showUpgradeModal()">${t('ws_pro_hint')}</span>`:''}<button class="ws-clear-btn" onclick="wsClear(${chat.id})">${t('ws_clear')}</button></div><div class="ws-msgs" id="wm-${chat.id}"><div class="ws-empty-state" id="we-${chat.id}"><div style="font-size:22px;opacity:.15">▣</div><div>${t('ws_empty')}</div><div style="color:var(--text3);font-size:10px;margin-top:2px">System prompt · ${wsLabel(chat.mode)}</div></div></div><div class="ws-inp-area"><div class="ws-inp-row"><textarea class="ws-inp" id="wi-${chat.id}" placeholder="Mensaje al equipo..." rows="1" onkeydown="wsKey(event,${chat.id})" oninput="wsResize(this)"></textarea><button class="ws-send" id="wssend-${chat.id}" onclick="wsSend(${chat.id})">▶</button></div><div class="sys-prv-toggle" onclick="wsToggleSys(${chat.id})">${t('ws_system_show')}</div><div class="sys-prv" id="wsp-${chat.id}">${wsEsc(WS.systemPrompt)}</div></div>`;document.getElementById('ws-panels').appendChild(p);}
+function wsActivate(id){WS.active=id;document.querySelectorAll('.ws-tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.ws-panel').forEach(p=>p.classList.remove('active'));const t=document.getElementById(`wt-${id}`);const p=document.getElementById(`wp-${id}`);if(t)t.classList.add('active');if(p)p.classList.add('active');}
+function wsClose(id){if(WS.chats.length<=1){showToast(t('toast_min_one_chat'),'warn');return;}WS.chats=WS.chats.filter(c=>c.id!==id);const te=document.getElementById(`wt-${id}`);const p=document.getElementById(`wp-${id}`);if(te)te.remove();if(p)p.remove();document.getElementById('ws-add-btn').style.opacity='1';document.getElementById('ws-add-btn').style.pointerEvents='auto';if(WS.active===id)wsActivate(WS.chats[WS.chats.length-1].id);}
+function wsSetMode(chatId,mode){const chat=WS.chats.find(c=>c.id===chatId);if(!chat)return;chat.mode=mode;document.querySelectorAll(`#wp-${chatId} .ws-mbtn`).forEach(b=>b.classList.toggle('am',b.dataset.m===mode));const badge=document.getElementById(`wtb-${chatId}`);if(badge){badge.className=`tag ${WS_MODES[mode].cls}`;badge.textContent=wsLabel(mode);badge.style.fontSize='9px';}const em=document.getElementById(`we-${chatId}`);if(em){const sub=em.querySelector('div:last-child');if(sub)sub.textContent=`System prompt · ${wsLabel(mode)}`;}}
+function wsRename(chatId,name){const chat=WS.chats.find(c=>c.id===chatId);if(chat)chat.name=name.trim()||chat.name;const el=document.getElementById(`wtn-${chatId}`);if(el)el.textContent=chat.name;}
+function wsClear(chatId){showConfirm(t('confirm_clear_chat'),()=>{const chat=WS.chats.find(c=>c.id===chatId);if(chat)chat.history=[];const msgs=document.getElementById(`wm-${chatId}`);if(msgs)msgs.innerHTML=`<div class="ws-empty-state"><div style="font-size:22px;opacity:.15">▣</div><div>${t('toast_chat_cleared')}</div></div>`;});}
+function wsToggleSys(chatId){const el=document.getElementById(`wsp-${chatId}`);const tog=el?.previousElementSibling;if(!el)return;const open=el.style.display==='block';el.style.display=open?'none':'block';if(tog)tog.textContent=open?t('ws_system_show'):t('ws_system_hide');}
+function wsKey(e,chatId){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();wsSend(chatId);}}
+function wsResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,130)+'px';}
+function wsEsc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+async function wsSend(chatId){
+  const chat=WS.chats.find(c=>c.id===chatId);if(!chat)return;
+  const inp=document.getElementById(`wi-${chatId}`);const text=inp.value.trim();if(!text)return;
+  inp.value='';inp.style.height='auto';const sbtn=document.getElementById(`wssend-${chatId}`);if(sbtn)sbtn.disabled=true;
+  const em=document.getElementById(`we-${chatId}`);if(em)em.remove();
+  wsAddBubble(chatId,'user',text);chat.history.push({role:'user',content:text});
+  const msgs=document.getElementById(`wm-${chatId}`);const typ=document.createElement('div');typ.id=`wtyp-${chatId}`;typ.className='wm-typing';typ.innerHTML='<div class="tdot"></div><div class="tdot"></div><div class="tdot"></div>';if(msgs){msgs.appendChild(typ);msgs.scrollTop=msgs.scrollHeight;}
+  const fullSys=WS.systemPrompt+'\n\n### MODO ACTIVO DE ESTE CHAT\n'+WS_MODES[chat.mode].extra;
+  try{const reply=await callAI(fullSys,chat.history.slice(-20),2000);chat.history.push({role:'assistant',content:reply});const t=document.getElementById(`wtyp-${chatId}`);if(t)t.remove();wsAddBubble(chatId,'assistant',reply);workspaceHistory.save(chat.history,chat.name,getCFG().provider,getCFG().model);}
+  catch(e){const t=document.getElementById(`wtyp-${chatId}`);if(t)t.remove();wsAddBubble(chatId,'assistant','⚠ Error: '+e.message);}
+  if(sbtn)sbtn.disabled=false;const i2=document.getElementById(`wi-${chatId}`);if(i2)i2.focus();
+}
+function wsAddBubble(chatId,role,text){
+  const msgs=document.getElementById(`wm-${chatId}`);if(!msgs)return;const cfg=getCFG();
+  const wrap=document.createElement('div');wrap.className=`wm ${role}`;
+  const time=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+  wrap.innerHTML=`<span class="wm-role">${role==='user'?(cfg.userName||'Jose'):'equipo'}</span><div class="wm-bubble">${wsMd(text)}</div><span class="wm-time">${time}</span>`;
+  msgs.appendChild(wrap);msgs.scrollTop=msgs.scrollHeight;
+}
+function wsMd(text){
+  // Split on fenced code blocks first to handle them safely
+  const parts = text.split(/(```[\s\S]*?```)/g);
+  const frag = document.createDocumentFragment();
+  parts.forEach(part => {
+    const codeMatch = part.match(/^```(\w*)\n?([\s\S]*)```$/);
+    if (codeMatch) {
+      const pre = document.createElement('pre');
+      const code = document.createElement('code');
+      code.textContent = codeMatch[2].trim(); // safe: textContent
+      pre.appendChild(code);
+      frag.appendChild(pre);
+      return;
+    }
+    // Inline markdown on non-code parts (text already not HTML)
+    let h = wsEsc(part);
+    h = h.replace(/`([^`\n]+)`/g,'<code>$1</code>');
+    h = h.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+    h = h.replace(/\*([^*\n]+)\*/g,'<em>$1</em>');
+    h = h.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>');
+    h = h.replace(/^- (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g,'<ul>$&</ul>');
+    h = h.replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = `<p>${h}</p>`;
+    frag.appendChild(wrapper);
+  });
+  const out = document.createElement('div');
+  out.appendChild(frag);
+  return out.innerHTML;
+}
+// ═══════════════════════════════════════════════════════════════════════
+// EXPORT / IMPORT / RESET
+// ═══════════════════════════════════════════════════════════════════════
+function exportData(){
+  const data={version:3,exportedAt:new Date().toISOString(),crm:S.get('crm')||{},lib:S.get('lib')||[],teams:S.get('teams')||[],activity:S.get('activity')||[],config:{...getCFG(),apiKey:'[REMOVED]'}};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='aiworksuite-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(url);logActivity(t('activity_data_exported'),'var(--teal)');
+}
+function importData(event){
+  const file=event.target.files[0];if(!file)return;const reader=new FileReader();
+  reader.onload=e=>{try{const data=JSON.parse(e.target.result);if(!data.version){showToast(t('toast_invalid_file'),'error');return;}showConfirm(t('confirm_import_data'),()=>{const key=getCFG().apiKey;if(data.crm)S.set('crm',data.crm);if(data.lib)S.set('lib',data.lib);if(data.teams)S.set('teams',data.teams);if(data.activity)S.set('activity',data.activity);if(data.config){data.config.apiKey=key;saveCFG(data.config);}initCRM();renderLib();refreshDash();applyUserSettings();showToast(t('toast_import_ok'),'success');});}catch(err){showToast(t('toast_import_err',{msg:err.message}),'error',5000);}};
+  reader.readAsText(file);event.target.value='';
+}
+function resetApp(){showConfirm(t('confirm_reset_app'),()=>{showConfirm(t('confirm_reset_app_final'),()=>{['crm','lib','teams','activity','config','demo_user'].forEach(k=>S.del(k));location.reload();});});}
+// ═══════════════════════════════════════════════════════════════════════
+// FUNCIONALIDAD 1 — MODO CLARO / OSCURO
+// ═══════════════════════════════════════════════════════════════════════
+function getSystemTheme(){return window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
+function applyTheme(preference){
+  S.set('theme',preference);
+  const resolved=preference==='system'?getSystemTheme():preference;
+  document.documentElement.setAttribute('data-theme',resolved);
+  _updateThemeUI(preference);
+}
+function loadTheme(){const saved=S.get('theme')||'system';applyTheme(saved);}
+function toggleTheme(){applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');}
+function _updateThemeUI(preference){
+  const sel=document.getElementById('s-theme-select');
+  if(sel)sel.value=preference;
+}
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{
+  if((S.get('theme')||'system')==='system')applyTheme('system');
+});
+// ═══════════════════════════════════════════════════════════════════════
+// FUNCIONALIDAD 2 — i18n MULTILINGÜE (ES/EN/DE/FR/ZH)
+// ═══════════════════════════════════════════════════════════════════════
+const TRANSLATIONS={
+  es:{
+    land_eyebrow:'Sistema operativo para freelances IA',
+    land_h1_a:'Todo lo que necesitas',land_h1_b:'para trabajar con IA',
+    land_sub:'CRM, propuestas, equipos IA y biblioteca de prompts en una sola app. Sin servidor. Con tu propia API key. Gratis para empezar.',
+    land_cta_primary:'Empezar gratis — sin tarjeta',
+    land_proof:'BYOK · 100% local · Sin suscripción para empezar',
+    land_pricing_title:'Simple y transparente',land_pricing_sub:'Empieza gratis. Cuando crezcas, Pro te acompaña.',
+    land_feat_crm_title:'CRM con IA',land_feat_crm_desc:'Pipeline de 7 etapas con chat IA especializado por fase.',
+    land_feat_prop_title:'Propuestas IA',land_feat_prop_desc:'Genera propuestas comerciales profesionales en segundos.',
+    land_feat_teams_title:'Lanzador de Equipos IA',land_feat_teams_desc:'Configura equipos con roles detectados automáticamente.',
+    land_feat_lib_title:'Biblioteca de Prompts',land_feat_lib_desc:'Guarda y reutiliza tus mejores prompts en cualquier proyecto.',
+    land_feat_byok_title:'BYOK — Tu API key',land_feat_byok_desc:'Compatible con Anthropic, OpenAI, Groq y OpenRouter.',
+    land_feat_local_title:'100% local',land_feat_local_desc:'Tus datos en tu navegador. Export/import JSON.',
+    nav_dashboard:'Dashboard',nav_crm:'CRM',nav_proposals:'Propuestas',
+    nav_library:'Biblioteca',nav_teams:'Equipos IA',nav_workspace:'Workspace',
+    nav_settings:'Configuración',nav_pricing:'Planes',nav_theme:'Cambiar tema',nav_lang:'Cambiar idioma',
+    nav_label_dash:'Inicio',nav_label_crm:'CRM',nav_label_prop:'Props',nav_label_lib:'Biblio',nav_label_teams:'Equipos',nav_label_ws:'Work',nav_label_pricing:'Planes',nav_label_aiden:'Aiden',nav_label_settings:'Config',
+    dash_hello:'Hola',dash_api_warn:'Configura tu API key',
+    dash_kpi_clients:'Clientes',dash_kpi_proposals:'Propuestas pendientes',dash_kpi_teams:'Equipos IA',dash_kpi_prompts:'Prompts',
+    dash_kpi_won:'captados',dash_kpi_total:'total',dash_kpi_active:'activos',dash_kpi_reusable:'reutilizables',
+    dash_pipeline_empty:'Sin clientes en el pipeline',dash_activity_empty:'Sin actividad reciente',
+    dash_pipeline_title:'Pipeline CRM',dash_activity_title:'Actividad reciente',
+    dash_mod_crm_desc:'Pipeline 7 etapas con chat IA por fase.',dash_mod_prop_desc:'Genera propuestas profesionales con IA.',
+    dash_mod_teams_desc:'Lanza equipos de trabajo con roles IA.',dash_mod_lib_desc:'Prompts reutilizables para todos tus proyectos.',
+    dash_mod_crm_cta:'clientes →',dash_mod_teams_cta:'equipos →',
+    crm_title:'CRM',crm_badge:'Pipeline',crm_clients_count:'{{count}} clientes',
+    crm_new:'+ Nuevo cliente',crm_search:'Buscar...',crm_empty:'Sin clientes aún.',
+    crm_no_results:'Sin resultados.',crm_send:'ENVIAR',
+    crm_chat_placeholder:'Consulta para esta etapa...',
+    crm_welcome_sub:'Selecciona o crea un cliente',
+    crm_edit:'Editar',crm_add_team:'+ Equipo',crm_reminder:'Recordatorio',crm_assign:'Asignar',
+    crm_lbl_contact:'Email / WhatsApp',crm_lbl_service:'Servicio',crm_lbl_budget:'Presupuesto',
+    crm_lbl_captado:'Captado',crm_lbl_precio:'Precio cerrado',crm_lbl_stages:'Etapas',
+    crm_lbl_proposals:'Propuestas',
+    tab_datos:'Datos',tab_flujo:'Flujo',tab_props:'Propuestas',
+    crm_gen_prop:'+ Generar',crm_no_props:'Sin propuestas.\nPulsa "+ Generar".',
+    crm_new_modal_title:'Nuevo cliente',crm_edit_modal_title:'Editar cliente',
+    crm_field_name:'Nombre *',crm_field_company:'Empresa',crm_field_contact:'Email / WhatsApp',
+    crm_field_service:'Servicio / interés',crm_field_budget:'Presupuesto',
+    stage_0:'Primer contacto',stage_1:'Calificación rápida',stage_2:'Reunión descubrimiento',
+    stage_3:'Elaboración propuesta',stage_4:'Presentación',stage_5:'Negociación / ajustes',stage_6:'Onboarding y entrega',
+    stage_label:'ETAPA',
+    prop_title:'Propuestas',prop_badge:'Generador IA',
+    prop_status_borrador:'Borrador',prop_status_enviada:'Enviada',prop_status_aceptada:'Aceptada',prop_status_rechazada:'Rechazada',
+    prop_generate:'✦ Generar',prop_clear:'Limpiar',prop_copy:'Copiar',prop_regen:'↺ Regenerar',prop_captado:'✅ Captado',
+    prop_from_crm:'↩ desde CRM',prop_crm_loaded:'Datos del CRM cargados',prop_crm_sub:'Revisa y completa',
+    prop_history:'Historial',prop_filter_all:'Todas',
+    prop_sec_client:'Datos del cliente',prop_sec_project:'Proyecto',prop_sec_deliverables:'Entregables',
+    prop_sec_conditions:'Condiciones',prop_sec_result:'Propuesta generada',
+    prop_field_name:'Nombre *',prop_field_company:'Empresa',prop_field_contact:'Email / WhatsApp',
+    prop_field_budget:'Presupuesto',prop_field_service:'Servicio *',prop_field_type:'Tipo de trabajo',
+    prop_field_desc:'Descripción',prop_field_price:'Precio total',prop_field_deadline:'Plazo de entrega',
+    prop_field_advance:'Anticipo',prop_field_final:'Pago final',prop_field_notes:'Notas',
+    prop_type_select:'— Selecciona tipo —',prop_type_webdesign:'Diseño web',prop_type_webdev:'Desarrollo web',
+    prop_type_mobile:'App móvil',prop_type_automation:'Automatización IA',prop_type_chatbot:'Chatbot IA',
+    prop_type_branding:'Branding / identidad',prop_type_copy:'Copywriting / contenido',
+    prop_type_seo:'SEO / marketing digital',prop_type_consulting:'Consultoría estratégica',
+    prop_type_training:'Formación / curso',prop_type_other:'Otro',
+    prop_deliverable_ph:'Entregable {{n}}...',prop_add_deliverable:'+ Añadir',
+    prop_estimate_ia:'✦ Estimar con IA',prop_ia_estimate_ph:'IA estimará si está vacío',
+    prop_advance_default:'50% al inicio',prop_final_default:'50% en entrega',
+    prop_notes_ph:'Condiciones especiales...',prop_desc_ph:'Describe el proyecto...',
+    prop_save:'💾 Guardar',prop_export_pdf:'📄 PDF',
+    prop_link_title:'🔗 Vincular propuesta a cliente',prop_link_sub:'Selecciona el cliente del CRM al que pertenece esta propuesta.',
+    prop_link_client:'Cliente CRM',prop_link_confirm:'Vincular',
+    prop_reuse:'Reutilizar',prop_reactivate:'Reactivar',prop_status_label:'Estado ▾',
+    prop_empty_saved:'Sin propuestas guardadas.',prop_empty_filter:'Sin propuestas con ese estado.',
+    prop_empty_saved_hint:'Pulsa <strong>💾 Guardar</strong> tras generar una.',
+    prop_saved_label:'✓ Guardada',
+    lib_title:'Biblioteca',lib_badge:'Prompts',lib_categories:'Categorías',
+    lib_new:'+ Nuevo prompt',lib_search:'Buscar prompts...',
+    lib_empty:'Sin prompts',lib_empty_sub:'Pulsa "+ Nuevo prompt" para crear uno',
+    lib_insert:'→ Equipos',lib_edit:'Editar',lib_from_lib:'Insertar desde Biblioteca',
+    lib_cat_all:'Todos',lib_cat_system:'System prompt',lib_cat_task:'Prompt de tarea',
+    lib_cat_crm:'CRM / ventas',lib_cat_content:'Contenido',lib_cat_code:'Código',lib_cat_strategy:'Estrategia',lib_cat_other:'Otro',
+    lib_modal_title_new:'Nuevo prompt',lib_modal_title_edit:'Editar prompt',
+    lib_field_title:'Título *',lib_field_cat:'Categoría',lib_field_content:'Contenido *',lib_field_tags:'Tags (separados por coma)',
+    lib_ph_title:'Ej: System prompt para proyectos TI',lib_ph_content:'Escribe o pega el contenido...',lib_ph_tags:'IA, diseño...',
+    teams_title:'Equipos IA',teams_badge:'Lanzador',teams_my_teams:'Mis equipos',
+    teams_new:'+ Nuevo equipo',teams_launch:'▣ Lanzar',teams_edit:'Editar',teams_save_only:'Guardar sin lanzar',
+    teams_empty:'Crear primer equipo',teams_empty_sub:'Configura tu equipo IA ideal',
+    teams_step1:'01·brief',teams_step2:'02·cliente',teams_step3:'03·roles',teams_step4:'04·lanzar',
+    teams_detect_ia:'Detectar roles con IA →',teams_manual_roles:'Seleccionar roles manualmente →',
+    teams_ia_only_pro:'Detección IA disponible en Pro',teams_always_active:'siempre activo',teams_launch_btn:'▣ Lanzar equipo →',
+    teams_new_team:'Nuevo equipo',teams_cancel:'Cancelar',
+    teams_brief_name:'nombre del equipo / proyecto',teams_brief_desc:'brief del proyecto',
+    teams_brief_ph:'Describe el proyecto: objetivo, entregables, plataforma, audiencia, restricciones...',
+    teams_brief_validation:'validación del brief',teams_from_lib:'+ Desde Biblioteca',
+    teams_sector:'sector del cliente',teams_sector_select:'Selecciona...',
+    teams_sector_tech:'Tecnología / Software / TI',teams_sector_design:'Diseño / Agencia creativa',
+    teams_sector_ecom:'E-commerce / Retail',teams_sector_health:'Salud / Bienestar',
+    teams_sector_edu:'Educación / Formación',teams_sector_finance:'Finanzas / Legal',
+    teams_sector_hospitality:'Hostelería / Turismo',teams_sector_construction:'Construcción / Arquitectura',
+    teams_sector_marketing:'Marketing / Publicidad',teams_sector_ngo:'ONG / Sector público',
+    teams_sector_startup:'Startup / Emprendimiento',teams_sector_other:'Otro',
+    teams_size:'tamaño',teams_size_select:'Selecciona...',
+    teams_size_freelance:'Freelance / Autónomo',teams_size_micro:'Microempresa (1-9)',
+    teams_size_pyme:'Pyme (10-49)',teams_size_medium:'Mediana empresa (50-249)',teams_size_large:'Gran empresa (250+)',
+    teams_tech:'nivel técnico',teams_tech_select:'Selecciona...',
+    teams_tech_none:'No técnico — explicar todo',teams_tech_basic:'Básico — conceptos simples',
+    teams_tech_mid:'Intermedio — conoce el sector',teams_tech_adv:'Avanzado — perfil técnico',
+    teams_tone:'tono',teams_tone_formal:'Formal',teams_tone_professional:'Profesional',teams_tone_technical:'Técnico',
+    teams_tone_friendly:'Cercano',teams_tone_commercial:'Comercial',teams_tone_didactic:'Didáctico',
+    teams_tone_executive:'Ejecutivo',teams_tone_creative:'Creativo',
+    teams_deliverables:'entregables esperados',
+    teams_del_strategy:'Documento estratégico',teams_del_code:'Código / componentes',
+    teams_del_design:'Diseño / wireframes',teams_del_copy:'Copy / textos web',
+    teams_del_presentation:'Presentación',teams_del_plan:'Plan de proyecto',
+    teams_del_proposal:'Propuesta comercial',teams_del_report:'Informe / análisis',
+    teams_del_prompts:'Prompts / flujos IA',teams_del_checklist:'Checklist / guía',
+    teams_detecting:'Detectando roles óptimos para el proyecto...',
+    teams_spe_notice:'Senior Prompt Engineer — siempre activo en todos los equipos.',
+    teams_select_roles:'Selecciona los roles para este equipo',
+    teams_review_launch:'Revisar y lanzar →',teams_configured:'Equipo configurado — listo para lanzar.',
+    teams_extra_context:'contexto adicional',teams_extra_ph:'Stack técnico, restricciones, decisiones ya tomadas...',
+    teams_continue:'Continuar →',teams_back_brief:'← Brief',teams_back_client:'← Cliente',teams_back_roles:'← Roles',
+    teams_crm_loaded:'Datos cargados desde CRM',
+    ws_title:'Workspace',ws_history:'📋 Historial',ws_history_new:'+ Nueva',
+    ws_mode_strategy:'Estrategia',ws_mode_code:'Código',ws_mode_client:'Cliente',ws_mode_free:'Libre',
+    ws_back:'← Equipos',ws_clear:'Limpiar',ws_empty:'Equipo activo · escribe tu primera instrucción',
+    ws_system_show:'▸ ver system prompt',ws_system_hide:'▾ ocultar system prompt',ws_pro_hint:'+2 chats en Pro',
+    settings_title:'Configuración',settings_badge:'Settings',
+    settings_appearance:'Apariencia',settings_theme:'Tema',
+    settings_theme_system:'Sistema',settings_theme_light:'Claro',settings_theme_dark:'Oscuro',settings_theme_midnight:'Medianoche',settings_theme_warm:'Cálido',
+    settings_lang_label:'Idioma',settings_api:'Proveedor IA (BYOK)',
+    settings_provider:'Proveedor',settings_key_label:'API Key',settings_test:'Probar',settings_model:'Modelo personalizado (opcional)',
+    settings_api_status_ok:'● Conectado',settings_api_status_no:'● Sin configurar',settings_api_status_err:'● Error',
+    settings_custom_model:'Modelo personalizado',settings_custom_model_ph:'proveedor/nombre-del-modelo',
+    settings_manual_api:'Manual / Custom',settings_manual_sub:'Introduce tu propia URL y API Key',
+    settings_manual_provider:'Nombre del proveedor',settings_manual_url:'URL de la API',
+    settings_manual_url_ph:'https://api.ejemplo.com/v1',settings_manual_url_hint:'URL base compatible con OpenAI (sin /chat/completions)',
+    settings_manual_key:'API Key',settings_manual_model:'Modelo',
+    settings_manual_model_ph:'gpt-4o, claude-sonnet-4-20250514, llama-3.3-70b-versatile...',
+    settings_manual_test:'Probar conexión',settings_manual_save:'Guardar y usar',
+    settings_manual_testing:'Probando conexión...',settings_manual_success:'✅ Conexión exitosa',
+    settings_manual_error:'❌ Error de conexión',settings_manual_saved:'✅ Configuración manual guardada',
+    settings_profile:'Perfil profesional',settings_name:'Tu nombre / marca',
+    settings_email_c:'Email de contacto',settings_phone:'WhatsApp / Teléfono',settings_telegram:'Telegram',settings_web:'Web / Portfolio',
+    settings_data:'Datos y privacidad',settings_export_label:'Exportar todos los datos',
+    settings_export_sub:'CRM, biblioteca, equipos y configuración en JSON',
+    settings_import_label:'Importar datos',settings_import_sub:'Restaurar desde backup JSON',
+    settings_reset_label:'Restablecer aplicación',settings_reset_sub:'Elimina todos los datos locales. Irreversible.',
+    settings_reset_btn:'Restablecer',settings_export_btn:'↓ Export JSON',settings_import_btn:'↑ Import JSON',
+    settings_save:'Guardar',settings_save_profile:'Guardar perfil',
+    settings_manual_title:'Manual / Custom',settings_manual_sub:'Introduce tu propia URL y API Key',settings_manual_provider:'Nombre del proveedor',settings_manual_url:'URL de la API',settings_manual_url_hint:'URL base compatible con OpenAI (sin /chat/completions)',settings_manual_model:'Modelo',settings_manual_key:'API Key',settings_manual_save:'Guardar y usar',settings_manual_test:'Probar conexión',settings_manual_testing:'Probando…',settings_manual_ok:'Conexión OK ✓',settings_manual_fail:'Error de conexión ✗',
+    settings_plan_label:'Plan:',settings_upgrade_link:'Upgrade a Pro',
+    upgrade_title:'Actualiza a Pro',upgrade_sub:'Desbloquea todo el potencial de AIWorkSuite y escala tu negocio freelance IA.',
+    upgrade_info:'✦ Pro — 24,99€/mes · 249€/año',
+    upgrade_info_sub:'Desbloquea clientes, equipos y prompts ilimitados.',
+    upgrade_subscribe:'Empezar 7 días gratis',upgrade_cta:'🚀 Empezar 7 días gratis',upgrade_dismiss:'Ahora no',
+    upgrade_feat_clients:'Clientes ilimitados',upgrade_feat_chats:'3 chats por equipo',
+    upgrade_feat_teams:'Equipos ilimitados',upgrade_feat_roles:'Detección IA de roles',
+    upgrade_feat_prompts:'Prompts ilimitados',upgrade_feat_branding:'Branding personalizable',
+    btn_save:'Guardar',btn_cancel:'Cancelar',btn_edit:'Editar',btn_delete:'Eliminar',
+    btn_copy:'Copiar',btn_copied:'✓ Copiado',btn_continue:'Continuar →',btn_back:'←',btn_confirm:'Confirmar',
+    btn_close:'× Cerrar',
+    cookie_text:'Usamos cookies esenciales para el funcionamiento de la app y recordar tu sesión.',
+    cookie_learn:'Política de cookies',cookie_accept:'Aceptar todo',cookie_essential:'Solo esenciales',
+    plan_free_tag:'Gratis para siempre',plan_pro_badge:'Disponible',
+    plan_free_start:'Empezar gratis',plan_pro_subscribe:'Suscribirme a Pro →',
+    plan_current:'Plan actual',
+    pricing_free_kpi:'Dashboard con KPIs',pricing_free_ws:'Workspace (3 chats)',pricing_free_lib:'Biblioteca (máx. 5 prompts)',
+    pricing_no_crm:'CRM inteligente',pricing_no_prop:'Propuestas con IA',pricing_no_teams:'Equipos IA',pricing_no_lib_unlim:'Biblioteca ilimitada',
+    pricing_pro_all:'Todo lo de Free',pricing_pro_crm:'CRM completo (pipeline 7 etapas)',pricing_pro_chat:'Chat IA por fase del CRM',
+    pricing_pro_prop:'Propuestas con IA ilimitadas',pricing_pro_teams:'Equipos IA configurables',
+    pricing_pro_lib:'Biblioteca de prompts ilimitada',pricing_pro_user:'1 usuario',
+    pricing_pro_cta:'⚡ Probar Pro gratis 7 días',
+    footer_tagline:'BYOK · Tus datos, tu navegador',
+    footer_privacy:'Privacidad',footer_cookies:'Cookies',footer_terms:'Términos',footer_contact:'Contacto',footer_by:'by',
+    privacy_title:'Política de Privacidad',cookies_title:'Política de Cookies',terms_title:'Términos de Uso',
+    pricing_title:'Elige tu plan',pricing_subtitle:'7 días de prueba gratuita · Sin tarjeta hasta que decidas · Cancela cuando quieras',
+    pricing_monthly:'Mensual',pricing_yearly:'Anual',pricing_save:'Ahorra 20%',
+    pricing_forever:'para siempre',pricing_popular:'Más popular',
+    pricing_faq_title:'Preguntas frecuentes',
+    pricing_faq_q1:'¿Necesito tarjeta de crédito para la prueba?',pricing_faq_a1:'No. Los 7 días de prueba son completamente gratuitos. Solo se te cobrará si decides continuar.',
+    pricing_faq_q2:'¿Puedo cancelar en cualquier momento?',pricing_faq_a2:'Sí. Sin permanencia ni penalizaciones. Tu acceso continúa hasta el final del período pagado.',
+    pricing_faq_q3:'¿Qué pasa con mis datos si cancelo?',pricing_faq_a3:'Tus datos permanecen accesibles en modo Free. Nada se elimina automáticamente.',
+    pricing_faq_q4:'¿Traéis API key propia (BYOK)?',pricing_faq_a4:'Sí. Conectas tu propia clave de Groq, OpenAI, Anthropic u OpenRouter. AIWorkSuite no almacena ni usa tus claves en nuestros servidores.',
+    pwa_install:'Instalar app',pwa_installed:'App instalada',
+    pwa_offline:'Sin conexión — trabajando en modo offline',pwa_update:'Nueva versión disponible',pwa_update_btn:'Actualizar',
+    modal_nota_title:'Nota',modal_nota_ph:'Escribe tus notas...',
+    legal_close:'× Cerrar',legal_default_title:'Política de Privacidad',
+    onboarding_title:'¡Bienvenido a AIWorkSuite!',
+    onboarding_sub:'Empieza en 3 pasos y empieza a generar valor con IA.',
+    onboarding_s1_title:'Configura tu API key',
+    onboarding_s1_desc:'Ve a <strong>Configuración → Proveedor IA</strong> y añade tu key de Anthropic, OpenAI, Groq u OpenRouter.',
+    onboarding_s2_title:'Añade tu primer cliente al CRM',
+    onboarding_s2_desc:'Crea un cliente en el <strong>CRM</strong> y usa el chat IA para cada etapa de tu pipeline de ventas.',
+    onboarding_s3_title:'Genera tu primera propuesta',
+    onboarding_s3_desc:'Ve a <strong>Propuestas</strong>, rellena los datos del cliente y pulsa "Generar" para obtener una propuesta profesional en segundos.',
+    onboarding_cta:'¡Empezar ahora →',
+    toast_api_key_required:'Introduce una API key primero.',
+    toast_api_ok:'✅ Conexión exitosa.',toast_api_err:'❌ Error: {{msg}}',
+    toast_api_saved:'✅ Ajustes de API guardados.',toast_profile_saved:'✅ Perfil guardado.',
+    toast_captado:'✅ {{name}} marcado como captado.',
+    toast_name_required:'El nombre es obligatorio.',
+    toast_service_required:'Introduce el servicio antes de estimar.',
+    toast_estimate_ok:'✅ Estimación lista. Revisa y ajusta si es necesario.',
+    toast_no_client_gen:'Sin cliente vinculado al generador.',
+    toast_gen_first:'Genera la propuesta antes de guardar.',
+    toast_prop_saved:'✅ Propuesta guardada en el historial.',
+    toast_prop_loaded:'Propuesta cargada en el formulario.',
+    toast_prop_deleted:'Propuesta eliminada.',
+    toast_copied:'✓ Copiado al portapapeles',
+    toast_required:'Campo obligatorio.',
+    toast_invalid_url:'URL inválida.',
+    toast_data_exported:'✅ Datos exportados.',toast_data_imported:'✅ Datos importados.',
+    toast_app_reset:'Aplicación restablecida.',
+    toast_estimate_existing:'Los campos ya tenían valores, no se sobreescribieron.',
+    toast_estimate_err:'Error al estimar: {{msg}}',
+    toast_signal_sent:'✅ Señal enviada al CRM.',
+    toast_name_service_required:'Nombre del cliente y servicio son obligatorios.',
+    toast_email_required:'Email requerido.',
+    toast_confirm_delete_client:'¿Eliminar a "{{name}}"?',
+    toast_confirm_clear_prop:'¿Limpiar el generador de propuestas?',
+    toast_confirm_delete_prop:'¿Eliminar esta propuesta del historial?',
+    toast_confirm_create_team:'¿Crear equipo IA para "{{name}}"?',
+    onb_lang_title_es:'Elige tu idioma',
+    toast_no_crm_clients:'No hay clientes en el CRM.',toast_prop_linked:'Vinculada a {{name}}.',toast_prop_unlinked:'Vínculo eliminado.',
+    toast_title_content_required:'Título y contenido son obligatorios.',toast_brief_required:'Escribe el brief antes de continuar.',
+    toast_ai_error:'❌ Error: {{msg}}',toast_select_role:'Selecciona al menos un rol adicional.',toast_team_saved:'✅ Equipo guardado.',
+    toast_no_system_prompt:'Sin system prompt definido.',toast_min_one_chat:'Necesitas al menos un chat.',
+    toast_invalid_file:'Archivo no válido.',toast_import_ok:'✅ Datos importados correctamente.',toast_import_err:'Error al importar: {{msg}}',
+    toast_no_prop_to_export:'No hay propuesta generada para exportar.',toast_pdf_exported:'PDF exportado correctamente.',
+    toast_session_loaded:'Sesión "{{name}}" cargada.',toast_select_date:'Selecciona una fecha.',
+    toast_reminder_saved:'Recordatorio guardado.',toast_reminder_err:'Error al guardar recordatorio.',
+    toast_no_agency_sub:'No se encontró suscripción Agency.',toast_no_team_members:'No hay miembros en tu equipo todavía.',
+    toast_client_assigned:'Cliente asignado a {{email}}.',toast_assignment_removed:'Asignación eliminada.',toast_assign_err:'Error al asignar cliente.',
+    toast_chat_cleared:'Chat limpiado · escribe para reiniciar.',
+    confirm_delete_prompt:'¿Eliminar este prompt de la biblioteca?',confirm_delete_team:'¿Eliminar este equipo?',
+    confirm_clear_chat:'¿Limpiar historial del chat?',confirm_import_data:'¿Importar? Reemplazará los datos actuales (excepto API key).',
+    confirm_reset_app:'⚠️ ¿Eliminar TODOS los datos locales? Esta acción es irreversible.',
+    confirm_reset_app_final:'Confirma: se borrará todo tu CRM, equipos, prompts y configuración.',
+    upgrade_subtitle:'Desbloquea todas las herramientas y lleva tu flujo freelance al siguiente nivel.',
+    upgrade_feat_crm:'✅ CRM completo con pipeline visual',upgrade_feat_proposals:'✅ Propuestas ilimitadas con IA',
+    upgrade_feat_teams:'✅ Equipos IA + Workspace',upgrade_feat_library:'✅ Biblioteca de prompts sin límite',
+    upgrade_feat_trial:'✅ 7 días de prueba gratis',
+    upgrade_cta_pro:'🚀 Empezar 7 días gratis — 24,99€/mes',upgrade_cta_agency:'',
+    upgrade_footnote:'Sin tarjeta hasta que decidas · Cancela cuando quieras',
+    plan_banner_pro:'Estás en el plan <strong>✦ Pro</strong>. Todas las funciones desbloqueadas.',
+    plan_banner_agency:'',
+    plan_label_pro:'Plan: ✦ Pro',plan_manage_sub:'Gestionar suscripción',plan_label_free:'Plan: Free',plan_current:'Plan actual',
+    plan_cta_subscribe:'🚀 Empezar 7 días gratis',
+    limit_clients:' clientes',limit_teams:' equipos',limit_prompts:' prompts',
+    crm_new_client_title:'Nuevo cliente',crm_edit_client_title:'Editar cliente',
+    crm_add_note:'+ nota',crm_captado_title:'✅ Captado',crm_captado_label:'Captado · {{date}}',
+    crm_chat_empty:'Etapa: {{stage}} · Escribe para iniciar',crm_note_title:'Nota · {{stage}}',
+    crm_project_name:'Proyecto {{name}}',crm_data_loaded:'Datos de {{name}} cargados',
+    prop_estimating:'⏳ Estimando…',prop_estimate_btn:'✦ Estimar con IA',prop_deliverable_ph:'Entregable…',
+    prop_generating:'Generando…',prop_generate_error:'Error: {{msg}}',prop_copied:'✓ Copiado',prop_copy:'Copiar',
+    prop_pdf_title:'Propuesta para {{name}}',prop_pdf_footer:'Generado con AIWorkSuite',
+    lib_cat_all:'Todos',lib_cat_system:'System prompt',lib_cat_task:'Prompt de tarea',lib_cat_crm:'CRM / ventas',
+    lib_cat_content:'Contenido',lib_cat_code:'Código',lib_cat_strategy:'Estrategia',lib_cat_other:'Otro',
+    lib_prompt_count:'{{count}} prompts',lib_empty_hint:'Pulsa "+ Nuevo prompt"',lib_new_prompt_title:'Nuevo prompt',
+    lib_edit_prompt_title:'Editar prompt',lib_picker_empty:'Sin prompts en la biblioteca',lib_to_teams:'→ Equipos',
+    teams_create_first:'Crear primer equipo',teams_create_first_hint:'Configura tu equipo IA ideal',
+    teams_new_title:'Nuevo equipo',teams_edit_title:'Editar equipo',teams_unnamed_project:'Proyecto sin nombre',
+    teams_role_fixed:'siempre activo',teams_cx_simple:'Proyecto simple',teams_cx_medium:'Complejidad media',teams_cx_complex:'Proyecto complejo',
+    teams_cx_phases:'{{txt}} · {{phases}} fases',
+    ws_input_placeholder:'Mensaje al equipo…',ws_history_loading:'Cargando…',ws_history_empty:'Sin conversaciones guardadas',
+    metrics_title:'📊 Métricas de negocio',metrics_total_clients:'Clientes totales',metrics_pipeline_value:'Valor en pipeline',
+    metrics_revenue_closed:'Ingresos cerrados',metrics_conversion:'Conversión propuestas',metrics_sent:'Propuestas enviadas',metrics_won:'Propuestas ganadas',
+    reminder_title:'⏰ Recordatorio — {{name}}',reminder_date_label:'Fecha y hora',reminder_note_label:'Nota (opcional)',
+    reminder_note_ph:'Ej: Llamar para seguimiento de propuesta…',reminder_save_btn:'Guardar recordatorio',
+    reminder_pending_title:'⏰ Seguimientos pendientes',reminder_done_btn:'✓ Hecho',
+    assign_title:'👤 Asignar cliente — {{name}}',assign_unassign_btn:'🚫 Sin asignar',
+    activity_proposal_for:'Propuesta para {{name}}',
+    activity_client_won:'{{name}} captado ✅',activity_new_client:'Nuevo cliente: {{name}}',
+    activity_prop_generated:'Propuesta generada para {{name}}',activity_prompt_saved:'Prompt guardado: {{title}}',
+    activity_team_saved:'Equipo guardado: {{name}}',activity_team_launched:'Equipo lanzado: {{name}}',activity_data_exported:'Datos exportados',
+  },
+  en:{
+    land_eyebrow:'Operating system for AI freelancers',
+    land_h1_a:'Everything you need',land_h1_b:'to work with AI',
+    land_sub:'CRM, proposals, AI teams and prompt library in one app. No server. Your own API key. Free to start.',
+    land_cta_primary:'Start free — no credit card',
+    land_proof:'BYOK · 100% local · No subscription to start',
+    land_pricing_title:'Simple and transparent',land_pricing_sub:'Start free. When you grow, Pro grows with you.',
+    land_feat_crm_title:'AI-Powered CRM',land_feat_crm_desc:'7-stage pipeline with AI chat specialized by phase.',
+    land_feat_prop_title:'AI Proposals',land_feat_prop_desc:'Generate professional commercial proposals in seconds.',
+    land_feat_teams_title:'AI Team Launcher',land_feat_teams_desc:'Configure teams with auto-detected roles and launch in one click.',
+    land_feat_lib_title:'Prompt Library',land_feat_lib_desc:'Save and reuse your best prompts in any project.',
+    land_feat_byok_title:'BYOK — Your API Key',land_feat_byok_desc:'Compatible with Anthropic, OpenAI, Groq and OpenRouter.',
+    land_feat_local_title:'100% Local',land_feat_local_desc:'Your data in your browser. Export/import JSON.',
+    nav_dashboard:'Dashboard',nav_crm:'CRM',nav_proposals:'Proposals',
+    nav_library:'Library',nav_teams:'AI Teams',nav_workspace:'Workspace',
+    nav_settings:'Settings',nav_pricing:'Plans',nav_theme:'Toggle theme',nav_lang:'Change language',
+    nav_label_dash:'Home',nav_label_crm:'CRM',nav_label_prop:'Props',nav_label_lib:'Library',nav_label_teams:'Teams',nav_label_ws:'Work',nav_label_pricing:'Plans',nav_label_aiden:'Aiden',nav_label_settings:'Settings',
+    dash_hello:'Hello',dash_api_warn:'Set up your API key',
+    dash_kpi_clients:'Clients',dash_kpi_proposals:'Pending Proposals',dash_kpi_teams:'AI Teams',dash_kpi_prompts:'Prompts',
+    dash_kpi_won:'won',dash_kpi_total:'total',dash_kpi_active:'active',dash_kpi_reusable:'reusable',
+    dash_pipeline_empty:'No clients in pipeline',dash_activity_empty:'No recent activity',
+    dash_pipeline_title:'CRM Pipeline',dash_activity_title:'Recent Activity',
+    dash_mod_crm_desc:'7-stage pipeline with AI chat per phase.',dash_mod_prop_desc:'Generate professional proposals with AI.',
+    dash_mod_teams_desc:'Launch AI work teams with specialized roles.',dash_mod_lib_desc:'Reusable prompts for all your projects.',
+    dash_mod_crm_cta:'clients →',dash_mod_teams_cta:'teams →',
+    crm_title:'CRM',crm_badge:'Pipeline',crm_clients_count:'{{count}} clients',
+    crm_new:'+ New Client',crm_search:'Search...',crm_empty:'No clients yet.',
+    crm_no_results:'No results.',crm_send:'SEND',
+    crm_chat_placeholder:'Question for this stage...',
+    crm_welcome_sub:'Select or create a client',
+    crm_edit:'Edit',crm_add_team:'+ Team',crm_reminder:'Reminder',crm_assign:'Assign',
+    crm_lbl_contact:'Email / WhatsApp',crm_lbl_service:'Service',crm_lbl_budget:'Budget',
+    crm_lbl_captado:'Won',crm_lbl_precio:'Closed Price',crm_lbl_stages:'Stages',
+    crm_lbl_proposals:'Proposals',
+    tab_datos:'Data',tab_flujo:'Flow',tab_props:'Proposals',
+    crm_gen_prop:'+ Generate',crm_no_props:'No proposals.\nClick "+ Generate".',
+    crm_new_modal_title:'New Client',crm_edit_modal_title:'Edit Client',
+    crm_field_name:'Name *',crm_field_company:'Company',crm_field_contact:'Email / WhatsApp',
+    crm_field_service:'Service / Interest',crm_field_budget:'Budget',
+    stage_0:'First Contact',stage_1:'Quick Qualification',stage_2:'Discovery Meeting',
+    stage_3:'Proposal Writing',stage_4:'Presentation',stage_5:'Negotiation / Adjustments',stage_6:'Onboarding & Delivery',
+    stage_label:'STAGE',
+    prop_title:'Proposals',prop_badge:'AI Generator',
+    prop_status_borrador:'Draft',prop_status_enviada:'Sent',prop_status_aceptada:'Accepted',prop_status_rechazada:'Rejected',
+    prop_generate:'✦ Generate',prop_clear:'Clear',prop_copy:'Copy',prop_regen:'↺ Regenerate',prop_captado:'✅ Won',
+    prop_from_crm:'↩ from CRM',prop_crm_loaded:'CRM data loaded',prop_crm_sub:'Review and complete',
+    prop_history:'History',prop_filter_all:'All',
+    prop_sec_client:'Client Details',prop_sec_project:'Project',prop_sec_deliverables:'Deliverables',
+    prop_sec_conditions:'Terms & Conditions',prop_sec_result:'Generated Proposal',
+    prop_field_name:'Name *',prop_field_company:'Company',prop_field_contact:'Email / WhatsApp',
+    prop_field_budget:'Budget',prop_field_service:'Service *',prop_field_type:'Work Type',
+    prop_field_desc:'Description',prop_field_price:'Total Price',prop_field_deadline:'Delivery Deadline',
+    prop_field_advance:'Advance Payment',prop_field_final:'Final Payment',prop_field_notes:'Notes',
+    prop_type_select:'— Select type —',prop_type_webdesign:'Web Design',prop_type_webdev:'Web Development',
+    prop_type_mobile:'Mobile App',prop_type_automation:'AI Automation',prop_type_chatbot:'AI Chatbot',
+    prop_type_branding:'Branding / Identity',prop_type_copy:'Copywriting / Content',
+    prop_type_seo:'SEO / Digital Marketing',prop_type_consulting:'Strategic Consulting',
+    prop_type_training:'Training / Course',prop_type_other:'Other',
+    prop_deliverable_ph:'Deliverable {{n}}...',prop_add_deliverable:'+ Add',
+    prop_estimate_ia:'✦ Estimate with AI',prop_ia_estimate_ph:'AI will estimate if empty',
+    prop_advance_default:'50% upfront',prop_final_default:'50% on delivery',
+    prop_notes_ph:'Special conditions...',prop_desc_ph:'Describe the project...',
+    prop_save:'💾 Save',prop_export_pdf:'📄 PDF',
+    prop_link_title:'🔗 Link Proposal to Client',prop_link_sub:'Select the CRM client this proposal belongs to.',
+    prop_link_client:'CRM Client',prop_link_confirm:'Link',
+    prop_reuse:'Reuse',prop_reactivate:'Reactivate',prop_status_label:'Status ▾',
+    prop_empty_saved:'No saved proposals.',prop_empty_filter:'No proposals with that status.',
+    prop_empty_saved_hint:'Click <strong>💾 Save</strong> after generating one.',
+    prop_saved_label:'✓ Saved',
+    lib_title:'Library',lib_badge:'Prompts',lib_categories:'Categories',
+    lib_new:'+ New Prompt',lib_search:'Search prompts...',
+    lib_empty:'No prompts',lib_empty_sub:'Click "+ New Prompt" to create one',
+    lib_insert:'→ Teams',lib_edit:'Edit',lib_from_lib:'Insert from Library',
+    lib_cat_all:'All',lib_cat_system:'System Prompt',lib_cat_task:'Task Prompt',
+    lib_cat_crm:'CRM / Sales',lib_cat_content:'Content',lib_cat_code:'Code',lib_cat_strategy:'Strategy',lib_cat_other:'Other',
+    lib_modal_title_new:'New Prompt',lib_modal_title_edit:'Edit Prompt',
+    lib_field_title:'Title *',lib_field_cat:'Category',lib_field_content:'Content *',lib_field_tags:'Tags (comma-separated)',
+    lib_ph_title:'E.g.: System prompt for IT projects',lib_ph_content:'Write or paste content...',lib_ph_tags:'AI, design...',
+    teams_title:'AI Teams',teams_badge:'Launcher',teams_my_teams:'My Teams',
+    teams_new:'+ New Team',teams_launch:'▣ Launch',teams_edit:'Edit',teams_save_only:'Save Without Launching',
+    teams_empty:'Create First Team',teams_empty_sub:'Configure your ideal AI team',
+    teams_step1:'01·brief',teams_step2:'02·client',teams_step3:'03·roles',teams_step4:'04·launch',
+    teams_detect_ia:'Detect Roles with AI →',teams_manual_roles:'Select Roles Manually →',
+    teams_ia_only_pro:'AI detection available in Pro',teams_always_active:'always active',teams_launch_btn:'▣ Launch Team →',
+    teams_new_team:'New Team',teams_cancel:'Cancel',
+    teams_brief_name:'team / project name',teams_brief_desc:'project brief',
+    teams_brief_ph:'Describe the project: goal, deliverables, platform, audience, constraints...',
+    teams_brief_validation:'brief validation',teams_from_lib:'+ From Library',
+    teams_sector:'client sector',teams_sector_select:'Select...',
+    teams_sector_tech:'Technology / Software / IT',teams_sector_design:'Design / Creative Agency',
+    teams_sector_ecom:'E-commerce / Retail',teams_sector_health:'Health / Wellness',
+    teams_sector_edu:'Education / Training',teams_sector_finance:'Finance / Legal',
+    teams_sector_hospitality:'Hospitality / Tourism',teams_sector_construction:'Construction / Architecture',
+    teams_sector_marketing:'Marketing / Advertising',teams_sector_ngo:'NGO / Public Sector',
+    teams_sector_startup:'Startup / Entrepreneurship',teams_sector_other:'Other',
+    teams_size:'size',teams_size_select:'Select...',
+    teams_size_freelance:'Freelancer / Solo',teams_size_micro:'Micro (1–9)',
+    teams_size_pyme:'Small (10–49)',teams_size_medium:'Medium (50–249)',teams_size_large:'Enterprise (250+)',
+    teams_tech:'technical level',teams_tech_select:'Select...',
+    teams_tech_none:'Non-technical — explain everything',teams_tech_basic:'Basic — simple concepts',
+    teams_tech_mid:'Intermediate — industry knowledge',teams_tech_adv:'Advanced — technical profile',
+    teams_tone:'tone',teams_tone_formal:'Formal',teams_tone_professional:'Professional',teams_tone_technical:'Technical',
+    teams_tone_friendly:'Friendly',teams_tone_commercial:'Commercial',teams_tone_didactic:'Didactic',
+    teams_tone_executive:'Executive',teams_tone_creative:'Creative',
+    teams_deliverables:'expected deliverables',
+    teams_del_strategy:'Strategy Document',teams_del_code:'Code / Components',
+    teams_del_design:'Design / Wireframes',teams_del_copy:'Copy / Web Texts',
+    teams_del_presentation:'Presentation',teams_del_plan:'Project Plan',
+    teams_del_proposal:'Commercial Proposal',teams_del_report:'Report / Analysis',
+    teams_del_prompts:'Prompts / AI Flows',teams_del_checklist:'Checklist / Guide',
+    teams_detecting:'Detecting optimal roles for the project...',
+    teams_spe_notice:'Senior Prompt Engineer — always active on every team.',
+    teams_select_roles:'Select the roles for this team',
+    teams_review_launch:'Review & Launch →',teams_configured:'Team configured — ready to launch.',
+    teams_extra_context:'additional context',teams_extra_ph:'Tech stack, constraints, decisions already made...',
+    teams_continue:'Continue →',teams_back_brief:'← Brief',teams_back_client:'← Client',teams_back_roles:'← Roles',
+    teams_crm_loaded:'Data loaded from CRM',
+    ws_title:'Workspace',ws_history:'📋 History',ws_history_new:'+ New',
+    ws_mode_strategy:'Strategy',ws_mode_code:'Code',ws_mode_client:'Client',ws_mode_free:'Free',
+    ws_back:'← Teams',ws_clear:'Clear',ws_empty:'Team active · write your first instruction',
+    ws_system_show:'▸ show system prompt',ws_system_hide:'▾ hide system prompt',ws_pro_hint:'+2 chats in Pro',
+    settings_title:'Settings',settings_badge:'Settings',
+    settings_appearance:'Appearance',settings_theme:'Theme',
+    settings_theme_system:'System',settings_theme_light:'Light',settings_theme_dark:'Dark',settings_theme_midnight:'Midnight',settings_theme_warm:'Warm',
+    settings_lang_label:'Language',settings_api:'AI Provider (BYOK)',
+    settings_provider:'Provider',settings_key_label:'API Key',settings_test:'Test',settings_model:'Custom Model (Optional)',
+    settings_api_status_ok:'● Connected',settings_api_status_no:'● Not configured',settings_api_status_err:'● Error',
+    settings_custom_model:'Custom Model',settings_custom_model_ph:'provider/model-name',
+    settings_manual_api:'Manual / Custom',settings_manual_sub:'Enter your own URL and API Key',
+    settings_manual_provider:'Provider Name',settings_manual_url:'API URL',
+    settings_manual_url_ph:'https://api.example.com/v1',settings_manual_url_hint:'OpenAI-compatible base URL (without /chat/completions)',
+    settings_manual_key:'API Key',settings_manual_model:'Model',
+    settings_manual_model_ph:'gpt-4o, claude-sonnet-4-20250514, llama-3.3-70b-versatile...',
+    settings_manual_test:'Test Connection',settings_manual_save:'Save & Use',
+    settings_manual_testing:'Testing connection...',settings_manual_success:'✅ Connection successful',
+    settings_manual_error:'❌ Connection error',settings_manual_saved:'✅ Manual configuration saved',
+    settings_profile:'Professional Profile',settings_name:'Your name / brand',
+    settings_email_c:'Contact email',settings_phone:'WhatsApp / Phone',settings_telegram:'Telegram',settings_web:'Website / Portfolio',
+    settings_data:'Data & Privacy',settings_export_label:'Export All Data',
+    settings_export_sub:'CRM, library, teams and settings in JSON',
+    settings_import_label:'Import Data',settings_import_sub:'Restore from previously exported JSON backup',
+    settings_reset_label:'Reset App',settings_reset_sub:'Deletes all local data. Irreversible.',
+    settings_reset_btn:'Reset',settings_export_btn:'↓ Export JSON',settings_import_btn:'↑ Import JSON',
+    settings_save:'Save',settings_save_profile:'Save Profile',
+    settings_manual_title:'Manual / Custom',settings_manual_sub:'Enter your own URL and API Key',settings_manual_provider:'Provider name',settings_manual_url:'API URL',settings_manual_url_hint:'OpenAI-compatible base URL (without /chat/completions)',settings_manual_model:'Model',settings_manual_key:'API Key',settings_manual_save:'Save & use',settings_manual_test:'Test connection',settings_manual_testing:'Testing…',settings_manual_ok:'Connection OK ✓',settings_manual_fail:'Connection error ✗',
+    settings_plan_label:'Plan:',settings_upgrade_link:'Upgrade to Pro',
+    upgrade_title:'Upgrade to Pro',upgrade_sub:'Unlock the full potential of AIWorkSuite and scale your AI freelance business.',
+    upgrade_info:'✦ Pro — €24.99/mo · €249/yr',
+    upgrade_info_sub:'Unlock unlimited clients, teams and prompts.',
+    upgrade_subscribe:'Start 7-day free trial',upgrade_cta:'🚀 Start 7-day free trial',upgrade_dismiss:'Maybe later',
+    upgrade_feat_clients:'Unlimited clients',upgrade_feat_chats:'3 chats per team',
+    upgrade_feat_teams:'Unlimited teams',upgrade_feat_roles:'AI role detection',
+    upgrade_feat_prompts:'Unlimited prompts',upgrade_feat_branding:'Customizable branding',
+    btn_save:'Save',btn_cancel:'Cancel',btn_edit:'Edit',btn_delete:'Delete',
+    btn_copy:'Copy',btn_copied:'✓ Copied',btn_continue:'Continue →',btn_back:'←',btn_confirm:'Confirm',
+    btn_close:'× Close',
+    cookie_text:'We use essential cookies to keep the app working and remember your session.',
+    cookie_learn:'Cookie policy',cookie_accept:'Accept all',cookie_essential:'Essential only',
+    plan_free_tag:'Always free',plan_pro_badge:'Available',
+    plan_free_start:'Start free',plan_pro_subscribe:'Subscribe to Pro →',
+    plan_current:'Current plan',
+    pricing_free_kpi:'Dashboard with KPIs',pricing_free_ws:'Workspace (3 chats)',pricing_free_lib:'Library (max. 5 prompts)',
+    pricing_no_crm:'Smart CRM',pricing_no_prop:'AI Proposals',pricing_no_teams:'AI Teams',pricing_no_lib_unlim:'Unlimited library',
+    pricing_pro_all:'Everything in Free',pricing_pro_crm:'Full CRM (7-stage pipeline)',pricing_pro_chat:'AI chat per CRM phase',
+    pricing_pro_prop:'Unlimited AI proposals',pricing_pro_teams:'Configurable AI teams',
+    pricing_pro_lib:'Unlimited prompt library',pricing_pro_user:'1 user',
+    pricing_pro_cta:'⚡ Try Pro free for 7 days',
+    footer_tagline:'BYOK · Your data, your browser',
+    footer_privacy:'Privacy',footer_cookies:'Cookies',footer_terms:'Terms',footer_contact:'Contact',footer_by:'by',
+    privacy_title:'Privacy Policy',cookies_title:'Cookie Policy',terms_title:'Terms of Use',
+    pricing_title:'Choose Your Plan',pricing_subtitle:'7-day free trial · No credit card until you decide · Cancel anytime',
+    pricing_monthly:'Monthly',pricing_yearly:'Yearly',pricing_save:'Save 20%',
+    pricing_forever:'forever',pricing_popular:'Most Popular',
+    pricing_faq_title:'Frequently Asked Questions',
+    pricing_faq_q1:'Do I need a credit card for the trial?',pricing_faq_a1:'No. The 7-day trial is completely free. You will only be charged if you decide to continue.',
+    pricing_faq_q2:'Can I cancel anytime?',pricing_faq_a2:'Yes. No commitment or penalties. Your access continues until the end of the paid period.',
+    pricing_faq_q3:'What happens to my data if I cancel?',pricing_faq_a3:'Your data remains accessible in Free mode. Nothing is deleted automatically.',
+    pricing_faq_q4:'Do you support BYOK (Bring Your Own Key)?',pricing_faq_a4:'Yes. Connect your own Groq, OpenAI, Anthropic or OpenRouter key. AIWorkSuite does not store or use your keys on our servers.',
+    pwa_install:'Install app',pwa_installed:'App installed',
+    pwa_offline:'No connection — working offline',pwa_update:'New version available',pwa_update_btn:'Update',
+    modal_nota_title:'Note',modal_nota_ph:'Write your notes...',
+    legal_close:'× Close',legal_default_title:'Privacy Policy',
+    onboarding_title:'Welcome to AIWorkSuite!',
+    onboarding_sub:'Get started in 3 steps and start generating value with AI.',
+    onboarding_s1_title:'Set up your API key',
+    onboarding_s1_desc:'Go to <strong>Settings → AI Provider</strong> and add your Anthropic, OpenAI, Groq or OpenRouter key.',
+    onboarding_s2_title:'Add your first CRM client',
+    onboarding_s2_desc:'Create a client in the <strong>CRM</strong> and use AI chat for each stage of your sales pipeline.',
+    onboarding_s3_title:'Generate your first proposal',
+    onboarding_s3_desc:'Go to <strong>Proposals</strong>, fill in the client details and click "Generate" to get a professional proposal in seconds.',
+    onboarding_cta:'Get started →',
+    toast_api_key_required:'Enter an API key first.',
+    toast_api_ok:'✅ Connection successful.',toast_api_err:'❌ Error: {{msg}}',
+    toast_api_saved:'✅ API settings saved.',toast_profile_saved:'✅ Profile saved.',
+    toast_captado:'✅ {{name}} marked as won.',
+    toast_name_required:'Name is required.',
+    toast_service_required:'Enter the service before estimating.',
+    toast_estimate_ok:'✅ Estimation complete. Review and adjust as needed.',
+    toast_no_client_gen:'No client linked to the generator.',
+    toast_gen_first:'Generate the proposal before saving.',
+    toast_prop_saved:'✅ Proposal saved to history.',
+    toast_prop_loaded:'Proposal loaded into form.',
+    toast_prop_deleted:'Proposal deleted.',
+    toast_copied:'✓ Copied to clipboard',
+    toast_required:'Required field.',
+    toast_invalid_url:'Invalid URL.',
+    toast_data_exported:'✅ Data exported.',toast_data_imported:'✅ Data imported.',
+    toast_app_reset:'App has been reset.',
+    toast_estimate_existing:'Fields already had values, they were not overwritten.',
+    toast_estimate_err:'Estimation error: {{msg}}',
+    toast_signal_sent:'✅ Signal sent to CRM.',
+    toast_name_service_required:'Client name and service are required.',
+    toast_email_required:'Email required.',
+    toast_confirm_delete_client:'Delete "{{name}}"?',
+    toast_confirm_clear_prop:'Clear the proposal generator?',
+    toast_confirm_delete_prop:'Delete this proposal from history?',
+    toast_confirm_create_team:'Create AI team for "{{name}}"?',
+    onb_lang_title_es:'Elige tu idioma',
+    toast_no_crm_clients:'No clients in CRM.',toast_prop_linked:'Linked to {{name}}.',toast_prop_unlinked:'Link removed.',
+    toast_title_content_required:'Title and content are required.',toast_brief_required:'Write the brief before continuing.',
+    toast_ai_error:'\u274c Error: {{msg}}',toast_select_role:'Select at least one additional role.',toast_team_saved:'\u2705 Team saved.',
+    toast_no_system_prompt:'No system prompt defined.',toast_min_one_chat:'You need at least one chat.',
+    toast_invalid_file:'Invalid file.',toast_import_ok:'\u2705 Data imported successfully.',toast_import_err:'Import error: {{msg}}',
+    toast_no_prop_to_export:'No proposal generated to export.',toast_pdf_exported:'PDF exported successfully.',
+    toast_session_loaded:'Session "{{name}}" loaded.',toast_select_date:'Select a date.',
+    toast_reminder_saved:'Reminder saved.',toast_reminder_err:'Error saving reminder.',
+    toast_no_agency_sub:'Agency subscription not found.',toast_no_team_members:'No team members yet.',
+    toast_client_assigned:'Client assigned to {{email}}.',toast_assignment_removed:'Assignment removed.',toast_assign_err:'Error assigning client.',
+    toast_chat_cleared:'Chat cleared \u00b7 type to restart.',
+    confirm_delete_prompt:'Delete this prompt from the library?',confirm_delete_team:'Delete this team?',
+    confirm_clear_chat:'Clear chat history?',confirm_import_data:'Import? This will replace current data (except API key).',
+    confirm_reset_app:'\u26a0\ufe0f Delete ALL local data? This action is irreversible.',
+    confirm_reset_app_final:'Confirm: all your CRM, teams, prompts and settings will be deleted.',
+    upgrade_subtitle:'Unlock all tools and take your freelance workflow to the next level.',
+    upgrade_feat_crm:'\u2705 Full CRM with visual pipeline',upgrade_feat_proposals:'\u2705 Unlimited AI proposals',
+    upgrade_feat_teams:'\u2705 AI Teams + Workspace',upgrade_feat_library:'\u2705 Unlimited prompt library',
+    upgrade_feat_trial:'\u2705 7-day free trial',
+    upgrade_cta_pro:'\u26a1 Try Pro free 7 days \u2014 24,99\u20ac/mo',
+    upgrade_footnote:'7-day money-back guarantee \u00b7 No commitment \u00b7 Cancel anytime',
+    plan_banner_pro:'You are on the <strong>\u2726 Pro</strong> plan. All features unlocked.',
+    plan_label_pro:'Plan: \u2726 Pro',plan_manage_sub:'Manage subscription',plan_label_free:'Plan: Free',plan_current:'Current plan',
+    plan_cta_subscribe:'Subscribe to Pro \u2014 24,99\u20ac/mo',
+    limit_clients:' clients',limit_teams:' teams',limit_prompts:' prompts',
+    crm_new_client_title:'New client',crm_edit_client_title:'Edit client',
+    crm_add_note:'+ note',crm_captado_title:'\u2705 Won',crm_captado_label:'Won \u00b7 {{date}}',
+    crm_chat_empty:'Stage: {{stage}} \u00b7 Type to start',crm_note_title:'Note \u00b7 {{stage}}',
+    crm_project_name:'Project {{name}}',crm_data_loaded:'{{name}} data loaded',
+    prop_estimating:'\u23f3 Estimating\u2026',prop_estimate_btn:'\u2726 Estimate with AI',prop_deliverable_ph:'Deliverable\u2026',
+    prop_generating:'Generating\u2026',prop_generate_error:'Error: {{msg}}',prop_copied:'\u2713 Copied',prop_copy:'Copy',
+    prop_pdf_title:'Proposal for {{name}}',prop_pdf_footer:'Generated with AIWorkSuite',
+    lib_cat_all:'All',lib_cat_system:'System prompt',lib_cat_task:'Task prompt',lib_cat_crm:'CRM / sales',
+    lib_cat_content:'Content',lib_cat_code:'Code',lib_cat_strategy:'Strategy',lib_cat_other:'Other',
+    lib_prompt_count:'{{count}} prompts',lib_empty_hint:'Click "+ New prompt"',lib_new_prompt_title:'New prompt',
+    lib_edit_prompt_title:'Edit prompt',lib_picker_empty:'No prompts in library',lib_to_teams:'\u2192 Teams',
+    teams_create_first:'Create first team',teams_create_first_hint:'Set up your ideal AI team',
+    teams_new_title:'New team',teams_edit_title:'Edit team',teams_unnamed_project:'Unnamed project',
+    teams_role_fixed:'always active',teams_cx_simple:'Simple project',teams_cx_medium:'Medium complexity',teams_cx_complex:'Complex project',
+    teams_cx_phases:'{{txt}} \u00b7 {{phases}} phases',
+    ws_input_placeholder:'Message the team\u2026',ws_history_loading:'Loading\u2026',ws_history_empty:'No saved conversations',
+    metrics_title:'\ud83d\udcca Business metrics',metrics_total_clients:'Total clients',metrics_pipeline_value:'Pipeline value',
+    metrics_revenue_closed:'Closed revenue',metrics_conversion:'Proposal conversion',metrics_sent:'Proposals sent',metrics_won:'Proposals won',
+    reminder_title:'\u23f0 Reminder \u2014 {{name}}',reminder_date_label:'Date and time',reminder_note_label:'Note (optional)',
+    reminder_note_ph:'E.g.: Call for proposal follow-up\u2026',reminder_save_btn:'Save reminder',
+    reminder_pending_title:'\u23f0 Pending follow-ups',reminder_done_btn:'\u2713 Done',
+    assign_title:'\ud83d\udc64 Assign client \u2014 {{name}}',assign_unassign_btn:'\ud83d\udeab Unassign',
+    activity_proposal_for:'Proposal for {{name}}',
+    activity_client_won:'{{name}} won \u2705',activity_new_client:'New client: {{name}}',
+    activity_prop_generated:'Proposal generated for {{name}}',activity_prompt_saved:'Prompt saved: {{title}}',
+    activity_team_saved:'Team saved: {{name}}',activity_team_launched:'Team launched: {{name}}',activity_data_exported:'Data exported',
+  },
+  de:{
+    land_eyebrow:'Betriebssystem für KI-Freelancer',
+    land_h1_a:'Alles, was Sie brauchen',land_h1_b:'um mit KI zu arbeiten',
+    land_sub:'CRM, Angebote, KI-Teams und Prompt-Bibliothek in einer App. Kein Server. Ihr eigener API-Schlüssel. Kostenlos starten.',
+    land_cta_primary:'Kostenlos starten — ohne Kreditkarte',
+    land_proof:'BYOK · 100 % lokal · Kein Abo zum Starten',
+    land_pricing_title:'Einfach und transparent',land_pricing_sub:'Starten Sie kostenlos. Wenn Sie wachsen, wächst Pro mit.',
+    land_feat_crm_title:'CRM mit KI',land_feat_crm_desc:'7-Phasen-Pipeline mit KI-Chat pro Phase.',
+    land_feat_prop_title:'KI-Angebote',land_feat_prop_desc:'Erstellen Sie professionelle Angebote in Sekunden.',
+    land_feat_teams_title:'KI-Team-Launcher',land_feat_teams_desc:'Konfigurieren Sie Teams mit automatisch erkannten Rollen.',
+    land_feat_lib_title:'Prompt-Bibliothek',land_feat_lib_desc:'Speichern und verwenden Sie Ihre besten Prompts in jedem Projekt.',
+    land_feat_byok_title:'BYOK — Ihr API-Schlüssel',land_feat_byok_desc:'Kompatibel mit Anthropic, OpenAI, Groq und OpenRouter.',
+    land_feat_local_title:'100 % lokal',land_feat_local_desc:'Ihre Daten in Ihrem Browser. Export/Import als JSON.',
+    nav_dashboard:'Dashboard',nav_crm:'CRM',nav_proposals:'Angebote',
+    nav_library:'Bibliothek',nav_teams:'KI-Teams',nav_workspace:'Workspace',
+    nav_settings:'Einstellungen',nav_pricing:'Preise',nav_theme:'Design wechseln',nav_lang:'Sprache ändern',
+    nav_label_dash:'Start',nav_label_crm:'CRM',nav_label_prop:'Angeb.',nav_label_lib:'Biblio.',nav_label_teams:'Teams',nav_label_ws:'Work',nav_label_pricing:'Preise',nav_label_aiden:'Aiden',nav_label_settings:'Einst.',
+    dash_hello:'Hallo',dash_api_warn:'Konfigurieren Sie Ihren API-Schlüssel',
+    dash_kpi_clients:'Kunden',dash_kpi_proposals:'Offene Angebote',dash_kpi_teams:'KI-Teams',dash_kpi_prompts:'Prompts',
+    dash_kpi_won:'gewonnen',dash_kpi_total:'gesamt',dash_kpi_active:'aktiv',dash_kpi_reusable:'wiederverwendbar',
+    dash_pipeline_empty:'Keine Kunden in der Pipeline',dash_activity_empty:'Keine aktuellen Aktivitäten',
+    dash_pipeline_title:'CRM-Pipeline',dash_activity_title:'Letzte Aktivitäten',
+    dash_mod_crm_desc:'7-Phasen-Pipeline mit KI-Chat pro Phase.',dash_mod_prop_desc:'Erstellen Sie professionelle Angebote mit KI.',
+    dash_mod_teams_desc:'Starten Sie KI-Arbeitsteams mit spezialisierten Rollen.',dash_mod_lib_desc:'Wiederverwendbare Prompts für alle Ihre Projekte.',
+    dash_mod_crm_cta:'Kunden →',dash_mod_teams_cta:'Teams →',
+    crm_title:'CRM',crm_badge:'Pipeline',crm_clients_count:'{{count}} Kunden',
+    crm_new:'+ Neuer Kunde',crm_search:'Suchen...',crm_empty:'Noch keine Kunden.',
+    crm_no_results:'Keine Ergebnisse.',crm_send:'SENDEN',
+    crm_chat_placeholder:'Frage zu dieser Phase...',
+    crm_welcome_sub:'Wählen oder erstellen Sie einen Kunden',
+    crm_edit:'Bearbeiten',crm_add_team:'+ Team',crm_reminder:'Erinnerung',crm_assign:'Zuweisen',
+    crm_lbl_contact:'E-Mail / WhatsApp',crm_lbl_service:'Dienstleistung',crm_lbl_budget:'Budget',
+    crm_lbl_captado:'Gewonnen',crm_lbl_precio:'Abschlusspreis',crm_lbl_stages:'Phasen',
+    crm_lbl_proposals:'Angebote',
+    tab_datos:'Daten',tab_flujo:'Ablauf',tab_props:'Angebote',
+    crm_gen_prop:'+ Erstellen',crm_no_props:'Keine Angebote.\nKlicken Sie auf „+ Erstellen".',
+    crm_new_modal_title:'Neuer Kunde',crm_edit_modal_title:'Kunde bearbeiten',
+    crm_field_name:'Name *',crm_field_company:'Unternehmen',crm_field_contact:'E-Mail / WhatsApp',
+    crm_field_service:'Dienstleistung / Interesse',crm_field_budget:'Budget',
+    stage_0:'Erstkontakt',stage_1:'Schnellqualifizierung',stage_2:'Entdeckungsgespräch',
+    stage_3:'Angebotserstellung',stage_4:'Präsentation',stage_5:'Verhandlung / Anpassungen',stage_6:'Onboarding & Lieferung',
+    stage_label:'PHASE',
+    prop_title:'Angebote',prop_badge:'KI-Generator',
+    prop_status_borrador:'Entwurf',prop_status_enviada:'Gesendet',prop_status_aceptada:'Angenommen',prop_status_rechazada:'Abgelehnt',
+    prop_generate:'✦ Erstellen',prop_clear:'Leeren',prop_copy:'Kopieren',prop_regen:'↺ Neu erstellen',prop_captado:'✅ Gewonnen',
+    prop_from_crm:'↩ aus CRM',prop_crm_loaded:'CRM-Daten geladen',prop_crm_sub:'Prüfen und ergänzen',
+    prop_history:'Verlauf',prop_filter_all:'Alle',
+    prop_sec_client:'Kundendaten',prop_sec_project:'Projekt',prop_sec_deliverables:'Liefergegenstände',
+    prop_sec_conditions:'Konditionen',prop_sec_result:'Generiertes Angebot',
+    prop_field_name:'Name *',prop_field_company:'Unternehmen',prop_field_contact:'E-Mail / WhatsApp',
+    prop_field_budget:'Budget',prop_field_service:'Dienstleistung *',prop_field_type:'Auftragsart',
+    prop_field_desc:'Beschreibung',prop_field_price:'Gesamtpreis',prop_field_deadline:'Lieferfrist',
+    prop_field_advance:'Anzahlung',prop_field_final:'Schlusszahlung',prop_field_notes:'Notizen',
+    prop_type_select:'— Typ wählen —',prop_type_webdesign:'Webdesign',prop_type_webdev:'Webentwicklung',
+    prop_type_mobile:'Mobile App',prop_type_automation:'KI-Automatisierung',prop_type_chatbot:'KI-Chatbot',
+    prop_type_branding:'Branding / Identität',prop_type_copy:'Copywriting / Inhalte',
+    prop_type_seo:'SEO / Online-Marketing',prop_type_consulting:'Strategieberatung',
+    prop_type_training:'Schulung / Kurs',prop_type_other:'Sonstiges',
+    prop_deliverable_ph:'Liefergegenstand {{n}}...',prop_add_deliverable:'+ Hinzufügen',
+    prop_estimate_ia:'✦ Mit KI schätzen',prop_ia_estimate_ph:'KI schätzt, wenn leer',
+    prop_advance_default:'50 % bei Auftragserteilung',prop_final_default:'50 % bei Lieferung',
+    prop_notes_ph:'Sonderbedingungen...',prop_desc_ph:'Beschreiben Sie das Projekt...',
+    prop_save:'💾 Speichern',prop_export_pdf:'📄 PDF',
+    prop_link_title:'🔗 Angebot mit Kunde verknüpfen',prop_link_sub:'Wählen Sie den CRM-Kunden, zu dem dieses Angebot gehört.',
+    prop_link_client:'CRM-Kunde',prop_link_confirm:'Verknüpfen',
+    prop_reuse:'Wiederverwenden',prop_reactivate:'Reaktivieren',prop_status_label:'Status ▾',
+    prop_empty_saved:'Keine gespeicherten Angebote.',prop_empty_filter:'Keine Angebote mit diesem Status.',
+    prop_empty_saved_hint:'Klicken Sie <strong>💾 Speichern</strong> nach dem Generieren.',
+    prop_saved_label:'✓ Gespeichert',
+    lib_title:'Bibliothek',lib_badge:'Prompts',lib_categories:'Kategorien',
+    lib_new:'+ Neuer Prompt',lib_search:'Prompts suchen...',
+    lib_empty:'Keine Prompts',lib_empty_sub:'Klicken Sie auf „+ Neuer Prompt"',
+    lib_insert:'→ Teams',lib_edit:'Bearbeiten',lib_from_lib:'Aus Bibliothek einfügen',
+    lib_cat_all:'Alle',lib_cat_system:'System-Prompt',lib_cat_task:'Aufgaben-Prompt',
+    lib_cat_crm:'CRM / Vertrieb',lib_cat_content:'Inhalte',lib_cat_code:'Code',lib_cat_strategy:'Strategie',lib_cat_other:'Sonstiges',
+    lib_modal_title_new:'Neuer Prompt',lib_modal_title_edit:'Prompt bearbeiten',
+    lib_field_title:'Titel *',lib_field_cat:'Kategorie',lib_field_content:'Inhalt *',lib_field_tags:'Tags (kommagetrennt)',
+    lib_ph_title:'z. B.: System-Prompt für IT-Projekte',lib_ph_content:'Inhalt eingeben oder einfügen...',lib_ph_tags:'KI, Design...',
+    teams_title:'KI-Teams',teams_badge:'Launcher',teams_my_teams:'Meine Teams',
+    teams_new:'+ Neues Team',teams_launch:'▣ Starten',teams_edit:'Bearbeiten',teams_save_only:'Nur speichern',
+    teams_empty:'Erstes Team erstellen',teams_empty_sub:'Konfigurieren Sie Ihr ideales KI-Team',
+    teams_step1:'01·Brief',teams_step2:'02·Kunde',teams_step3:'03·Rollen',teams_step4:'04·Start',
+    teams_detect_ia:'Rollen mit KI erkennen →',teams_manual_roles:'Rollen manuell auswählen →',
+    teams_ia_only_pro:'KI-Erkennung in Pro verfügbar',teams_always_active:'immer aktiv',teams_launch_btn:'▣ Team starten →',
+    teams_new_team:'Neues Team',teams_cancel:'Abbrechen',
+    teams_brief_name:'Team-/Projektname',teams_brief_desc:'Projektbriefing',
+    teams_brief_ph:'Beschreiben Sie das Projekt: Ziel, Ergebnisse, Plattform, Zielgruppe, Einschränkungen...',
+    teams_brief_validation:'Briefing-Validierung',teams_from_lib:'+ Aus Bibliothek',
+    teams_sector:'Branche des Kunden',teams_sector_select:'Auswählen...',
+    teams_sector_tech:'Technologie / Software / IT',teams_sector_design:'Design / Kreativagentur',
+    teams_sector_ecom:'E-Commerce / Handel',teams_sector_health:'Gesundheit / Wellness',
+    teams_sector_edu:'Bildung / Schulung',teams_sector_finance:'Finanzen / Recht',
+    teams_sector_hospitality:'Hotel / Tourismus',teams_sector_construction:'Bau / Architektur',
+    teams_sector_marketing:'Marketing / Werbung',teams_sector_ngo:'NGO / Öffentlicher Sektor',
+    teams_sector_startup:'Startup / Unternehmertum',teams_sector_other:'Sonstiges',
+    teams_size:'Größe',teams_size_select:'Auswählen...',
+    teams_size_freelance:'Freelancer / Solo',teams_size_micro:'Kleinstunternehmen (1–9)',
+    teams_size_pyme:'KMU (10–49)',teams_size_medium:'Mittelstand (50–249)',teams_size_large:'Großunternehmen (250+)',
+    teams_tech:'Technisches Niveau',teams_tech_select:'Auswählen...',
+    teams_tech_none:'Nicht technisch — alles erklären',teams_tech_basic:'Grundlegend — einfache Konzepte',
+    teams_tech_mid:'Mittel — branchenkundig',teams_tech_adv:'Fortgeschritten — technisches Profil',
+    teams_tone:'Tonalität',teams_tone_formal:'Formell',teams_tone_professional:'Professionell',teams_tone_technical:'Technisch',
+    teams_tone_friendly:'Nahbar',teams_tone_commercial:'Kommerziell',teams_tone_didactic:'Didaktisch',
+    teams_tone_executive:'Führungsebene',teams_tone_creative:'Kreativ',
+    teams_deliverables:'Erwartete Ergebnisse',
+    teams_del_strategy:'Strategiedokument',teams_del_code:'Code / Komponenten',
+    teams_del_design:'Design / Wireframes',teams_del_copy:'Copy / Webtexte',
+    teams_del_presentation:'Präsentation',teams_del_plan:'Projektplan',
+    teams_del_proposal:'Kommerzielles Angebot',teams_del_report:'Bericht / Analyse',
+    teams_del_prompts:'Prompts / KI-Abläufe',teams_del_checklist:'Checkliste / Leitfaden',
+    teams_detecting:'Optimale Rollen für das Projekt werden erkannt...',
+    teams_spe_notice:'Senior Prompt Engineer — in jedem Team immer aktiv.',
+    teams_select_roles:'Wählen Sie die Rollen für dieses Team',
+    teams_review_launch:'Prüfen & Starten →',teams_configured:'Team konfiguriert — startbereit.',
+    teams_extra_context:'Zusätzlicher Kontext',teams_extra_ph:'Tech-Stack, Einschränkungen, bereits getroffene Entscheidungen...',
+    teams_continue:'Weiter →',teams_back_brief:'← Brief',teams_back_client:'← Kunde',teams_back_roles:'← Rollen',
+    teams_crm_loaded:'Daten aus CRM geladen',
+    ws_title:'Workspace',ws_history:'📋 Verlauf',ws_history_new:'+ Neu',
+    ws_mode_strategy:'Strategie',ws_mode_code:'Code',ws_mode_client:'Kunde',ws_mode_free:'Frei',
+    ws_back:'← Teams',ws_clear:'Leeren',ws_empty:'Team aktiv · schreiben Sie Ihre erste Anweisung',
+    ws_system_show:'▸ System-Prompt anzeigen',ws_system_hide:'▾ System-Prompt ausblenden',ws_pro_hint:'+2 Chats in Pro',
+    settings_title:'Einstellungen',settings_badge:'Settings',
+    settings_appearance:'Erscheinungsbild',settings_theme:'Design',
+    settings_theme_system:'System',settings_theme_light:'Hell',settings_theme_dark:'Dunkel',settings_theme_midnight:'Mitternacht',settings_theme_warm:'Warm',
+    settings_lang_label:'Sprache',settings_api:'KI-Anbieter (BYOK)',
+    settings_provider:'Anbieter',settings_key_label:'API-Schlüssel',settings_test:'Testen',settings_model:'Benutzerdefiniertes Modell (optional)',
+    settings_api_status_ok:'● Verbunden',settings_api_status_no:'● Nicht konfiguriert',settings_api_status_err:'● Fehler',
+    settings_custom_model:'Benutzerdefiniertes Modell',settings_custom_model_ph:'Anbieter/Modellname',
+    settings_manual_api:'Manuell / Benutzerdefiniert',settings_manual_sub:'Eigene URL und API-Schlüssel eingeben',
+    settings_manual_provider:'Anbietername',settings_manual_url:'API-URL',
+    settings_manual_url_ph:'https://api.beispiel.de/v1',settings_manual_url_hint:'OpenAI-kompatible Basis-URL (ohne /chat/completions)',
+    settings_manual_key:'API-Schlüssel',settings_manual_model:'Modell',
+    settings_manual_model_ph:'gpt-4o, claude-sonnet-4-20250514, llama-3.3-70b-versatile...',
+    settings_manual_test:'Verbindung testen',settings_manual_save:'Speichern & verwenden',
+    settings_manual_testing:'Verbindung wird getestet...',settings_manual_success:'✅ Verbindung erfolgreich',
+    settings_manual_error:'❌ Verbindungsfehler',settings_manual_saved:'✅ Manuelle Konfiguration gespeichert',
+    settings_profile:'Berufliches Profil',settings_name:'Ihr Name / Marke',
+    settings_email_c:'Kontakt-E-Mail',settings_phone:'WhatsApp / Telefon',settings_telegram:'Telegram',settings_web:'Website / Portfolio',
+    settings_data:'Daten & Datenschutz',settings_export_label:'Alle Daten exportieren',
+    settings_export_sub:'CRM, Bibliothek, Teams und Einstellungen als JSON',
+    settings_import_label:'Daten importieren',settings_import_sub:'Aus zuvor exportiertem JSON-Backup wiederherstellen',
+    settings_reset_label:'App zurücksetzen',settings_reset_sub:'Löscht alle lokalen Daten. Nicht rückgängig zu machen.',
+    settings_reset_btn:'Zurücksetzen',settings_export_btn:'↓ JSON exportieren',settings_import_btn:'↑ JSON importieren',
+    settings_save:'Speichern',settings_save_profile:'Profil speichern',
+    settings_manual_title:'Manuell / Benutzerdefiniert',settings_manual_sub:'Eigene URL und API-Schlüssel eingeben',settings_manual_provider:'Anbietername',settings_manual_url:'API-URL',settings_manual_url_hint:'OpenAI-kompatible Basis-URL (ohne /chat/completions)',settings_manual_model:'Modell',settings_manual_key:'API-Schlüssel',settings_manual_save:'Speichern & verwenden',settings_manual_test:'Verbindung testen',settings_manual_testing:'Teste…',settings_manual_ok:'Verbindung OK ✓',settings_manual_fail:'Verbindungsfehler ✗',
+    settings_plan_label:'Tarif:',settings_upgrade_link:'Auf Pro upgraden',
+    upgrade_title:'Auf Pro upgraden',upgrade_sub:'Schöpfen Sie das volle Potenzial von AIWorkSuite aus und skalieren Sie Ihr Freelance-Business.',
+    upgrade_info:'✦ Pro — 24,99 €/Monat · 249 €/Jahr',
+    upgrade_info_sub:'Unbegrenzte Kunden, Teams und Prompts freischalten.',
+    upgrade_subscribe:'Pro abonnieren',upgrade_cta:'Pro abonnieren — 24,99 €/Monat',upgrade_dismiss:'Jetzt nicht',
+    upgrade_feat_clients:'Unbegrenzte Kunden',upgrade_feat_chats:'3 Chats pro Team',
+    upgrade_feat_teams:'Unbegrenzte Teams',upgrade_feat_roles:'KI-Rollenerkennung',
+    upgrade_feat_prompts:'Unbegrenzte Prompts',upgrade_feat_branding:'Anpassbares Branding',
+    btn_save:'Speichern',btn_cancel:'Abbrechen',btn_edit:'Bearbeiten',btn_delete:'Löschen',
+    btn_copy:'Kopieren',btn_copied:'✓ Kopiert',btn_continue:'Weiter →',btn_back:'←',btn_confirm:'Bestätigen',
+    btn_close:'× Schließen',
+    cookie_text:'Wir verwenden essenzielle Cookies für den Betrieb der App und zur Speicherung Ihrer Sitzung.',
+    cookie_learn:'Cookie-Richtlinie',cookie_accept:'Alle akzeptieren',cookie_essential:'Nur essenzielle',
+    plan_free_tag:'Für immer kostenlos',plan_pro_badge:'Verfügbar',
+    plan_free_start:'Kostenlos starten',plan_pro_subscribe:'Pro abonnieren →',
+    plan_current:'Aktueller Tarif',
+    pricing_free_kpi:'Dashboard mit KPIs',pricing_free_ws:'Workspace (3 Chats)',pricing_free_lib:'Bibliothek (max. 5 Prompts)',
+    pricing_no_crm:'Intelligentes CRM',pricing_no_prop:'KI-Angebote',pricing_no_teams:'KI-Teams',pricing_no_lib_unlim:'Unbegrenzte Bibliothek',
+    pricing_pro_all:'Alles aus Free',pricing_pro_crm:'Vollständiges CRM (7-Phasen-Pipeline)',pricing_pro_chat:'KI-Chat pro CRM-Phase',
+    pricing_pro_prop:'Unbegrenzte KI-Angebote',pricing_pro_teams:'Konfigurierbare KI-Teams',
+    pricing_pro_lib:'Unbegrenzte Prompt-Bibliothek',pricing_pro_user:'1 Benutzer',
+    pricing_pro_cta:'⚡ 7 Tage Pro kostenlos testen',
+    footer_tagline:'BYOK · Ihre Daten, Ihr Browser',
+    footer_privacy:'Datenschutz',footer_cookies:'Cookies',footer_terms:'AGB',footer_contact:'Kontakt',footer_by:'von',
+    privacy_title:'Datenschutzrichtlinie',cookies_title:'Cookie-Richtlinie',terms_title:'Nutzungsbedingungen',
+    pricing_title:'Wählen Sie Ihren Tarif',pricing_subtitle:'7 Tage kostenlos testen · Keine Kreditkarte nötig · Jederzeit kündbar',
+    pricing_monthly:'Monatlich',pricing_yearly:'Jährlich',pricing_save:'20 % sparen',
+    pricing_forever:'für immer',pricing_popular:'Am beliebtesten',
+    pricing_faq_title:'Häufig gestellte Fragen',
+    pricing_faq_q1:'Brauche ich eine Kreditkarte für den Test?',pricing_faq_a1:'Nein. Der 7-tägige Test ist völlig kostenlos. Kosten entstehen nur, wenn Sie sich für die Fortführung entscheiden.',
+    pricing_faq_q2:'Kann ich jederzeit kündigen?',pricing_faq_a2:'Ja. Keine Bindung, keine Strafen. Ihr Zugang läuft bis zum Ende des bezahlten Zeitraums.',
+    pricing_faq_q3:'Was passiert mit meinen Daten, wenn ich kündige?',pricing_faq_a3:'Ihre Daten bleiben im Free-Modus zugänglich. Nichts wird automatisch gelöscht.',
+    pricing_faq_q4:'Unterstützen Sie BYOK (Bring Your Own Key)?',pricing_faq_a4:'Ja. Sie verbinden Ihren eigenen Groq-, OpenAI-, Anthropic- oder OpenRouter-Schlüssel. AIWorkSuite speichert Ihre Schlüssel nicht auf unseren Servern.',
+    pwa_install:'App installieren',pwa_installed:'App installiert',
+    pwa_offline:'Keine Verbindung — Offline-Modus',pwa_update:'Neue Version verfügbar',pwa_update_btn:'Aktualisieren',
+    modal_nota_title:'Notiz',modal_nota_ph:'Notizen eingeben...',
+    legal_close:'× Schließen',legal_default_title:'Datenschutzrichtlinie',
+    onboarding_title:'Willkommen bei AIWorkSuite!',
+    onboarding_sub:'Starten Sie in 3 Schritten und beginnen Sie, mit KI Mehrwert zu schaffen.',
+    onboarding_s1_title:'API-Schlüssel einrichten',
+    onboarding_s1_desc:'Gehen Sie zu <strong>Einstellungen → KI-Anbieter</strong> und fügen Sie Ihren Anthropic-, OpenAI-, Groq- oder OpenRouter-Schlüssel hinzu.',
+    onboarding_s2_title:'Ersten Kunden im CRM anlegen',
+    onboarding_s2_desc:'Erstellen Sie einen Kunden im <strong>CRM</strong> und nutzen Sie den KI-Chat für jede Phase Ihrer Vertriebspipeline.',
+    onboarding_s3_title:'Erstes Angebot erstellen',
+    onboarding_s3_desc:'Gehen Sie zu <strong>Angebote</strong>, füllen Sie die Kundendaten aus und klicken Sie auf „Erstellen", um in Sekunden ein professionelles Angebot zu erhalten.',
+    onboarding_cta:'Jetzt loslegen →',
+    toast_api_key_required:'Bitte geben Sie zuerst einen API-Schlüssel ein.',
+    toast_api_ok:'✅ Verbindung erfolgreich.',toast_api_err:'❌ Fehler: {{msg}}',
+    toast_api_saved:'✅ API-Einstellungen gespeichert.',toast_profile_saved:'✅ Profil gespeichert.',
+    toast_captado:'✅ {{name}} als gewonnen markiert.',
+    toast_name_required:'Name ist erforderlich.',
+    toast_service_required:'Geben Sie die Dienstleistung vor der Schätzung ein.',
+    toast_estimate_ok:'✅ Schätzung abgeschlossen. Bitte prüfen und anpassen.',
+    toast_no_client_gen:'Kein Kunde mit dem Generator verknüpft.',
+    toast_gen_first:'Erstellen Sie zuerst das Angebot, bevor Sie speichern.',
+    toast_prop_saved:'✅ Angebot im Verlauf gespeichert.',
+    toast_prop_loaded:'Angebot in das Formular geladen.',
+    toast_prop_deleted:'Angebot gelöscht.',
+    toast_copied:'✓ In die Zwischenablage kopiert',
+    toast_required:'Pflichtfeld.',
+    toast_invalid_url:'Ungültige URL.',
+    toast_data_exported:'✅ Daten exportiert.',toast_data_imported:'✅ Daten importiert.',
+    toast_app_reset:'App wurde zurückgesetzt.',
+    toast_estimate_existing:'Felder hatten bereits Werte und wurden nicht überschrieben.',
+    toast_estimate_err:'Schätzungsfehler: {{msg}}',
+    toast_signal_sent:'✅ Signal an CRM gesendet.',
+    toast_name_service_required:'Kundenname und Dienstleistung sind erforderlich.',
+    toast_email_required:'E-Mail erforderlich.',
+    toast_confirm_delete_client:'"{{name}}" löschen?',
+    toast_confirm_clear_prop:'Den Angebotsgenerator leeren?',
+    toast_confirm_delete_prop:'Dieses Angebot aus dem Verlauf löschen?',
+    toast_confirm_create_team:'KI-Team für "{{name}}" erstellen?',
+    onb_lang_title_es:'Elige tu idioma',
+    toast_no_crm_clients:'Keine Kunden im CRM.',toast_prop_linked:'Verkn\u00fcpft mit {{name}}.',toast_prop_unlinked:'Verkn\u00fcpfung entfernt.',
+    toast_title_content_required:'Titel und Inhalt sind erforderlich.',toast_brief_required:'Schreiben Sie das Briefing, bevor Sie fortfahren.',
+    toast_ai_error:'\u274c Fehler: {{msg}}',toast_select_role:'W\u00e4hlen Sie mindestens eine weitere Rolle.',toast_team_saved:'\u2705 Team gespeichert.',
+    toast_no_system_prompt:'Kein System-Prompt definiert.',toast_min_one_chat:'Sie brauchen mindestens einen Chat.',
+    toast_invalid_file:'Ung\u00fcltige Datei.',toast_import_ok:'\u2705 Daten erfolgreich importiert.',toast_import_err:'Importfehler: {{msg}}',
+    toast_no_prop_to_export:'Kein Angebot zum Exportieren vorhanden.',toast_pdf_exported:'PDF erfolgreich exportiert.',
+    toast_session_loaded:'Sitzung "{{name}}" geladen.',toast_select_date:'W\u00e4hlen Sie ein Datum.',
+    toast_reminder_saved:'Erinnerung gespeichert.',toast_reminder_err:'Fehler beim Speichern der Erinnerung.',
+    toast_no_agency_sub:'Agency-Abonnement nicht gefunden.',toast_no_team_members:'Noch keine Teammitglieder.',
+    toast_client_assigned:'Kunde zugewiesen an {{email}}.',toast_assignment_removed:'Zuweisung entfernt.',toast_assign_err:'Fehler bei Kundenzuweisung.',
+    toast_chat_cleared:'Chat gel\u00f6scht \u00b7 Schreiben Sie, um neu zu starten.',
+    confirm_delete_prompt:'Diesen Prompt aus der Bibliothek l\u00f6schen?',confirm_delete_team:'Dieses Team l\u00f6schen?',
+    confirm_clear_chat:'Chat-Verlauf l\u00f6schen?',confirm_import_data:'Importieren? Aktuelle Daten werden ersetzt (au\u00dfer API-Schl\u00fcssel).',
+    confirm_reset_app:'\u26a0\ufe0f ALLE lokalen Daten l\u00f6schen? Diese Aktion ist unwiderruflich.',
+    confirm_reset_app_final:'Best\u00e4tigen: Ihr gesamtes CRM, Teams, Prompts und Einstellungen werden gel\u00f6scht.',
+    upgrade_subtitle:'Schalten Sie alle Tools frei und heben Sie Ihren Freelance-Workflow auf das n\u00e4chste Level.',
+    upgrade_feat_crm:'\u2705 Vollst\u00e4ndiges CRM mit visuellem Pipeline',upgrade_feat_proposals:'\u2705 Unbegrenzte KI-Angebote',
+    upgrade_feat_teams:'\u2705 KI-Teams + Workspace',upgrade_feat_library:'\u2705 Unbegrenzte Prompt-Bibliothek',
+    upgrade_feat_trial:'\u2705 7 Tage kostenlos testen',
+    upgrade_cta_pro:'\u26a1 Pro 7 Tage kostenlos testen \u2014 24,99\u20ac/Monat',
+    upgrade_footnote:'7 Tage Geld-zur\u00fcck-Garantie \u00b7 Keine Bindung \u00b7 Jederzeit k\u00fcndbar',
+    plan_banner_pro:'Sie sind im <strong>\u2726 Pro</strong>-Plan. Alle Funktionen freigeschaltet.',
+    plan_label_pro:'Tarif: \u2726 Pro',plan_manage_sub:'Abo verwalten',plan_label_free:'Tarif: Free',plan_current:'Aktueller Tarif',
+    plan_cta_subscribe:'Pro abonnieren \u2014 24,99\u20ac/Monat',
+    limit_clients:' Kunden',limit_teams:' Teams',limit_prompts:' Prompts',
+    crm_new_client_title:'Neuer Kunde',crm_edit_client_title:'Kunde bearbeiten',
+    crm_add_note:'+ Notiz',crm_captado_title:'\u2705 Gewonnen',crm_captado_label:'Gewonnen \u00b7 {{date}}',
+    crm_chat_empty:'Stufe: {{stage}} \u00b7 Schreiben Sie, um zu beginnen',crm_note_title:'Notiz \u00b7 {{stage}}',
+    crm_project_name:'Projekt {{name}}',crm_data_loaded:'Daten von {{name}} geladen',
+    prop_estimating:'\u23f3 Wird gesch\u00e4tzt\u2026',prop_estimate_btn:'\u2726 Mit KI sch\u00e4tzen',prop_deliverable_ph:'Lieferobjekt\u2026',
+    prop_generating:'Wird generiert\u2026',prop_generate_error:'Fehler: {{msg}}',prop_copied:'\u2713 Kopiert',prop_copy:'Kopieren',
+    prop_pdf_title:'Angebot f\u00fcr {{name}}',prop_pdf_footer:'Erstellt mit AIWorkSuite',
+    lib_cat_all:'Alle',lib_cat_system:'System-Prompt',lib_cat_task:'Aufgaben-Prompt',lib_cat_crm:'CRM / Vertrieb',
+    lib_cat_content:'Inhalt',lib_cat_code:'Code',lib_cat_strategy:'Strategie',lib_cat_other:'Sonstiges',
+    lib_prompt_count:'{{count}} Prompts',lib_empty_hint:'Klicken Sie auf \"+ Neuer Prompt\"',lib_new_prompt_title:'Neuer Prompt',
+    lib_edit_prompt_title:'Prompt bearbeiten',lib_picker_empty:'Keine Prompts in der Bibliothek',lib_to_teams:'\u2192 Teams',
+    teams_create_first:'Erstes Team erstellen',teams_create_first_hint:'Richten Sie Ihr ideales KI-Team ein',
+    teams_new_title:'Neues Team',teams_edit_title:'Team bearbeiten',teams_unnamed_project:'Unbenanntes Projekt',
+    teams_role_fixed:'immer aktiv',teams_cx_simple:'Einfaches Projekt',teams_cx_medium:'Mittlere Komplexit\u00e4t',teams_cx_complex:'Komplexes Projekt',
+    teams_cx_phases:'{{txt}} \u00b7 {{phases}} Phasen',
+    ws_input_placeholder:'Nachricht an das Team\u2026',ws_history_loading:'Wird geladen\u2026',ws_history_empty:'Keine gespeicherten Gespr\u00e4che',
+    metrics_title:'\ud83d\udcca Gesch\u00e4ftskennzahlen',metrics_total_clients:'Kunden gesamt',metrics_pipeline_value:'Pipeline-Wert',
+    metrics_revenue_closed:'Abgeschlossener Umsatz',metrics_conversion:'Angebotskonversion',metrics_sent:'Angebote gesendet',metrics_won:'Angebote gewonnen',
+    reminder_title:'\u23f0 Erinnerung \u2014 {{name}}',reminder_date_label:'Datum und Uhrzeit',reminder_note_label:'Notiz (optional)',
+    reminder_note_ph:'Z.B.: Anruf f\u00fcr Angebots-Follow-up\u2026',reminder_save_btn:'Erinnerung speichern',
+    reminder_pending_title:'\u23f0 Ausstehende Nachfassaktionen',reminder_done_btn:'\u2713 Erledigt',
+    assign_title:'\ud83d\udc64 Kunde zuweisen \u2014 {{name}}',assign_unassign_btn:'\ud83d\udeab Nicht zugewiesen',
+    activity_proposal_for:'Angebot f\u00fcr {{name}}',
+    activity_client_won:'{{name}} gewonnen \u2705',activity_new_client:'Neuer Kunde: {{name}}',
+    activity_prop_generated:'Angebot generiert f\u00fcr {{name}}',activity_prompt_saved:'Prompt gespeichert: {{title}}',
+    activity_team_saved:'Team gespeichert: {{name}}',activity_team_launched:'Team gestartet: {{name}}',activity_data_exported:'Daten exportiert',
+  },
+  fr:{
+    land_eyebrow:'Système d\'exploitation pour freelances IA',
+    land_h1_a:'Tout ce dont vous avez besoin',land_h1_b:'pour travailler avec l\'IA',
+    land_sub:'CRM, propositions, équipes IA et bibliothèque de prompts en une seule application. Sans serveur. Avec votre propre clé API. Gratuit pour commencer.',
+    land_cta_primary:'Commencer gratuitement — sans carte',
+    land_proof:'BYOK · 100 % local · Sans abonnement pour démarrer',
+    land_pricing_title:'Simple et transparent',land_pricing_sub:'Commencez gratuitement. Quand vous grandissez, Pro suit.',
+    land_feat_crm_title:'CRM avec IA',land_feat_crm_desc:'Pipeline en 7 étapes avec chat IA spécialisé par phase.',
+    land_feat_prop_title:'Propositions IA',land_feat_prop_desc:'Générez des propositions commerciales professionnelles en quelques secondes.',
+    land_feat_teams_title:'Lanceur d\'équipes IA',land_feat_teams_desc:'Configurez des équipes avec des rôles détectés automatiquement.',
+    land_feat_lib_title:'Bibliothèque de prompts',land_feat_lib_desc:'Enregistrez et réutilisez vos meilleurs prompts dans n\'importe quel projet.',
+    land_feat_byok_title:'BYOK — Votre clé API',land_feat_byok_desc:'Compatible avec Anthropic, OpenAI, Groq et OpenRouter.',
+    land_feat_local_title:'100 % local',land_feat_local_desc:'Vos données dans votre navigateur. Export/import JSON.',
+    nav_dashboard:'Tableau de bord',nav_crm:'CRM',nav_proposals:'Propositions',
+    nav_library:'Bibliothèque',nav_teams:'Équipes IA',nav_workspace:'Espace de travail',
+    nav_settings:'Paramètres',nav_pricing:'Tarifs',nav_theme:'Changer de thème',nav_lang:'Changer de langue',
+    nav_label_dash:'Accueil',nav_label_crm:'CRM',nav_label_prop:'Props',nav_label_lib:'Biblio',nav_label_teams:'Équipes',nav_label_ws:'Work',nav_label_pricing:'Tarifs',nav_label_aiden:'Aiden',nav_label_settings:'Param.',
+    dash_hello:'Bonjour',dash_api_warn:'Configurez votre clé API',
+    dash_kpi_clients:'Clients',dash_kpi_proposals:'Propositions en attente',dash_kpi_teams:'Équipes IA',dash_kpi_prompts:'Prompts',
+    dash_kpi_won:'gagnés',dash_kpi_total:'total',dash_kpi_active:'actives',dash_kpi_reusable:'réutilisables',
+    dash_pipeline_empty:'Aucun client dans le pipeline',dash_activity_empty:'Aucune activité récente',
+    dash_pipeline_title:'Pipeline CRM',dash_activity_title:'Activité récente',
+    dash_mod_crm_desc:'Pipeline 7 étapes avec chat IA par phase.',dash_mod_prop_desc:'Générez des propositions professionnelles avec l\'IA.',
+    dash_mod_teams_desc:'Lancez des équipes de travail IA avec des rôles spécialisés.',dash_mod_lib_desc:'Prompts réutilisables pour tous vos projets.',
+    dash_mod_crm_cta:'clients →',dash_mod_teams_cta:'équipes →',
+    crm_title:'CRM',crm_badge:'Pipeline',crm_clients_count:'{{count}} clients',
+    crm_new:'+ Nouveau client',crm_search:'Rechercher...',crm_empty:'Aucun client pour le moment.',
+    crm_no_results:'Aucun résultat.',crm_send:'ENVOYER',
+    crm_chat_placeholder:'Question pour cette étape...',
+    crm_welcome_sub:'Sélectionnez ou créez un client',
+    crm_edit:'Modifier',crm_add_team:'+ Équipe',crm_reminder:'Rappel',crm_assign:'Attribuer',
+    crm_lbl_contact:'E-mail / WhatsApp',crm_lbl_service:'Service',crm_lbl_budget:'Budget',
+    crm_lbl_captado:'Gagné',crm_lbl_precio:'Prix conclu',crm_lbl_stages:'Étapes',
+    crm_lbl_proposals:'Propositions',
+    tab_datos:'Données',tab_flujo:'Flux',tab_props:'Propositions',
+    crm_gen_prop:'+ Générer',crm_no_props:'Aucune proposition.\nCliquez sur « + Générer ».',
+    crm_new_modal_title:'Nouveau client',crm_edit_modal_title:'Modifier le client',
+    crm_field_name:'Nom *',crm_field_company:'Entreprise',crm_field_contact:'E-mail / WhatsApp',
+    crm_field_service:'Service / intérêt',crm_field_budget:'Budget',
+    stage_0:'Premier contact',stage_1:'Qualification rapide',stage_2:'Réunion découverte',
+    stage_3:'Rédaction de la proposition',stage_4:'Présentation',stage_5:'Négociation / ajustements',stage_6:'Onboarding et livraison',
+    stage_label:'ÉTAPE',
+    prop_title:'Propositions',prop_badge:'Générateur IA',
+    prop_status_borrador:'Brouillon',prop_status_enviada:'Envoyée',prop_status_aceptada:'Acceptée',prop_status_rechazada:'Refusée',
+    prop_generate:'✦ Générer',prop_clear:'Effacer',prop_copy:'Copier',prop_regen:'↺ Regénérer',prop_captado:'✅ Gagné',
+    prop_from_crm:'↩ depuis CRM',prop_crm_loaded:'Données CRM chargées',prop_crm_sub:'Vérifiez et complétez',
+    prop_history:'Historique',prop_filter_all:'Toutes',
+    prop_sec_client:'Données client',prop_sec_project:'Projet',prop_sec_deliverables:'Livrables',
+    prop_sec_conditions:'Conditions',prop_sec_result:'Proposition générée',
+    prop_field_name:'Nom *',prop_field_company:'Entreprise',prop_field_contact:'E-mail / WhatsApp',
+    prop_field_budget:'Budget',prop_field_service:'Service *',prop_field_type:'Type de travail',
+    prop_field_desc:'Description',prop_field_price:'Prix total',prop_field_deadline:'Délai de livraison',
+    prop_field_advance:'Acompte',prop_field_final:'Solde',prop_field_notes:'Notes',
+    prop_type_select:'— Sélectionner le type —',prop_type_webdesign:'Design web',prop_type_webdev:'Développement web',
+    prop_type_mobile:'Application mobile',prop_type_automation:'Automatisation IA',prop_type_chatbot:'Chatbot IA',
+    prop_type_branding:'Branding / identité',prop_type_copy:'Rédaction / contenu',
+    prop_type_seo:'SEO / marketing digital',prop_type_consulting:'Conseil stratégique',
+    prop_type_training:'Formation / cours',prop_type_other:'Autre',
+    prop_deliverable_ph:'Livrable {{n}}...',prop_add_deliverable:'+ Ajouter',
+    prop_estimate_ia:'✦ Estimer avec l\'IA',prop_ia_estimate_ph:'L\'IA estimera si vide',
+    prop_advance_default:'50 % à la commande',prop_final_default:'50 % à la livraison',
+    prop_notes_ph:'Conditions particulières...',prop_desc_ph:'Décrivez le projet...',
+    prop_save:'💾 Enregistrer',prop_export_pdf:'📄 PDF',
+    prop_link_title:'🔗 Lier la proposition au client',prop_link_sub:'Sélectionnez le client CRM auquel cette proposition appartient.',
+    prop_link_client:'Client CRM',prop_link_confirm:'Lier',
+    prop_reuse:'Réutiliser',prop_reactivate:'Réactiver',prop_status_label:'État ▾',
+    prop_empty_saved:'Aucune proposition enregistrée.',prop_empty_filter:'Aucune proposition avec ce statut.',
+    prop_empty_saved_hint:'Cliquez <strong>💾 Enregistrer</strong> après en avoir généré une.',
+    prop_saved_label:'✓ Enregistrée',
+    lib_title:'Bibliothèque',lib_badge:'Prompts',lib_categories:'Catégories',
+    lib_new:'+ Nouveau prompt',lib_search:'Rechercher des prompts...',
+    lib_empty:'Aucun prompt',lib_empty_sub:'Cliquez sur « + Nouveau prompt » pour en créer un',
+    lib_insert:'→ Équipes',lib_edit:'Modifier',lib_from_lib:'Insérer depuis la bibliothèque',
+    lib_cat_all:'Tous',lib_cat_system:'System prompt',lib_cat_task:'Prompt de tâche',
+    lib_cat_crm:'CRM / ventes',lib_cat_content:'Contenu',lib_cat_code:'Code',lib_cat_strategy:'Stratégie',lib_cat_other:'Autre',
+    lib_modal_title_new:'Nouveau prompt',lib_modal_title_edit:'Modifier le prompt',
+    lib_field_title:'Titre *',lib_field_cat:'Catégorie',lib_field_content:'Contenu *',lib_field_tags:'Tags (séparés par des virgules)',
+    lib_ph_title:'Ex. : System prompt pour projets IT',lib_ph_content:'Écrivez ou collez le contenu...',lib_ph_tags:'IA, design...',
+    teams_title:'Équipes IA',teams_badge:'Lanceur',teams_my_teams:'Mes équipes',
+    teams_new:'+ Nouvelle équipe',teams_launch:'▣ Lancer',teams_edit:'Modifier',teams_save_only:'Enregistrer sans lancer',
+    teams_empty:'Créer la première équipe',teams_empty_sub:'Configurez votre équipe IA idéale',
+    teams_step1:'01·brief',teams_step2:'02·client',teams_step3:'03·rôles',teams_step4:'04·lancement',
+    teams_detect_ia:'Détecter les rôles avec l\'IA →',teams_manual_roles:'Sélectionner les rôles manuellement →',
+    teams_ia_only_pro:'Détection IA disponible en Pro',teams_always_active:'toujours actif',teams_launch_btn:'▣ Lancer l\'équipe →',
+    teams_new_team:'Nouvelle équipe',teams_cancel:'Annuler',
+    teams_brief_name:'nom de l\'équipe / projet',teams_brief_desc:'brief du projet',
+    teams_brief_ph:'Décrivez le projet : objectif, livrables, plateforme, audience, contraintes...',
+    teams_brief_validation:'validation du brief',teams_from_lib:'+ Depuis la bibliothèque',
+    teams_sector:'secteur du client',teams_sector_select:'Sélectionner...',
+    teams_sector_tech:'Technologie / Logiciel / IT',teams_sector_design:'Design / Agence créative',
+    teams_sector_ecom:'E-commerce / Retail',teams_sector_health:'Santé / Bien-être',
+    teams_sector_edu:'Éducation / Formation',teams_sector_finance:'Finance / Juridique',
+    teams_sector_hospitality:'Hôtellerie / Tourisme',teams_sector_construction:'Construction / Architecture',
+    teams_sector_marketing:'Marketing / Publicité',teams_sector_ngo:'ONG / Secteur public',
+    teams_sector_startup:'Startup / Entrepreneuriat',teams_sector_other:'Autre',
+    teams_size:'taille',teams_size_select:'Sélectionner...',
+    teams_size_freelance:'Freelance / Indépendant',teams_size_micro:'Micro-entreprise (1–9)',
+    teams_size_pyme:'PME (10–49)',teams_size_medium:'ETI (50–249)',teams_size_large:'Grande entreprise (250+)',
+    teams_tech:'niveau technique',teams_tech_select:'Sélectionner...',
+    teams_tech_none:'Non technique — tout expliquer',teams_tech_basic:'Basique — concepts simples',
+    teams_tech_mid:'Intermédiaire — connaît le secteur',teams_tech_adv:'Avancé — profil technique',
+    teams_tone:'ton',teams_tone_formal:'Formel',teams_tone_professional:'Professionnel',teams_tone_technical:'Technique',
+    teams_tone_friendly:'Convivial',teams_tone_commercial:'Commercial',teams_tone_didactic:'Didactique',
+    teams_tone_executive:'Exécutif',teams_tone_creative:'Créatif',
+    teams_deliverables:'livrables attendus',
+    teams_del_strategy:'Document stratégique',teams_del_code:'Code / composants',
+    teams_del_design:'Design / wireframes',teams_del_copy:'Textes / contenu web',
+    teams_del_presentation:'Présentation',teams_del_plan:'Plan de projet',
+    teams_del_proposal:'Proposition commerciale',teams_del_report:'Rapport / analyse',
+    teams_del_prompts:'Prompts / flux IA',teams_del_checklist:'Checklist / guide',
+    teams_detecting:'Détection des rôles optimaux pour le projet...',
+    teams_spe_notice:'Senior Prompt Engineer — toujours actif dans chaque équipe.',
+    teams_select_roles:'Sélectionnez les rôles pour cette équipe',
+    teams_review_launch:'Vérifier & lancer →',teams_configured:'Équipe configurée — prête à être lancée.',
+    teams_extra_context:'contexte supplémentaire',teams_extra_ph:'Stack technique, contraintes, décisions déjà prises...',
+    teams_continue:'Continuer →',teams_back_brief:'← Brief',teams_back_client:'← Client',teams_back_roles:'← Rôles',
+    teams_crm_loaded:'Données chargées depuis le CRM',
+    ws_title:'Espace de travail',ws_history:'📋 Historique',ws_history_new:'+ Nouveau',
+    ws_mode_strategy:'Stratégie',ws_mode_code:'Code',ws_mode_client:'Client',ws_mode_free:'Libre',
+    ws_back:'← Équipes',ws_clear:'Effacer',ws_empty:'Équipe active · écrivez votre première instruction',
+    ws_system_show:'▸ afficher le system prompt',ws_system_hide:'▾ masquer le system prompt',ws_pro_hint:'+2 chats en Pro',
+    settings_title:'Paramètres',settings_badge:'Settings',
+    settings_appearance:'Apparence',settings_theme:'Thème',
+    settings_theme_system:'Système',settings_theme_light:'Clair',settings_theme_dark:'Sombre',settings_theme_midnight:'Minuit',settings_theme_warm:'Chaleureux',
+    settings_lang_label:'Langue',settings_api:'Fournisseur IA (BYOK)',
+    settings_provider:'Fournisseur',settings_key_label:'Clé API',settings_test:'Tester',settings_model:'Modèle personnalisé (optionnel)',
+    settings_api_status_ok:'● Connecté',settings_api_status_no:'● Non configuré',settings_api_status_err:'● Erreur',
+    settings_custom_model:'Modèle personnalisé',settings_custom_model_ph:'fournisseur/nom-du-modèle',
+    settings_manual_api:'Manuel / Personnalisé',settings_manual_sub:'Entrez votre propre URL et clé API',
+    settings_manual_provider:'Nom du fournisseur',settings_manual_url:'URL de l\'API',
+    settings_manual_url_ph:'https://api.exemple.com/v1',settings_manual_url_hint:'URL de base compatible OpenAI (sans /chat/completions)',
+    settings_manual_key:'Clé API',settings_manual_model:'Modèle',
+    settings_manual_model_ph:'gpt-4o, claude-sonnet-4-20250514, llama-3.3-70b-versatile...',
+    settings_manual_test:'Tester la connexion',settings_manual_save:'Enregistrer et utiliser',
+    settings_manual_testing:'Test de connexion en cours...',settings_manual_success:'✅ Connexion réussie',
+    settings_manual_error:'❌ Erreur de connexion',settings_manual_saved:'✅ Configuration manuelle enregistrée',
+    settings_profile:'Profil professionnel',settings_name:'Votre nom / marque',
+    settings_email_c:'E-mail de contact',settings_phone:'WhatsApp / Téléphone',settings_telegram:'Telegram',settings_web:'Site web / Portfolio',
+    settings_data:'Données et confidentialité',settings_export_label:'Exporter toutes les données',
+    settings_export_sub:'CRM, bibliothèque, équipes et paramètres en JSON',
+    settings_import_label:'Importer des données',settings_import_sub:'Restaurer depuis une sauvegarde JSON précédemment exportée',
+    settings_reset_label:'Réinitialiser l\'application',settings_reset_sub:'Supprime toutes les données locales. Irréversible.',
+    settings_reset_btn:'Réinitialiser',settings_export_btn:'↓ Exporter JSON',settings_import_btn:'↑ Importer JSON',
+    settings_save:'Enregistrer',settings_save_profile:'Enregistrer le profil',
+    settings_manual_title:'Manuel / Personnalisé',settings_manual_sub:'Entrez votre propre URL et clé API',settings_manual_provider:'Nom du fournisseur',settings_manual_url:'URL de l\'API',settings_manual_url_hint:'URL de base compatible OpenAI (sans /chat/completions)',settings_manual_model:'Modèle',settings_manual_key:'Clé API',settings_manual_save:'Enregistrer et utiliser',settings_manual_test:'Tester la connexion',settings_manual_testing:'Test en cours…',settings_manual_ok:'Connexion OK ✓',settings_manual_fail:'Erreur de connexion ✗',
+    settings_plan_label:'Forfait :',settings_upgrade_link:'Passer à Pro',
+    upgrade_title:'Passer à Pro',upgrade_sub:'Libérez tout le potentiel d\'AIWorkSuite et développez votre activité de freelance IA.',
+    upgrade_info:'✦ Pro — 24,99 €/mois · 249 €/an',
+    upgrade_info_sub:'Débloquez clients, équipes et prompts illimités.',
+    upgrade_subscribe:'S\'abonner à Pro',upgrade_cta:'S\'abonner à Pro — 24,99 €/mois',upgrade_dismiss:'Plus tard',
+    upgrade_feat_clients:'Clients illimités',upgrade_feat_chats:'3 chats par équipe',
+    upgrade_feat_teams:'Équipes illimitées',upgrade_feat_roles:'Détection IA des rôles',
+    upgrade_feat_prompts:'Prompts illimités',upgrade_feat_branding:'Branding personnalisable',
+    btn_save:'Enregistrer',btn_cancel:'Annuler',btn_edit:'Modifier',btn_delete:'Supprimer',
+    btn_copy:'Copier',btn_copied:'✓ Copié',btn_continue:'Continuer →',btn_back:'←',btn_confirm:'Confirmer',
+    btn_close:'× Fermer',
+    cookie_text:'Nous utilisons des cookies essentiels au fonctionnement de l\'application et à la mémorisation de votre session.',
+    cookie_learn:'Politique de cookies',cookie_accept:'Tout accepter',cookie_essential:'Essentiels uniquement',
+    plan_free_tag:'Gratuit pour toujours',plan_pro_badge:'Disponible',
+    plan_free_start:'Commencer gratuitement',plan_pro_subscribe:'S\'abonner à Pro →',
+    plan_current:'Forfait actuel',
+    pricing_free_kpi:'Tableau de bord avec KPIs',pricing_free_ws:'Espace de travail (3 chats)',pricing_free_lib:'Bibliothèque (max. 5 prompts)',
+    pricing_no_crm:'CRM intelligent',pricing_no_prop:'Propositions IA',pricing_no_teams:'Équipes IA',pricing_no_lib_unlim:'Bibliothèque illimitée',
+    pricing_pro_all:'Tout ce qui est dans Free',pricing_pro_crm:'CRM complet (pipeline 7 étapes)',pricing_pro_chat:'Chat IA par phase CRM',
+    pricing_pro_prop:'Propositions IA illimitées',pricing_pro_teams:'Équipes IA configurables',
+    pricing_pro_lib:'Bibliothèque de prompts illimitée',pricing_pro_user:'1 utilisateur',
+    pricing_pro_cta:'⚡ Essayer Pro gratuitement 7 jours',
+    footer_tagline:'BYOK · Vos données, votre navigateur',
+    footer_privacy:'Confidentialité',footer_cookies:'Cookies',footer_terms:'Conditions',footer_contact:'Contact',footer_by:'par',
+    privacy_title:'Politique de confidentialité',cookies_title:'Politique de cookies',terms_title:'Conditions d\'utilisation',
+    pricing_title:'Choisissez votre forfait',pricing_subtitle:'7 jours d\'essai gratuit · Sans carte bancaire · Annulation à tout moment',
+    pricing_monthly:'Mensuel',pricing_yearly:'Annuel',pricing_save:'Économisez 20 %',
+    pricing_forever:'pour toujours',pricing_popular:'Le plus populaire',
+    pricing_faq_title:'Questions fréquentes',
+    pricing_faq_q1:'Ai-je besoin d\'une carte bancaire pour l\'essai ?',pricing_faq_a1:'Non. L\'essai de 7 jours est entièrement gratuit. Vous ne serez facturé que si vous décidez de continuer.',
+    pricing_faq_q2:'Puis-je annuler à tout moment ?',pricing_faq_a2:'Oui. Sans engagement ni pénalités. Votre accès continue jusqu\'à la fin de la période payée.',
+    pricing_faq_q3:'Que deviennent mes données si j\'annule ?',pricing_faq_a3:'Vos données restent accessibles en mode Free. Rien n\'est supprimé automatiquement.',
+    pricing_faq_q4:'Supportez-vous BYOK (Bring Your Own Key) ?',pricing_faq_a4:'Oui. Vous connectez votre propre clé Groq, OpenAI, Anthropic ou OpenRouter. AIWorkSuite ne stocke ni n\'utilise vos clés sur nos serveurs.',
+    pwa_install:'Installer l\'app',pwa_installed:'App installée',
+    pwa_offline:'Hors connexion — mode hors ligne',pwa_update:'Nouvelle version disponible',pwa_update_btn:'Mettre à jour',
+    modal_nota_title:'Note',modal_nota_ph:'Écrivez vos notes...',
+    legal_close:'× Fermer',legal_default_title:'Politique de confidentialité',
+    onboarding_title:'Bienvenue sur AIWorkSuite !',
+    onboarding_sub:'Commencez en 3 étapes et générez de la valeur avec l\'IA.',
+    onboarding_s1_title:'Configurez votre clé API',
+    onboarding_s1_desc:'Allez dans <strong>Paramètres → Fournisseur IA</strong> et ajoutez votre clé Anthropic, OpenAI, Groq ou OpenRouter.',
+    onboarding_s2_title:'Ajoutez votre premier client au CRM',
+    onboarding_s2_desc:'Créez un client dans le <strong>CRM</strong> et utilisez le chat IA pour chaque étape de votre pipeline de ventes.',
+    onboarding_s3_title:'Générez votre première proposition',
+    onboarding_s3_desc:'Allez dans <strong>Propositions</strong>, remplissez les données du client et cliquez sur « Générer » pour obtenir une proposition professionnelle en quelques secondes.',
+    onboarding_cta:'C\'est parti ! →',
+    toast_api_key_required:'Veuillez saisir une clé API d\'abord.',
+    toast_api_ok:'✅ Connexion réussie.',toast_api_err:'❌ Erreur : {{msg}}',
+    toast_api_saved:'✅ Paramètres API enregistrés.',toast_profile_saved:'✅ Profil enregistré.',
+    toast_captado:'✅ {{name}} marqué comme gagné.',
+    toast_name_required:'Le nom est obligatoire.',
+    toast_service_required:'Saisissez le service avant d\'estimer.',
+    toast_estimate_ok:'✅ Estimation terminée. Vérifiez et ajustez si nécessaire.',
+    toast_no_client_gen:'Aucun client lié au générateur.',
+    toast_gen_first:'Générez la proposition avant d\'enregistrer.',
+    toast_prop_saved:'✅ Proposition enregistrée dans l\'historique.',
+    toast_prop_loaded:'Proposition chargée dans le formulaire.',
+    toast_prop_deleted:'Proposition supprimée.',
+    toast_copied:'✓ Copié dans le presse-papiers',
+    toast_required:'Champ obligatoire.',
+    toast_invalid_url:'URL invalide.',
+    toast_data_exported:'✅ Données exportées.',toast_data_imported:'✅ Données importées.',
+    toast_app_reset:'Application réinitialisée.',
+    toast_estimate_existing:'Les champs avaient déjà des valeurs, ils n\'ont pas été remplacés.',
+    toast_estimate_err:'Erreur d\'estimation : {{msg}}',
+    toast_signal_sent:'✅ Signal envoyé au CRM.',
+    toast_name_service_required:'Le nom du client et le service sont requis.',
+    toast_email_required:'E-mail requis.',
+    toast_confirm_delete_client:'Supprimer « {{name}} » ?',
+    toast_confirm_clear_prop:'Vider le générateur de propositions ?',
+    toast_confirm_delete_prop:'Supprimer cette proposition de l\'historique ?',
+    toast_confirm_create_team:'Créer une équipe IA pour « {{name}} » ?',
+    onb_lang_title_es:'Elige tu idioma',
+    toast_no_crm_clients:'Aucun client dans le CRM.',toast_prop_linked:'Li\u00e9 \u00e0 {{name}}.',toast_prop_unlinked:'Lien supprim\u00e9.',
+    toast_title_content_required:'Le titre et le contenu sont obligatoires.',toast_brief_required:'\u00c9crivez le brief avant de continuer.',
+    toast_ai_error:'\u274c Erreur : {{msg}}',toast_select_role:'S\u00e9lectionnez au moins un r\u00f4le suppl\u00e9mentaire.',toast_team_saved:'\u2705 \u00c9quipe enregistr\u00e9e.',
+    toast_no_system_prompt:'Aucun system prompt d\u00e9fini.',toast_min_one_chat:'Vous avez besoin d\'au moins un chat.',
+    toast_invalid_file:'Fichier invalide.',toast_import_ok:'\u2705 Donn\u00e9es import\u00e9es avec succ\u00e8s.',toast_import_err:'Erreur d\'import : {{msg}}',
+    toast_no_prop_to_export:'Aucune proposition g\u00e9n\u00e9r\u00e9e \u00e0 exporter.',toast_pdf_exported:'PDF export\u00e9 avec succ\u00e8s.',
+    toast_session_loaded:'Session \u00ab {{name}} \u00bb charg\u00e9e.',toast_select_date:'S\u00e9lectionnez une date.',
+    toast_reminder_saved:'Rappel enregistr\u00e9.',toast_reminder_err:'Erreur lors de l\'enregistrement du rappel.',
+    toast_no_agency_sub:'Abonnement Agency introuvable.',toast_no_team_members:'Pas encore de membres dans l\'\u00e9quipe.',
+    toast_client_assigned:'Client assign\u00e9 \u00e0 {{email}}.',toast_assignment_removed:'Assignation supprim\u00e9e.',toast_assign_err:'Erreur d\'assignation du client.',
+    toast_chat_cleared:'Chat effac\u00e9 \u00b7 \u00e9crivez pour recommencer.',
+    confirm_delete_prompt:'Supprimer ce prompt de la biblioth\u00e8que ?',confirm_delete_team:'Supprimer cette \u00e9quipe ?',
+    confirm_clear_chat:'Effacer l\'historique du chat ?',confirm_import_data:'Importer ? Les donn\u00e9es actuelles seront remplac\u00e9es (sauf cl\u00e9 API).',
+    confirm_reset_app:'\u26a0\ufe0f Supprimer TOUTES les donn\u00e9es locales ? Cette action est irr\u00e9versible.',
+    confirm_reset_app_final:'Confirmez : tout votre CRM, \u00e9quipes, prompts et param\u00e8tres seront supprim\u00e9s.',
+    upgrade_subtitle:'D\u00e9bloquez tous les outils et passez votre activit\u00e9 freelance au niveau sup\u00e9rieur.',
+    upgrade_feat_crm:'\u2705 CRM complet avec pipeline visuel',upgrade_feat_proposals:'\u2705 Propositions IA illimit\u00e9es',
+    upgrade_feat_teams:'\u2705 \u00c9quipes IA + Espace de travail',upgrade_feat_library:'\u2705 Biblioth\u00e8que de prompts illimit\u00e9e',
+    upgrade_feat_trial:'\u2705 7 jours d\'essai gratuit',
+    upgrade_cta_pro:'\u26a1 Essayer Pro gratuitement 7 jours \u2014 24,99\u20ac/mois',
+    upgrade_footnote:'Garantie de remboursement 7 jours \u00b7 Sans engagement \u00b7 Annulez quand vous voulez',
+    plan_banner_pro:'Vous \u00eates sur le plan <strong>\u2726 Pro</strong>. Toutes les fonctions d\u00e9bloqu\u00e9es.',
+    plan_label_pro:'Forfait : \u2726 Pro',plan_manage_sub:'G\u00e9rer l\'abonnement',plan_label_free:'Forfait : Free',plan_current:'Forfait actuel',
+    plan_cta_subscribe:'S\'abonner \u00e0 Pro \u2014 24,99\u20ac/mois',
+    limit_clients:' clients',limit_teams:' \u00e9quipes',limit_prompts:' prompts',
+    crm_new_client_title:'Nouveau client',crm_edit_client_title:'Modifier client',
+    crm_add_note:'+ note',crm_captado_title:'\u2705 Gagn\u00e9',crm_captado_label:'Gagn\u00e9 \u00b7 {{date}}',
+    crm_chat_empty:'\u00c9tape : {{stage}} \u00b7 \u00c9crivez pour commencer',crm_note_title:'Note \u00b7 {{stage}}',
+    crm_project_name:'Projet {{name}}',crm_data_loaded:'Donn\u00e9es de {{name}} charg\u00e9es',
+    prop_estimating:'\u23f3 Estimation\u2026',prop_estimate_btn:'\u2726 Estimer avec l\'IA',prop_deliverable_ph:'Livrable\u2026',
+    prop_generating:'G\u00e9n\u00e9ration\u2026',prop_generate_error:'Erreur : {{msg}}',prop_copied:'\u2713 Copi\u00e9',prop_copy:'Copier',
+    prop_pdf_title:'Proposition pour {{name}}',prop_pdf_footer:'G\u00e9n\u00e9r\u00e9 avec AIWorkSuite',
+    lib_cat_all:'Tous',lib_cat_system:'System prompt',lib_cat_task:'Prompt de t\u00e2che',lib_cat_crm:'CRM / ventes',
+    lib_cat_content:'Contenu',lib_cat_code:'Code',lib_cat_strategy:'Strat\u00e9gie',lib_cat_other:'Autre',
+    lib_prompt_count:'{{count}} prompts',lib_empty_hint:'Cliquez sur \"+ Nouveau prompt\"',lib_new_prompt_title:'Nouveau prompt',
+    lib_edit_prompt_title:'Modifier prompt',lib_picker_empty:'Aucun prompt dans la biblioth\u00e8que',lib_to_teams:'\u2192 \u00c9quipes',
+    teams_create_first:'Cr\u00e9er la premi\u00e8re \u00e9quipe',teams_create_first_hint:'Configurez votre \u00e9quipe IA id\u00e9ale',
+    teams_new_title:'Nouvelle \u00e9quipe',teams_edit_title:'Modifier l\'\u00e9quipe',teams_unnamed_project:'Projet sans nom',
+    teams_role_fixed:'toujours actif',teams_cx_simple:'Projet simple',teams_cx_medium:'Complexit\u00e9 moyenne',teams_cx_complex:'Projet complexe',
+    teams_cx_phases:'{{txt}} \u00b7 {{phases}} phases',
+    ws_input_placeholder:'Message \u00e0 l\'\u00e9quipe\u2026',ws_history_loading:'Chargement\u2026',ws_history_empty:'Aucune conversation enregistr\u00e9e',
+    metrics_title:'\ud83d\udcca M\u00e9triques business',metrics_total_clients:'Clients totaux',metrics_pipeline_value:'Valeur du pipeline',
+    metrics_revenue_closed:'Revenus cl\u00f4tur\u00e9s',metrics_conversion:'Conversion propositions',metrics_sent:'Propositions envoy\u00e9es',metrics_won:'Propositions gagn\u00e9es',
+    reminder_title:'\u23f0 Rappel \u2014 {{name}}',reminder_date_label:'Date et heure',reminder_note_label:'Note (optionnel)',
+    reminder_note_ph:'Ex : Appeler pour suivi de proposition\u2026',reminder_save_btn:'Enregistrer le rappel',
+    reminder_pending_title:'\u23f0 Suivis en attente',reminder_done_btn:'\u2713 Fait',
+    assign_title:'\ud83d\udc64 Assigner client \u2014 {{name}}',assign_unassign_btn:'\ud83d\udeab Non assign\u00e9',
+    activity_proposal_for:'Proposition pour {{name}}',
+    activity_client_won:'{{name}} gagn\u00e9 \u2705',activity_new_client:'Nouveau client : {{name}}',
+    activity_prop_generated:'Proposition g\u00e9n\u00e9r\u00e9e pour {{name}}',activity_prompt_saved:'Prompt enregistr\u00e9 : {{title}}',
+    activity_team_saved:'\u00c9quipe enregistr\u00e9e : {{name}}',activity_team_launched:'\u00c9quipe lanc\u00e9e : {{name}}',activity_data_exported:'Donn\u00e9es export\u00e9es',
+  },
+  zh:{
+    land_eyebrow:'AI自由职业者的操作系统',
+    land_h1_a:'您所需的一切',land_h1_b:'用AI高效工作',
+    land_sub:'CRM、提案、AI团队和提示词库，一站式应用。无需服务器，使用自己的API密钥，免费开始。',
+    land_cta_primary:'免费开始 — 无需信用卡',
+    land_proof:'BYOK · 100%本地 · 无需订阅即可开始',
+    land_pricing_title:'简单透明',land_pricing_sub:'免费开始。随着业务增长，Pro与您同行。',
+    land_feat_crm_title:'AI驱动CRM',land_feat_crm_desc:'7阶段流水线，每阶段配备专属AI对话。',
+    land_feat_prop_title:'AI提案',land_feat_prop_desc:'几秒钟内生成专业商业提案。',
+    land_feat_teams_title:'AI团队启动器',land_feat_teams_desc:'配置自动检测角色的团队，一键启动。',
+    land_feat_lib_title:'提示词库',land_feat_lib_desc:'保存和复用您最好的提示词。',
+    land_feat_byok_title:'BYOK — 您的API密钥',land_feat_byok_desc:'兼容Anthropic、OpenAI、Groq和OpenRouter。',
+    land_feat_local_title:'100%本地',land_feat_local_desc:'数据存储在您的浏览器中。支持JSON导入/导出。',
+    nav_dashboard:'仪表盘',nav_crm:'客户管理',nav_proposals:'提案',
+    nav_library:'提示词库',nav_teams:'AI团队',nav_workspace:'工作区',
+    nav_settings:'设置',nav_pricing:'定价',nav_theme:'切换主题',nav_lang:'切换语言',
+    nav_label_dash:'首页',nav_label_crm:'CRM',nav_label_prop:'提案',nav_label_lib:'词库',nav_label_teams:'团队',nav_label_ws:'工作',nav_label_pricing:'定价',nav_label_aiden:'Aiden',nav_label_settings:'设置',
+    dash_hello:'您好',dash_api_warn:'请配置API密钥',
+    dash_kpi_clients:'客户',dash_kpi_proposals:'待处理提案',dash_kpi_teams:'AI团队',dash_kpi_prompts:'提示词',
+    dash_kpi_won:'已成交',dash_kpi_total:'总计',dash_kpi_active:'活跃',dash_kpi_reusable:'可复用',
+    dash_pipeline_empty:'流水线中暂无客户',dash_activity_empty:'暂无近期活动',
+    dash_pipeline_title:'CRM流水线',dash_activity_title:'近期活动',
+    dash_mod_crm_desc:'7阶段流水线，每阶段配备AI对话。',dash_mod_prop_desc:'使用AI生成专业提案。',
+    dash_mod_teams_desc:'启动具有专业角色的AI工作团队。',dash_mod_lib_desc:'适用于所有项目的可复用提示词。',
+    dash_mod_crm_cta:'客户 →',dash_mod_teams_cta:'团队 →',
+    crm_title:'客户管理',crm_badge:'流水线',crm_clients_count:'{{count}} 个客户',
+    crm_new:'+ 新建客户',crm_search:'搜索...',crm_empty:'暂无客户。',
+    crm_no_results:'无结果。',crm_send:'发送',
+    crm_chat_placeholder:'针对此阶段的问题...',
+    crm_welcome_sub:'选择或创建客户',
+    crm_edit:'编辑',crm_add_team:'+ 团队',crm_reminder:'提醒',crm_assign:'分配',
+    crm_lbl_contact:'邮箱 / WhatsApp',crm_lbl_service:'服务',crm_lbl_budget:'预算',
+    crm_lbl_captado:'已成交',crm_lbl_precio:'成交价格',crm_lbl_stages:'阶段',
+    crm_lbl_proposals:'提案',
+    tab_datos:'数据',tab_flujo:'流程',tab_props:'提案',
+    crm_gen_prop:'+ 生成',crm_no_props:'暂无提案。\n点击"+ 生成"创建。',
+    crm_new_modal_title:'新建客户',crm_edit_modal_title:'编辑客户',
+    crm_field_name:'姓名 *',crm_field_company:'公司',crm_field_contact:'邮箱 / WhatsApp',
+    crm_field_service:'服务 / 需求',crm_field_budget:'预算',
+    stage_0:'首次联系',stage_1:'快速评估',stage_2:'需求了解',
+    stage_3:'提案编写',stage_4:'方案展示',stage_5:'协商 / 调整',stage_6:'启动与交付',
+    stage_label:'阶段',
+    prop_title:'提案',prop_badge:'AI生成器',
+    prop_status_borrador:'草稿',prop_status_enviada:'已发送',prop_status_aceptada:'已接受',prop_status_rechazada:'已拒绝',
+    prop_generate:'✦ 生成',prop_clear:'清除',prop_copy:'复制',prop_regen:'↺ 重新生成',prop_captado:'✅ 已成交',
+    prop_from_crm:'↩ 来自CRM',prop_crm_loaded:'CRM数据已加载',prop_crm_sub:'请检查并补充',
+    prop_history:'历史记录',prop_filter_all:'全部',
+    prop_sec_client:'客户信息',prop_sec_project:'项目',prop_sec_deliverables:'交付物',
+    prop_sec_conditions:'条款条件',prop_sec_result:'生成的提案',
+    prop_field_name:'姓名 *',prop_field_company:'公司',prop_field_contact:'邮箱 / WhatsApp',
+    prop_field_budget:'预算',prop_field_service:'服务 *',prop_field_type:'工作类型',
+    prop_field_desc:'描述',prop_field_price:'总价',prop_field_deadline:'交付期限',
+    prop_field_advance:'预付款',prop_field_final:'尾款',prop_field_notes:'备注',
+    prop_type_select:'— 选择类型 —',prop_type_webdesign:'网页设计',prop_type_webdev:'网页开发',
+    prop_type_mobile:'移动应用',prop_type_automation:'AI自动化',prop_type_chatbot:'AI聊天机器人',
+    prop_type_branding:'品牌 / 视觉识别',prop_type_copy:'文案 / 内容创作',
+    prop_type_seo:'SEO / 数字营销',prop_type_consulting:'战略咨询',
+    prop_type_training:'培训 / 课程',prop_type_other:'其他',
+    prop_deliverable_ph:'交付物 {{n}}...',prop_add_deliverable:'+ 添加',
+    prop_estimate_ia:'✦ AI估算',prop_ia_estimate_ph:'留空时AI将自动估算',
+    prop_advance_default:'启动时支付50%',prop_final_default:'交付时支付50%',
+    prop_notes_ph:'特殊条件...',prop_desc_ph:'描述项目...',
+    prop_save:'💾 保存',prop_export_pdf:'📄 PDF',
+    prop_link_title:'🔗 将提案关联到客户',prop_link_sub:'选择此提案所属的CRM客户。',
+    prop_link_client:'CRM客户',prop_link_confirm:'关联',
+    prop_reuse:'重复使用',prop_reactivate:'重新激活',prop_status_label:'状态 ▾',
+    prop_empty_saved:'暂无已保存的提案。',prop_empty_filter:'没有该状态的提案。',
+    prop_empty_saved_hint:'生成后点击 <strong>💾 保存</strong>。',
+    prop_saved_label:'✓ 已保存',
+    lib_title:'提示词库',lib_badge:'提示词',lib_categories:'分类',
+    lib_new:'+ 新建提示词',lib_search:'搜索提示词...',
+    lib_empty:'暂无提示词',lib_empty_sub:'点击"+ 新建提示词"创建',
+    lib_insert:'→ 团队',lib_edit:'编辑',lib_from_lib:'从词库插入',
+    lib_cat_all:'全部',lib_cat_system:'系统提示词',lib_cat_task:'任务提示词',
+    lib_cat_crm:'CRM / 销售',lib_cat_content:'内容',lib_cat_code:'代码',lib_cat_strategy:'策略',lib_cat_other:'其他',
+    lib_modal_title_new:'新建提示词',lib_modal_title_edit:'编辑提示词',
+    lib_field_title:'标题 *',lib_field_cat:'分类',lib_field_content:'内容 *',lib_field_tags:'标签（逗号分隔）',
+    lib_ph_title:'例：IT项目系统提示词',lib_ph_content:'输入或粘贴内容...',lib_ph_tags:'AI、设计...',
+    teams_title:'AI团队',teams_badge:'启动器',teams_my_teams:'我的团队',
+    teams_new:'+ 新建团队',teams_launch:'▣ 启动',teams_edit:'编辑',teams_save_only:'仅保存',
+    teams_empty:'创建第一个团队',teams_empty_sub:'配置您理想的AI团队',
+    teams_step1:'01·简报',teams_step2:'02·客户',teams_step3:'03·角色',teams_step4:'04·启动',
+    teams_detect_ia:'AI检测角色 →',teams_manual_roles:'手动选择角色 →',
+    teams_ia_only_pro:'AI检测功能仅限Pro版',teams_always_active:'始终激活',teams_launch_btn:'▣ 启动团队 →',
+    teams_new_team:'新建团队',teams_cancel:'取消',
+    teams_brief_name:'团队/项目名称',teams_brief_desc:'项目简报',
+    teams_brief_ph:'描述项目：目标、交付物、平台、受众、约束条件...',
+    teams_brief_validation:'简报验证',teams_from_lib:'+ 从词库选择',
+    teams_sector:'客户行业',teams_sector_select:'请选择...',
+    teams_sector_tech:'技术 / 软件 / IT',teams_sector_design:'设计 / 创意机构',
+    teams_sector_ecom:'电商 / 零售',teams_sector_health:'健康 / 养生',
+    teams_sector_edu:'教育 / 培训',teams_sector_finance:'金融 / 法律',
+    teams_sector_hospitality:'酒店 / 旅游',teams_sector_construction:'建筑 / 建设',
+    teams_sector_marketing:'营销 / 广告',teams_sector_ngo:'非营利 / 公共部门',
+    teams_sector_startup:'创业公司',teams_sector_other:'其他',
+    teams_size:'规模',teams_size_select:'请选择...',
+    teams_size_freelance:'自由职业者',teams_size_micro:'微型企业（1-9人）',
+    teams_size_pyme:'小型企业（10-49人）',teams_size_medium:'中型企业（50-249人）',teams_size_large:'大型企业（250+人）',
+    teams_tech:'技术水平',teams_tech_select:'请选择...',
+    teams_tech_none:'非技术人员 — 需全面解释',teams_tech_basic:'基础 — 简单概念',
+    teams_tech_mid:'中级 — 了解行业',teams_tech_adv:'高级 — 技术背景',
+    teams_tone:'语调',teams_tone_formal:'正式',teams_tone_professional:'专业',teams_tone_technical:'技术性',
+    teams_tone_friendly:'亲切',teams_tone_commercial:'商务',teams_tone_didactic:'教学',
+    teams_tone_executive:'管理层',teams_tone_creative:'创意',
+    teams_deliverables:'预期交付物',
+    teams_del_strategy:'战略文档',teams_del_code:'代码 / 组件',
+    teams_del_design:'设计 / 线框图',teams_del_copy:'文案 / 网站内容',
+    teams_del_presentation:'演示文稿',teams_del_plan:'项目计划',
+    teams_del_proposal:'商业提案',teams_del_report:'报告 / 分析',
+    teams_del_prompts:'提示词 / AI流程',teams_del_checklist:'清单 / 指南',
+    teams_detecting:'正在为项目检测最佳角色...',
+    teams_spe_notice:'高级提示词工程师 — 在所有团队中始终激活。',
+    teams_select_roles:'选择此团队的角色',
+    teams_review_launch:'审核并启动 →',teams_configured:'团队已配置 — 准备启动。',
+    teams_extra_context:'附加上下文',teams_extra_ph:'技术栈、约束条件、已做决策...',
+    teams_continue:'继续 →',teams_back_brief:'← 简报',teams_back_client:'← 客户',teams_back_roles:'← 角色',
+    teams_crm_loaded:'数据已从CRM加载',
+    ws_title:'工作区',ws_history:'📋 历史',ws_history_new:'+ 新建',
+    ws_mode_strategy:'策略',ws_mode_code:'代码',ws_mode_client:'客户',ws_mode_free:'自由',
+    ws_back:'← 团队',ws_clear:'清除',ws_empty:'团队已激活 · 输入您的第一条指令',
+    ws_system_show:'▸ 显示系统提示词',ws_system_hide:'▾ 隐藏系统提示词',ws_pro_hint:'Pro版+2个对话',
+    settings_title:'设置',settings_badge:'Settings',
+    settings_appearance:'外观',settings_theme:'主题',
+    settings_theme_system:'跟随系统',settings_theme_light:'浅色',settings_theme_dark:'深色',settings_theme_midnight:'午夜',settings_theme_warm:'暖色',
+    settings_lang_label:'语言',settings_api:'AI服务商（BYOK）',
+    settings_provider:'服务商',settings_key_label:'API密钥',settings_test:'测试',settings_model:'自定义模型（可选）',
+    settings_api_status_ok:'● 已连接',settings_api_status_no:'● 未配置',settings_api_status_err:'● 错误',
+    settings_custom_model:'自定义模型',settings_custom_model_ph:'服务商/模型名称',
+    settings_manual_api:'手动 / 自定义',settings_manual_sub:'输入您自己的URL和API密钥',
+    settings_manual_provider:'服务商名称',settings_manual_url:'API地址',
+    settings_manual_url_ph:'https://api.example.com/v1',settings_manual_url_hint:'兼容OpenAI的基础URL（不含/chat/completions）',
+    settings_manual_key:'API密钥',settings_manual_model:'模型',
+    settings_manual_model_ph:'gpt-4o、claude-sonnet-4-20250514、llama-3.3-70b-versatile...',
+    settings_manual_test:'测试连接',settings_manual_save:'保存并使用',
+    settings_manual_testing:'正在测试连接...',settings_manual_success:'✅ 连接成功',
+    settings_manual_error:'❌ 连接错误',settings_manual_saved:'✅ 手动配置已保存',
+    settings_profile:'职业档案',settings_name:'您的姓名 / 品牌',
+    settings_email_c:'联系邮箱',settings_phone:'WhatsApp / 电话',settings_telegram:'Telegram',settings_web:'网站 / 作品集',
+    settings_data:'数据与隐私',settings_export_label:'导出所有数据',
+    settings_export_sub:'CRM、词库、团队和设置导出为JSON',
+    settings_import_label:'导入数据',settings_import_sub:'从之前导出的JSON备份中恢复',
+    settings_reset_label:'重置应用',settings_reset_sub:'删除所有本地数据，不可撤销。',
+    settings_reset_btn:'重置',settings_export_btn:'↓ 导出JSON',settings_import_btn:'↑ 导入JSON',
+    settings_save:'保存',settings_save_profile:'保存档案',
+    settings_manual_title:'手动 / 自定义',settings_manual_sub:'输入您自己的URL和API密钥',settings_manual_provider:'提供商名称',settings_manual_url:'API网址',settings_manual_url_hint:'兼容OpenAI的基础URL（不含/chat/completions）',settings_manual_model:'模型',settings_manual_key:'API密钥',settings_manual_save:'保存并使用',settings_manual_test:'测试连接',settings_manual_testing:'测试中…',settings_manual_ok:'连接成功 ✓',settings_manual_fail:'连接失败 ✗',
+    settings_plan_label:'套餐：',settings_upgrade_link:'升级到Pro',
+    upgrade_title:'升级到Pro',upgrade_sub:'释放AIWorkSuite的全部潜力，扩展您的AI自由职业业务。',
+    upgrade_info:'✦ Pro — 24,99€/月 · 249€/年',
+    upgrade_info_sub:'解锁无限客户、团队和提示词。',
+    upgrade_subscribe:'订阅Pro',upgrade_cta:'订阅Pro — 24,99€/月',upgrade_dismiss:'暂时不了',
+    upgrade_feat_clients:'无限客户',upgrade_feat_chats:'每团队3个对话',
+    upgrade_feat_teams:'无限团队',upgrade_feat_roles:'AI角色检测',
+    upgrade_feat_prompts:'无限提示词',upgrade_feat_branding:'可自定义品牌',
+    btn_save:'保存',btn_cancel:'取消',btn_edit:'编辑',btn_delete:'删除',
+    btn_copy:'复制',btn_copied:'✓ 已复制',btn_continue:'继续 →',btn_back:'←',btn_confirm:'确认',
+    btn_close:'× 关闭',
+    cookie_text:'我们使用基本cookie来保证应用正常运行和记住您的会话。',
+    cookie_learn:'Cookie政策',cookie_accept:'全部接受',cookie_essential:'仅基本cookie',
+    plan_free_tag:'永久免费',plan_pro_badge:'可用',
+    plan_free_start:'免费开始',plan_pro_subscribe:'订阅Pro →',
+    plan_current:'当前套餐',
+    pricing_free_kpi:'仪表盘与KPI',pricing_free_ws:'工作区（3个对话）',pricing_free_lib:'词库（最多5个提示词）',
+    pricing_no_crm:'智能CRM',pricing_no_prop:'AI提案',pricing_no_teams:'AI团队',pricing_no_lib_unlim:'无限词库',
+    pricing_pro_all:'包含Free全部功能',pricing_pro_crm:'完整CRM（7阶段流水线）',pricing_pro_chat:'每CRM阶段AI对话',
+    pricing_pro_prop:'无限AI提案',pricing_pro_teams:'可配置AI团队',
+    pricing_pro_lib:'无限提示词库',pricing_pro_user:'1位用户',
+    pricing_pro_cta:'⚡ 免费试用Pro 7天',
+    footer_tagline:'BYOK · 您的数据，您的浏览器',
+    footer_privacy:'隐私',footer_cookies:'Cookie',footer_terms:'条款',footer_contact:'联系',footer_by:'由',
+    privacy_title:'隐私政策',cookies_title:'Cookie政策',terms_title:'使用条款',
+    pricing_title:'选择您的套餐',pricing_subtitle:'7天免费试用 · 无需信用卡 · 随时取消',
+    pricing_monthly:'按月',pricing_yearly:'按年',pricing_save:'节省20%',
+    pricing_forever:'永久',pricing_popular:'最受欢迎',
+    pricing_faq_title:'常见问题',
+    pricing_faq_q1:'试用需要信用卡吗？',pricing_faq_a1:'不需要。7天试用完全免费，仅在您决定继续使用时才会收费。',
+    pricing_faq_q2:'可以随时取消吗？',pricing_faq_a2:'可以。无绑定、无罚金，您的访问权限将持续到已付费期结束。',
+    pricing_faq_q3:'取消后我的数据会怎样？',pricing_faq_a3:'您的数据在Free模式下仍可访问，不会自动删除。',
+    pricing_faq_q4:'支持BYOK（自带密钥）吗？',pricing_faq_a4:'支持。连接您自己的Groq、OpenAI、Anthropic或OpenRouter密钥。AIWorkSuite不会在我们的服务器上存储或使用您的密钥。',
+    pwa_install:'安装应用',pwa_installed:'应用已安装',
+    pwa_offline:'无网络连接 — 离线模式',pwa_update:'新版本可用',pwa_update_btn:'更新',
+    modal_nota_title:'笔记',modal_nota_ph:'输入笔记...',
+    legal_close:'× 关闭',legal_default_title:'隐私政策',
+    onboarding_title:'欢迎使用AIWorkSuite！',
+    onboarding_sub:'只需3步，即可开始用AI创造价值。',
+    onboarding_s1_title:'配置API密钥',
+    onboarding_s1_desc:'前往<strong>设置 → AI服务商</strong>，添加您的Anthropic、OpenAI、Groq或OpenRouter密钥。',
+    onboarding_s2_title:'在CRM中添加第一个客户',
+    onboarding_s2_desc:'在<strong>客户管理</strong>中创建客户，并在销售流水线的每个阶段使用AI对话。',
+    onboarding_s3_title:'生成第一份提案',
+    onboarding_s3_desc:'前往<strong>提案</strong>，填写客户信息并点击"生成"，几秒钟即可获得专业提案。',
+    onboarding_cta:'立即开始 →',
+    toast_api_key_required:'请先输入API密钥。',
+    toast_api_ok:'✅ 连接成功。',toast_api_err:'❌ 错误：{{msg}}',
+    toast_api_saved:'✅ API设置已保存。',toast_profile_saved:'✅ 档案已保存。',
+    toast_captado:'✅ {{name}} 已标记为成交。',
+    toast_name_required:'姓名为必填项。',
+    toast_service_required:'请先输入服务内容再进行估算。',
+    toast_estimate_ok:'✅ 估算完成，请检查并调整。',
+    toast_no_client_gen:'未关联客户到生成器。',
+    toast_gen_first:'请先生成提案再保存。',
+    toast_prop_saved:'✅ 提案已保存到历史记录。',
+    toast_prop_loaded:'提案已加载到表单。',
+    toast_prop_deleted:'提案已删除。',
+    toast_copied:'✓ 已复制到剪贴板',
+    toast_required:'必填字段。',
+    toast_invalid_url:'无效URL。',
+    toast_data_exported:'✅ 数据已导出。',toast_data_imported:'✅ 数据已导入。',
+    toast_app_reset:'应用已重置。',
+    toast_estimate_existing:'字段已有值，未被覆盖。',
+    toast_estimate_err:'估算错误：{{msg}}',
+    toast_signal_sent:'✅ 信号已发送至CRM。',
+    toast_name_service_required:'客户名称和服务为必填项。',
+    toast_email_required:'请输入电子邮件。',
+    toast_confirm_delete_client:'删除「{{name}}」？',
+    toast_confirm_clear_prop:'清空提案生成器？',
+    toast_confirm_delete_prop:'从历史记录中删除此提案？',
+    toast_confirm_create_team:'为「{{name}}」创建AI团队？',
+    onb_lang_title_es:'Elige tu idioma',
+    toast_no_crm_clients:'CRM\u4e2d\u6ca1\u6709\u5ba2\u6237\u3002',toast_prop_linked:'\u5df2\u94fe\u63a5\u5230{{name}}\u3002',toast_prop_unlinked:'\u94fe\u63a5\u5df2\u79fb\u9664\u3002',
+    toast_title_content_required:'\u6807\u9898\u548c\u5185\u5bb9\u4e3a\u5fc5\u586b\u9879\u3002',toast_brief_required:'\u8bf7\u5148\u586b\u5199\u7b80\u4ecb\u518d\u7ee7\u7eed\u3002',
+    toast_ai_error:'\u274c \u9519\u8bef\uff1a{{msg}}',toast_select_role:'\u8bf7\u81f3\u5c11\u9009\u62e9\u4e00\u4e2a\u989d\u5916\u89d2\u8272\u3002',toast_team_saved:'\u2705 \u56e2\u961f\u5df2\u4fdd\u5b58\u3002',
+    toast_no_system_prompt:'\u672a\u5b9a\u4e49\u7cfb\u7edf\u63d0\u793a\u8bcd\u3002',toast_min_one_chat:'\u60a8\u81f3\u5c11\u9700\u8981\u4e00\u4e2a\u804a\u5929\u3002',
+    toast_invalid_file:'\u65e0\u6548\u6587\u4ef6\u3002',toast_import_ok:'\u2705 \u6570\u636e\u5bfc\u5165\u6210\u529f\u3002',toast_import_err:'\u5bfc\u5165\u9519\u8bef\uff1a{{msg}}',
+    toast_no_prop_to_export:'\u6ca1\u6709\u53ef\u5bfc\u51fa\u7684\u63d0\u6848\u3002',toast_pdf_exported:'PDF\u5bfc\u51fa\u6210\u529f\u3002',
+    toast_session_loaded:'\u4f1a\u8bdd\u201c{{name}}\u201d\u5df2\u52a0\u8f7d\u3002',toast_select_date:'\u8bf7\u9009\u62e9\u65e5\u671f\u3002',
+    toast_reminder_saved:'\u63d0\u9192\u5df2\u4fdd\u5b58\u3002',toast_reminder_err:'\u4fdd\u5b58\u63d0\u9192\u65f6\u51fa\u9519\u3002',
+    toast_no_agency_sub:'\u672a\u627e\u5230Agency\u8ba2\u9605\u3002',toast_no_team_members:'\u56e2\u961f\u4e2d\u8fd8\u6ca1\u6709\u6210\u5458\u3002',
+    toast_client_assigned:'\u5ba2\u6237\u5df2\u5206\u914d\u7ed9{{email}}\u3002',toast_assignment_removed:'\u5206\u914d\u5df2\u79fb\u9664\u3002',toast_assign_err:'\u5206\u914d\u5ba2\u6237\u65f6\u51fa\u9519\u3002',
+    toast_chat_cleared:'\u804a\u5929\u5df2\u6e05\u9664 \u00b7 \u8f93\u5165\u4ee5\u91cd\u65b0\u5f00\u59cb\u3002',
+    confirm_delete_prompt:'\u4ece\u5e93\u4e2d\u5220\u9664\u6b64\u63d0\u793a\u8bcd\uff1f',confirm_delete_team:'\u5220\u9664\u6b64\u56e2\u961f\uff1f',
+    confirm_clear_chat:'\u6e05\u9664\u804a\u5929\u8bb0\u5f55\uff1f',confirm_import_data:'\u5bfc\u5165\uff1f\u5c06\u66ff\u6362\u5f53\u524d\u6570\u636e\uff08API\u5bc6\u94a5\u9664\u5916\uff09\u3002',
+    confirm_reset_app:'\u26a0\ufe0f \u5220\u9664\u6240\u6709\u672c\u5730\u6570\u636e\uff1f\u6b64\u64cd\u4f5c\u4e0d\u53ef\u64a4\u9500\u3002',
+    confirm_reset_app_final:'\u786e\u8ba4\uff1a\u60a8\u7684\u6240\u6709CRM\u3001\u56e2\u961f\u3001\u63d0\u793a\u8bcd\u548c\u8bbe\u7f6e\u5c06\u88ab\u5220\u9664\u3002',
+    upgrade_subtitle:'\u89e3\u9501\u6240\u6709\u5de5\u5177\uff0c\u5c06\u60a8\u7684\u81ea\u7531\u804c\u4e1a\u5de5\u4f5c\u6d41\u63d0\u5347\u5230\u65b0\u6c34\u5e73\u3002',
+    upgrade_feat_crm:'\u2705 \u5b8c\u6574CRM\u4e0e\u53ef\u89c6\u5316\u7ba1\u9053',upgrade_feat_proposals:'\u2705 \u65e0\u9650AI\u63d0\u6848',
+    upgrade_feat_teams:'\u2705 AI\u56e2\u961f + \u5de5\u4f5c\u533a',upgrade_feat_library:'\u2705 \u65e0\u9650\u63d0\u793a\u8bcd\u5e93',
+    upgrade_feat_trial:'\u2705 7\u5929\u514d\u8d39\u8bd5\u7528',
+    upgrade_cta_pro:'\u26a1 \u514d\u8d39\u8bd5\u7528Pro 7\u5929 \u2014 24,99\u20ac/\u6708',
+    upgrade_footnote:'7\u5929\u9000\u6b3e\u4fdd\u8bc1 \u00b7 \u65e0\u7ea6\u675f \u00b7 \u968f\u65f6\u53d6\u6d88',
+    plan_banner_pro:'\u60a8\u5f53\u524d\u4e3a<strong>\u2726 Pro</strong>\u8ba1\u5212\u3002\u6240\u6709\u529f\u80fd\u5df2\u89e3\u9501\u3002',
+    plan_label_pro:'\u5957\u9910\uff1a\u2726 Pro',plan_manage_sub:'\u7ba1\u7406\u8ba2\u9605',plan_label_free:'\u5957\u9910\uff1aFree',plan_current:'\u5f53\u524d\u5957\u9910',
+    plan_cta_subscribe:'\u8ba2\u9605Pro \u2014 24,99\u20ac/\u6708',
+    limit_clients:' \u4e2a\u5ba2\u6237',limit_teams:' \u4e2a\u56e2\u961f',limit_prompts:' \u4e2a\u63d0\u793a\u8bcd',
+    crm_new_client_title:'\u65b0\u5ba2\u6237',crm_edit_client_title:'\u7f16\u8f91\u5ba2\u6237',
+    crm_add_note:'+ \u7b14\u8bb0',crm_captado_title:'\u2705 \u5df2\u8d62\u5f97',crm_captado_label:'\u8d62\u5f97 \u00b7 {{date}}',
+    crm_chat_empty:'\u9636\u6bb5\uff1a{{stage}} \u00b7 \u8f93\u5165\u4ee5\u5f00\u59cb',crm_note_title:'\u7b14\u8bb0 \u00b7 {{stage}}',
+    crm_project_name:'\u9879\u76ee {{name}}',crm_data_loaded:'{{name}} \u6570\u636e\u5df2\u52a0\u8f7d',
+    prop_estimating:'\u23f3 \u4f30\u7b97\u4e2d\u2026',prop_estimate_btn:'\u2726 AI\u4f30\u7b97',prop_deliverable_ph:'\u4ea4\u4ed8\u7269\u2026',
+    prop_generating:'\u751f\u6210\u4e2d\u2026',prop_generate_error:'\u9519\u8bef\uff1a{{msg}}',prop_copied:'\u2713 \u5df2\u590d\u5236',prop_copy:'\u590d\u5236',
+    prop_pdf_title:'{{name}} \u7684\u63d0\u6848',prop_pdf_footer:'\u7531AIWorkSuite\u751f\u6210',
+    lib_cat_all:'\u5168\u90e8',lib_cat_system:'\u7cfb\u7edf\u63d0\u793a\u8bcd',lib_cat_task:'\u4efb\u52a1\u63d0\u793a\u8bcd',lib_cat_crm:'CRM/\u9500\u552e',
+    lib_cat_content:'\u5185\u5bb9',lib_cat_code:'\u4ee3\u7801',lib_cat_strategy:'\u7b56\u7565',lib_cat_other:'\u5176\u4ed6',
+    lib_prompt_count:'{{count}} \u4e2a\u63d0\u793a\u8bcd',lib_empty_hint:'\u70b9\u51fb\u201c+ \u65b0\u5efa\u63d0\u793a\u8bcd\u201d',lib_new_prompt_title:'\u65b0\u5efa\u63d0\u793a\u8bcd',
+    lib_edit_prompt_title:'\u7f16\u8f91\u63d0\u793a\u8bcd',lib_picker_empty:'\u5e93\u4e2d\u6ca1\u6709\u63d0\u793a\u8bcd',lib_to_teams:'\u2192 \u56e2\u961f',
+    teams_create_first:'\u521b\u5efa\u7b2c\u4e00\u4e2a\u56e2\u961f',teams_create_first_hint:'\u914d\u7f6e\u60a8\u7684\u7406\u60f3AI\u56e2\u961f',
+    teams_new_title:'\u65b0\u56e2\u961f',teams_edit_title:'\u7f16\u8f91\u56e2\u961f',teams_unnamed_project:'\u672a\u547d\u540d\u9879\u76ee',
+    teams_role_fixed:'\u59cb\u7ec8\u6d3b\u8dc3',teams_cx_simple:'\u7b80\u5355\u9879\u76ee',teams_cx_medium:'\u4e2d\u7b49\u590d\u6742\u5ea6',teams_cx_complex:'\u590d\u6742\u9879\u76ee',
+    teams_cx_phases:'{{txt}} \u00b7 {{phases}} \u4e2a\u9636\u6bb5',
+    ws_input_placeholder:'\u7ed9\u56e2\u961f\u53d1\u6d88\u606f\u2026',ws_history_loading:'\u52a0\u8f7d\u4e2d\u2026',ws_history_empty:'\u6ca1\u6709\u5df2\u4fdd\u5b58\u7684\u5bf9\u8bdd',
+    metrics_title:'\ud83d\udcca \u4e1a\u52a1\u6307\u6807',metrics_total_clients:'\u5ba2\u6237\u603b\u6570',metrics_pipeline_value:'\u7ba1\u9053\u4ef7\u503c',
+    metrics_revenue_closed:'\u5df2\u5173\u95ed\u6536\u5165',metrics_conversion:'\u63d0\u6848\u8f6c\u5316\u7387',metrics_sent:'\u5df2\u53d1\u9001\u63d0\u6848',metrics_won:'\u5df2\u8d62\u5f97\u63d0\u6848',
+    reminder_title:'\u23f0 \u63d0\u9192 \u2014 {{name}}',reminder_date_label:'\u65e5\u671f\u548c\u65f6\u95f4',reminder_note_label:'\u5907\u6ce8\uff08\u53ef\u9009\uff09',
+    reminder_note_ph:'\u4f8b\uff1a\u8ddf\u8fdb\u63d0\u6848\u7535\u8bdd\u2026',reminder_save_btn:'\u4fdd\u5b58\u63d0\u9192',
+    reminder_pending_title:'\u23f0 \u5f85\u8ddf\u8fdb\u4e8b\u9879',reminder_done_btn:'\u2713 \u5df2\u5b8c\u6210',
+    assign_title:'\ud83d\udc64 \u5206\u914d\u5ba2\u6237 \u2014 {{name}}',assign_unassign_btn:'\ud83d\udeab \u672a\u5206\u914d',
+    activity_proposal_for:'{{name}} \u7684\u63d0\u6848',
+    activity_client_won:'{{name}} \u5df2\u8d62\u5f97 \u2705',activity_new_client:'\u65b0\u5ba2\u6237\uff1a{{name}}',
+    activity_prop_generated:'\u5df2\u4e3a{{name}}\u751f\u6210\u63d0\u6848',activity_prompt_saved:'\u63d0\u793a\u8bcd\u5df2\u4fdd\u5b58\uff1a{{title}}',
+    activity_team_saved:'\u56e2\u961f\u5df2\u4fdd\u5b58\uff1a{{name}}',activity_team_launched:'\u56e2\u961f\u5df2\u542f\u52a8\uff1a{{name}}',activity_data_exported:'\u6570\u636e\u5df2\u5bfc\u51fa',
+  }
+};
+const SUPPORTED_LANGS=['es','en','de','fr','zh'];
+let LANG='es';
+function t(key,params){
+  let val=TRANSLATIONS[LANG]?.[key]??TRANSLATIONS['en']?.[key]??TRANSLATIONS['es']?.[key]??key;
+  if(params&&typeof val==='string'){val=val.replace(/\{\{(\w+)\}\}/g,(_,k)=>params[k]!=null?params[k]:`{{${k}}}`);}
+  return val;
+}
+function setLang(lang){
+  if(!SUPPORTED_LANGS.includes(lang))lang='es';
+  LANG=lang; localStorage.setItem('aws_lang',lang);
+  document.documentElement.setAttribute('lang',lang);
+  document.documentElement.dir='ltr';
+  const titles={es:'AIWorkSuite — Suite IA para freelances | MolvicStudios',en:'AIWorkSuite — AI Suite for Freelancers | MolvicStudios',de:'AIWorkSuite — KI-Suite für Freelancer | MolvicStudios',fr:'AIWorkSuite — Suite IA pour freelances | MolvicStudios',zh:'AIWorkSuite — 自由职业者AI套件 | MolvicStudios'};
+  document.title=titles[lang]||titles.es;
+  if(typeof updateStageNames==='function')updateStageNames();
+  applyTranslations();_updateLangToggle();
+  document.dispatchEvent(new CustomEvent('langChanged',{detail:{lang}}));
+}
+function loadLang(){
+  const saved=localStorage.getItem('aws_lang');
+  const browser=navigator.language?.slice(0,2).toLowerCase();
+  LANG=SUPPORTED_LANGS.includes(saved)?saved:SUPPORTED_LANGS.includes(browser)?browser:'es';
+  document.documentElement.setAttribute('lang',LANG);
+  if(typeof updateStageNames==='function')updateStageNames();
+  applyTranslations();_updateLangToggle();
+}
+function toggleLang(){const i=SUPPORTED_LANGS.indexOf(LANG);setLang(SUPPORTED_LANGS[(i+1)%SUPPORTED_LANGS.length]);}
+function applyTranslations(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key=el.dataset.i18n;const val=t(key);
+    if(el.tagName==='INPUT'||el.tagName==='TEXTAREA'){el.placeholder=val;}
+    else if(el.tagName==='OPTION'){el.textContent=val;}
+    else{el.textContent=val;}
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>{el.placeholder=t(el.dataset.i18nPlaceholder);});
+  document.querySelectorAll('[data-i18n-title]').forEach(el=>{const v=t(el.dataset.i18nTitle);el.title=v;el.setAttribute('aria-label',v);});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{el.innerHTML=t(el.dataset.i18nHtml);});
+  _syncDynamicStrings();
+}
+function _syncDynamicStrings(){
+  const h1a=document.getElementById('land-h1-a');if(h1a)h1a.textContent=t('land_h1_a');
+  const h1b=document.getElementById('land-h1-b');if(h1b)h1b.textContent=t('land_h1_b');
+  const tipMap={'nav-dash':'nav_dashboard','nav-crm':'nav_crm','nav-prop':'nav_proposals',
+    'nav-lib':'nav_library','nav-teams':'nav_teams','nav-ws':'nav_workspace','nav-settings':'nav_settings','nav-pricing':'nav_pricing'};
+  Object.entries(tipMap).forEach(([id,key])=>{const el=document.querySelector(`#${id} .dock-tip`);if(el)el.textContent=t(key);});
+  const labelMap={'nav-dash':'nav_label_dash','nav-crm':'nav_label_crm','nav-prop':'nav_label_prop',
+    'nav-lib':'nav_label_lib','nav-teams':'nav_label_teams','nav-ws':'nav_label_ws','nav-pricing':'nav_label_pricing','nav-aiden':'nav_label_aiden','nav-settings':'nav_label_settings'};
+  Object.entries(labelMap).forEach(([id,key])=>{const el=document.querySelector(`#${id} .dock-label`);if(el)el.textContent=t(key);});
+  if(typeof renderTimeline==='function'&&typeof CRM!=='undefined'&&CRM?.activeId)renderTimeline();
+  if(typeof renderClientList==='function')renderClientList();
+  if(typeof refreshDash==='function')refreshDash();
+}
+function _updateLangToggle(){
+  const btn=document.getElementById('nav-lang-toggle');
+  if(btn){
+    const span=btn.querySelector('span');if(span)span.textContent=LANG.toUpperCase();
+    const tip=btn.querySelector('.dock-tip');if(tip)tip.textContent=t('nav_lang');
+  }
+  document.querySelectorAll('[data-lang-chip]').forEach(el=>el.classList.toggle('sel',el.dataset.langChip===LANG));
+  const settingsSelect=document.getElementById('settings-lang-select');
+  if(settingsSelect)settingsSelect.value=LANG;
+}
+function updateStageNames(){
+  if(typeof STAGES==='undefined')return;
+  const keys=['stage_0','stage_1','stage_2','stage_3','stage_4','stage_5','stage_6'];
+  STAGES.forEach((s,i)=>{s.name=t(keys[i]);});
+}
+// ═══════════════════════════════════════════════════════════════════════
+// FUNCIONALIDAD 4 — RGPD / COOKIES
+// ═══════════════════════════════════════════════════════════════════════
+function checkCookieConsent(){
+  const consent=localStorage.getItem('aws_cookie_consent');
+  if(!consent){const b=document.getElementById('cookie-banner');if(b)b.style.display='flex';}
+}
+function setCookieConsent(level){
+  localStorage.setItem('aws_cookie_consent',level);
+  localStorage.setItem('aws_cookie_consent_date',new Date().toISOString());
+  const b=document.getElementById('cookie-banner');if(b)b.style.display='none';
+}
+const LEGAL_CONTENT={
+  es:{
+    privacy:`<h4 style="color:var(--accent);margin-bottom:8px">Política de Privacidad</h4>
+<p><strong>Responsable:</strong> MolvicStudios (molvicstudios.pro)</p>
+<h5 style="margin:12px 0 4px;color:var(--text)">¿Qué datos recogemos?</h5>
+<ul style="padding-left:16px;margin-bottom:8px">
+  <li>Email de registro (almacenado localmente en tu navegador)</li>
+  <li>Datos de uso de la app (almacenados localmente en tu navegador)</li>
+  <li>Email de interés en Pro (voluntariamente)</li>
+</ul>
+<h5 style="margin:12px 0 4px;color:var(--text)">Almacenamiento local</h5>
+<p>Todos los datos de CRM, propuestas, equipos y biblioteca se almacenan <strong>exclusivamente en tu navegador</strong> (localStorage). Nunca se envían a nuestros servidores. Tu API key de IA tampoco sale de tu dispositivo.</p>
+<h5 style="margin:12px 0 4px;color:var(--text)">Tus derechos (RGPD)</h5>
+<p>Tienes derecho a acceder, rectificar, suprimir y portar tus datos. Para ejercerlos: <a href="mailto:molvicstudios@outlook.com" style="color:var(--accent)">molvicstudios@outlook.com</a></p>
+<h5 style="margin:12px 0 4px;color:var(--text)">Transferencias internacionales</h5>
+<p>Todos los datos se almacenan localmente en tu navegador. La verificación de licencia se realiza a través de Lemon Squeezy (UE). Cumple con el RGPD.</p>
+<p style="margin-top:12px;color:var(--text3);font-size:11px">AIWorkSuite · by <a href="https://molvicstudios.pro" target="_blank" style="color:var(--accent)">MolvicStudios</a></p>`,
+    cookies:`<h4 style="color:var(--accent);margin-bottom:8px">Política de Cookies</h4>
+<h5 style="margin:12px 0 4px;color:var(--text)">Cookies esenciales (siempre activas)</h5>
+<table style="width:100%;font-size:11px;border-collapse:collapse">
+  <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 0;color:var(--text);font-weight:500">Nombre</td><td style="padding:5px 0;color:var(--text);font-weight:500">Propósito</td><td style="padding:5px 0;color:var(--text);font-weight:500">Duración</td></tr>
+  <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 0;font-family:'JetBrains Mono',monospace">aws_*</td><td style="padding:5px 0">Datos locales de la app (CRM, equipos, config)</td><td style="padding:5px 0">Hasta borrar manualmente</td></tr>
+  <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 0;font-family:'JetBrains Mono',monospace">aiws_*</td><td style="padding:5px 0">Datos de licencia Pro (Lemon Squeezy)</td><td style="padding:5px 0">Hasta borrar manualmente</td></tr>
+  <tr><td style="padding:5px 0;font-family:'JetBrains Mono',monospace">aws_cookie_consent</td><td style="padding:5px 0">Guardar tu preferencia de cookies</td><td style="padding:5px 0">1 año</td></tr>
+</table>
+<h5 style="margin:12px 0 4px;color:var(--text)">Cookies analíticas / marketing</h5>
+<p>Actualmente <strong>no usamos</strong> cookies de analítica ni publicidad.</p>
+<p style="margin-top:12px;color:var(--text3);font-size:11px">AIWorkSuite · by <a href="https://molvicstudios.pro" target="_blank" style="color:var(--accent)">MolvicStudios</a></p>`,
+    terms:`<h4 style="color:var(--accent);margin-bottom:8px">Términos de Uso</h4>
+<p><strong>Servicio:</strong> AIWorkSuite — aiworksuite.pro &nbsp;|&nbsp; <strong>Proveedor:</strong> MolvicStudios</p>
+<h5 style="margin:12px 0 4px;color:var(--text)">1. Aceptación</h5>
+<p>Al registrarte y usar AIWorkSuite aceptas estos términos.</p>
+<h5 style="margin:12px 0 4px;color:var(--text)">2. Plan Free</h5>
+<p>El plan Free es gratuito e incluye: 5 clientes, 3 equipos, 10 prompts y 1 chat por equipo. MolvicStudios se reserva el derecho a modificar los límites con 30 días de aviso previo.</p>
+<h5 style="margin:12px 0 4px;color:var(--text)">3. Uso de la API IA (BYOK)</h5>
+<p>AIWorkSuite no proporciona ni factura acceso a APIs de IA. El usuario es responsable de obtener y pagar su propia API key. AIWorkSuite actúa como interfaz local y no almacena las claves en sus servidores.</p>
+<h5 style="margin:12px 0 4px;color:var(--text)">4. Responsabilidad de los datos</h5>
+<p>Los datos locales se almacenan en el navegador del usuario. MolvicStudios no tiene acceso a estos datos y no es responsable de su pérdida por borrado del navegador. Se recomienda hacer export/import periódico como backup.</p>
+<h5 style="margin:12px 0 4px;color:var(--text)">5. Legislación aplicable</h5>
+<p>Estos términos se rigen por la legislación española.</p>
+<p style="margin-top:12px;color:var(--text3);font-size:11px">AIWorkSuite · by <a href="https://molvicstudios.pro" target="_blank" style="color:var(--accent)">MolvicStudios</a> · <a href="mailto:molvicstudios@outlook.com" style="color:var(--accent)">molvicstudios@outlook.com</a></p>`
+  },
+  en:{
+    privacy:`<h4 style="color:var(--accent);margin-bottom:8px">Privacy Policy</h4>
+<p><strong>Controller:</strong> MolvicStudios (molvicstudios.pro)</p>
+<h5 style="margin:12px 0 4px;color:var(--text)">What data do we collect?</h5>
+<ul style="padding-left:16px;margin-bottom:8px">
+  <li>Registration email (stored locally in your browser)</li>
+  <li>App usage data (stored locally in your browser)</li>
+  <li>Pro interest email (voluntarily provided)</li>
+</ul>
+<h5 style="margin:12px 0 4px;color:var(--text)">Local storage</h5>
+<p>All CRM, proposals, teams and library data is stored <strong>exclusively in your browser</strong> (localStorage). It is never sent to our servers. Your AI API key never leaves your device.</p>
+<h5 style="margin:12px 0 4px;color:var(--text)">Your rights (GDPR)</h5>
+<p>You have the right to access, rectify, delete and port your data. Contact: <a href="mailto:molvicstudios@outlook.com" style="color:var(--accent)">molvicstudios@outlook.com</a></p>
+<p style="margin-top:12px;color:var(--text3);font-size:11px">AIWorkSuite · by <a href="https://molvicstudios.pro" target="_blank" style="color:var(--accent)">MolvicStudios</a></p>`,
+    cookies:`<h4 style="color:var(--accent);margin-bottom:8px">Cookie Policy</h4>
+<h5 style="margin:12px 0 4px;color:var(--text)">Essential cookies (always active)</h5>
+<p>We use only essential cookies: local app data (aws_*), license data (aiws_*), and your cookie preference (aws_cookie_consent). We do <strong>not</strong> use analytics or advertising cookies.</p>
+<p style="margin-top:12px;color:var(--text3);font-size:11px">AIWorkSuite · by <a href="https://molvicstudios.pro" target="_blank" style="color:var(--accent)">MolvicStudios</a></p>`,
+    terms:`<h4 style="color:var(--accent);margin-bottom:8px">Terms of Use</h4>
+<p><strong>Service:</strong> AIWorkSuite — aiworksuite.pro &nbsp;|&nbsp; <strong>Provider:</strong> MolvicStudios</p>
+<h5 style="margin:12px 0 4px;color:var(--text)">1. Acceptance</h5>
+<p>By registering and using AIWorkSuite you accept these terms.</p>
+<h5 style="margin:12px 0 4px;color:var(--text)">2. Free Plan</h5>
+<p>The Free plan includes: 5 clients, 3 teams, 10 prompts and 1 chat per team. MolvicStudios reserves the right to modify these limits with 30 days' notice.</p>
+<h5 style="margin:12px 0 4px;color:var(--text)">3. BYOK AI API</h5>
+<p>AIWorkSuite does not provide or bill AI API access. The user is responsible for obtaining and paying for their own API key. AIWorkSuite acts as a local interface and does not store keys on its servers.</p>
+<p style="margin-top:12px;color:var(--text3);font-size:11px">AIWorkSuite · by <a href="https://molvicstudios.pro" target="_blank" style="color:var(--accent)">MolvicStudios</a></p>`
+  }
+};
+function showLegalModal(type){
+  const lang=LANG||'es';
+  const titleKey={privacy:'privacy_title',cookies:'cookies_title',terms:'terms_title'}[type];
+  document.getElementById('legal-modal-title').textContent=t(titleKey);
+  const content=LEGAL_CONTENT[lang]?.[type]||LEGAL_CONTENT['es'][type];
+  document.getElementById('legal-modal-content').innerHTML=content;
+  document.getElementById('modal-legal').style.display='flex';
+}
+// ═══════════════════════════════════════════════════════════════════════
+// FUNCIONALIDAD 5 — PWA / ONLINE-OFFLINE / DEEP LINKS
+// ═══════════════════════════════════════════════════════════════════════
+// Detección de estado de conexión
+function updateOnlineStatus(){
+  const ind=document.getElementById('offline-indicator');if(!ind)return;
+  ind.style.display=navigator.onLine?'none':'block';
+}
+window.addEventListener('online',updateOnlineStatus);
+window.addEventListener('offline',updateOnlineStatus);
+// Banner de instalación PWA
+let _pwaInstallEvent=null;
+window.addEventListener('beforeinstallprompt',event=>{
+  event.preventDefault();_pwaInstallEvent=event;
+  const dismissed=localStorage.getItem('aws_pwa_install_dismissed');
+  const installed=localStorage.getItem('aws_pwa_installed');
+  if(!dismissed&&!installed){const b=document.getElementById('pwa-install-banner');if(b)b.style.display='flex';}
+});
+async function triggerPWAInstall(){
+  if(!_pwaInstallEvent)return;
+  _pwaInstallEvent.prompt();
+  const{outcome}=await _pwaInstallEvent.userChoice;
+  if(outcome==='accepted'){localStorage.setItem('aws_pwa_installed','1');trackConversion('pwa_installed');}
+  dismissPWABanner();_pwaInstallEvent=null;
+}
+function dismissPWABanner(){
+  const b=document.getElementById('pwa-install-banner');if(b)b.style.display='none';
+  localStorage.setItem('aws_pwa_install_dismissed','1');
+}
+window.addEventListener('appinstalled',()=>{localStorage.setItem('aws_pwa_installed','1');dismissPWABanner();});
+if(window.matchMedia('(display-mode: standalone)').matches){localStorage.setItem('aws_pwa_installed','1');}
+// Banner de actualización PWA
+function showPWAUpdateBanner(newSW){
+  const b=document.createElement('div');b.id='pwa-update-banner';
+  b.style.cssText="position:fixed;top:0;left:0;right:0;z-index:3000;background:var(--pbg);border-bottom:1px solid var(--pb);padding:10px 16px;display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple)";
+  b.innerHTML=`<span>Nueva versión disponible</span><button onclick="activatePWAUpdate()" style="background:var(--purple);color:#fff;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:10px">Actualizar</button><button onclick="this.parentElement.remove()" style="background:transparent;border:none;color:var(--text3);cursor:pointer;margin-left:auto;font-size:14px">×</button>`;
+  document.body.prepend(b);window._pendingSW=newSW;
+}
+function activatePWAUpdate(){window._pendingSW?.postMessage({type:'SKIP_WAITING'});window.location.reload();}
+// Deep links PWA (shortcuts del manifest)
+function handleDeepLink(){
+  const params=new URLSearchParams(window.location.search);
+  const view=params.get('view');
+  if(view&&['crm','prop','lib','teams','ws','settings'].includes(view))goTo(view);
+}
+// Registro del Service Worker
+if('serviceWorker' in navigator){
+  window.addEventListener('load',async()=>{
+    try{
+      const reg=await navigator.serviceWorker.register('/sw.js',{scope:'/'});
+      console.log('[PWA] Service Worker registrado:',reg.scope);
+      reg.addEventListener('updatefound',()=>{
+        const newSW=reg.installing;
+        newSW?.addEventListener('statechange',()=>{
+          if(newSW.statechange==='installed'&&navigator.serviceWorker.controller)showPWAUpdateBanner(newSW);
+        });
+      });
+    }catch(err){console.warn('[PWA] Service Worker no registrado:',err);}
+  });
+}
+// ═══════════════════════════════════════════════════════════════════════
+// TAREA 1 — Exportar propuesta a PDF (Pro)
+// ═══════════════════════════════════════════════════════════════════════
+async function exportProposalToPDF() {
+  if (!tierSystem.requiresTier('pro', 'Exportar PDF')) return;
+  if (!window.jspdf) {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const proposalEl = document.getElementById('result-box');
+  if (!proposalEl || !proposalEl.textContent.trim()) {
+    showToast(t('toast_no_prop_to_export'), 'warn'); return;
+  }
+  const content = proposalEl.textContent.trim();
+  const clientName = document.getElementById('p-nombre')?.value || 'Cliente';
+  const today = new Date().toLocaleDateString('es-ES');
+  doc.setFillColor(15, 15, 18);
+  doc.rect(0, 0, 210, 25, 'F');
+  doc.setTextColor(240, 165, 0);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('AIWorkSuite', 15, 16);
+  doc.setTextColor(180, 180, 180);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('by MolvicStudios · aiworksuite.pro', 100, 16);
+  doc.text(today, 180, 16, { align: 'right' });
+  doc.setTextColor(30, 30, 30);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(t('prop_pdf_title',{name:clientName}), 15, 40);
+  doc.setDrawColor(240, 165, 0);
+  doc.setLineWidth(0.8);
+  doc.line(15, 44, 195, 44);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(40, 40, 40);
+  const lines = doc.splitTextToSize(content, 180);
+  let y = 52;
+  lines.forEach(function(line) {
+    if (y > 280) { doc.addPage(); y = 20; }
+    doc.text(line, 15, y);
+    y += 5.5;
+  });
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text(t('prop_pdf_footer') + ' \u00b7 aiworksuite.pro \u00b7 P\u00e1gina ' + i + ' de ' + pageCount, 105, 290, { align: 'center' });
+  }
+  const filename = 'propuesta-' + clientName.toLowerCase().replace(/\s+/g, '-') + '-' + today.replace(/\//g, '-') + '.pdf';
+  doc.save(filename);
+  showToast(t('toast_pdf_exported'), 'success');
+}
+// ═══════════════════════════════════════════════════════════════════════
+// TAREA 2 — Historial de Workspace (localStorage — Pro)
+// ═══════════════════════════════════════════════════════════════════════
+const workspaceHistory = (() => {
+  let _currentSessionId = null;
+  const WS_HISTORY_KEY = 'aiws_ws_history';
+  function _getAll() { try { return JSON.parse(localStorage.getItem(WS_HISTORY_KEY)) || []; } catch { return []; } }
+  function _saveAll(arr) { try { localStorage.setItem(WS_HISTORY_KEY, JSON.stringify(arr)); } catch {} }
+  async function save(messages, sessionName, provider, model) {
+    if (!LICENSE.isPro()) return;
+    if (!messages?.length) return;
+    const all = _getAll();
+    const record = {
+      id: _currentSessionId || crypto.randomUUID(),
+      session_name: sessionName || ('Sesión ' + new Date().toLocaleDateString('es-ES')),
+      provider: provider || getCFG().provider || 'groq',
+      model: model || getCFG().model || '',
+      messages,
+      created_at: _currentSessionId ? (all.find(s => s.id === _currentSessionId)?.created_at || new Date().toISOString()) : new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    const idx = all.findIndex(s => s.id === record.id);
+    if (idx >= 0) all[idx] = record; else all.unshift(record);
+    _currentSessionId = record.id;
+    _saveAll(all.slice(0, 50));
+  }
+  async function loadAll() {
+    if (!LICENSE.isPro()) return [];
+    return _getAll().map(({ id, session_name, provider, model, created_at, updated_at }) => ({ id, session_name, provider, model, created_at, updated_at }));
+  }
+  async function loadSession(id) {
+    const all = _getAll();
+    const found = all.find(s => s.id === id);
+    if (found) _currentSessionId = id;
+    return found || null;
+  }
+  async function deleteSession(id) {
+    const all = _getAll().filter(s => s.id !== id);
+    _saveAll(all);
+    if (_currentSessionId === id) _currentSessionId = null;
+  }
+  function newSession() { _currentSessionId = null; }
+  return { save, loadAll, loadSession, deleteSession, newSession, getCurrentId: () => _currentSessionId };
+})();
+async function toggleWorkspaceHistory() {
+  if (!tierSystem.requiresTier('pro', 'Historial de Workspace')) return;
+  const panel = document.getElementById('workspace-history-panel');
+  const isHidden = panel.hidden;
+  panel.hidden = !isHidden;
+  if (isHidden) await renderWorkspaceHistoryPanel();
+}
+async function renderWorkspaceHistoryPanel() {
+  const list = document.getElementById('ws-history-list');
+  if (!list) return;
+  list.innerHTML = '<div class="ws-history-loading">Cargando...</div>';
+  const sessions = await workspaceHistory.loadAll();
+  if (!sessions.length) { list.innerHTML = '<div class="ws-history-empty">Sin conversaciones guardadas</div>'; return; }
+  list.innerHTML = sessions.map(function(s) {
+    return '<div class="ws-history-item" data-id="' + s.id + '">' +
+      '<div class="ws-history-item__name" onclick="loadWorkspaceSession(\'' + s.id + '\')">' + esc(s.session_name) + '</div>' +
+      '<div class="ws-history-item__meta">' + s.provider + ' \u00b7 ' + new Date(s.updated_at).toLocaleDateString('es-ES') + '</div>' +
+      '<button class="ws-history-item__delete" onclick="deleteWorkspaceSession(\'' + s.id + '\')" aria-label="Eliminar">\u2715</button></div>';
+  }).join('');
+}
+async function loadWorkspaceSession(id) {
+  const session = await workspaceHistory.loadSession(id);
+  if (!session) return;
+  // Restaurar mensajes en el chat activo del workspace
+  const activeChat = WS.chats.find(function(c) { return c.id === WS.activeChat; });
+  if (activeChat && session.messages) {
+    activeChat.history = session.messages;
+    const msgs = document.getElementById('wm-' + activeChat.id);
+    if (msgs) {
+      msgs.innerHTML = '';
+      session.messages.forEach(function(m) { wsAddBubble(activeChat.id, m.role, m.content); });
+    }
+  }
+  showToast(t('toast_session_loaded',{name:session.session_name}), 'success');
+}
+async function deleteWorkspaceSession(id) {
+  await workspaceHistory.deleteSession(id);
+  await renderWorkspaceHistoryPanel();
+}
+// ═══════════════════════════════════════════════════════════════════════
+// TAREA 3 — Dashboard de métricas de negocio (Pro)
+// ═══════════════════════════════════════════════════════════════════════
+async function renderBusinessMetrics() {
+  if (!tierSystem.isPro()) return;
+  const container = document.getElementById('business-metrics-section');
+  if (!container) return;
+  container.hidden = false;
+  const clients = getCRMData(); const cids = Object.keys(clients);
+  const allProps = cids.flatMap(function(id) { return clients[id].propuestas || []; });
+  const total = cids.length;
+  const won = cids.filter(function(id) { return clients[id].captado; }).length;
+  const pipelineValue = cids.reduce(function(sum, id) { return sum + (parseFloat(clients[id].budget) || 0); }, 0);
+  const revenueClosed = cids.filter(function(id) { return clients[id].captado; })
+    .reduce(function(sum, id) { return sum + (parseFloat(clients[id].precioCerrado) || parseFloat(clients[id].budget) || 0); }, 0);
+  const proposalsSent = allProps.filter(function(p) { return p.status === 'enviada'; }).length;
+  const proposalsWon = allProps.filter(function(p) { return p.status === 'aceptada'; }).length;
+  const convRate = proposalsSent > 0 ? Math.round((proposalsWon / proposalsSent) * 100) : 0;
+  container.innerHTML = '<div class="metrics-header"><h3>\ud83d\udcca M\u00e9tricas de negocio</h3><span class="tier-badge tier-badge--pro">PRO</span></div>' +
+    '<div class="metrics-grid">' +
+    '<div class="metric-card"><div class="metric-value">' + total + '</div><div class="metric-label">Clientes totales</div></div>' +
+    '<div class="metric-card metric-card--accent"><div class="metric-value">$' + pipelineValue.toLocaleString('es-ES') + '</div><div class="metric-label">Valor en pipeline</div></div>' +
+    '<div class="metric-card metric-card--green"><div class="metric-value">$' + revenueClosed.toLocaleString('es-ES') + '</div><div class="metric-label">Ingresos cerrados</div></div>' +
+    '<div class="metric-card"><div class="metric-value">' + convRate + '%</div><div class="metric-label">Conversi\u00f3n propuestas</div></div>' +
+    '<div class="metric-card"><div class="metric-value">' + proposalsSent + '</div><div class="metric-label">Propuestas enviadas</div></div>' +
+    '<div class="metric-card metric-card--green"><div class="metric-value">' + proposalsWon + '</div><div class="metric-label">Propuestas ganadas</div></div>' +
+    '</div>';
+}
+// ═══════════════════════════════════════════════════════════════════════
+// TAREA 4 — Recordatorios de seguimiento de clientes (Pro) — localStorage
+// ═══════════════════════════════════════════════════════════════════════
+function _getReminders() { try { return JSON.parse(localStorage.getItem('aiws_reminders') || '[]'); } catch(e) { return []; } }
+function _saveReminders(arr) { localStorage.setItem('aiws_reminders', JSON.stringify(arr)); }
+async function openReminderModal(clientId, clientName) {
+  if (!tierSystem.requiresTier('pro', 'Recordatorios de seguimiento')) return;
+  if (!clientId || !clientName) return;
+  document.getElementById('reminder-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'reminder-modal';
+  modal.className = 'upgrade-modal-overlay';
+  modal.style.cssText = 'display:flex;align-items:center;justify-content:center;position:fixed;inset:0;z-index:2100;background:rgba(0,0,0,.55);backdrop-filter:blur(6px)';
+  modal.innerHTML = '<div style="background:var(--bg1);border:1px solid var(--border);border-radius:var(--r2);padding:24px;max-width:380px;width:90%;position:relative">' +
+    '<button onclick="document.getElementById(\'reminder-modal\').remove()" style="position:absolute;top:10px;right:14px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px">\u2715</button>' +
+    '<h3 style="margin:0 0 14px;font-size:14px;font-family:\'Syne\',sans-serif">\u23f0 Recordatorio \u2014 ' + esc(clientName) + '</h3>' +
+    '<label style="display:block;margin-bottom:4px;font-size:11px;color:var(--text3)">Fecha y hora</label>' +
+    '<input type="datetime-local" id="reminder-date" class="inp" style="width:100%;margin-bottom:12px" min="' + new Date().toISOString().slice(0, 16) + '">' +
+    '<label style="display:block;margin-bottom:4px;font-size:11px;color:var(--text3)">Nota (opcional)</label>' +
+    '<textarea id="reminder-note" class="inp" rows="3" placeholder="Ej: Llamar para seguimiento de propuesta..." style="width:100%;margin-bottom:14px;resize:vertical"></textarea>' +
+    '<button class="btn btn-accent" style="width:100%" onclick="saveReminder(\'' + clientId + '\',\'' + esc(clientName).replace(/'/g, "\\'") + '\')">Guardar recordatorio</button></div>';
+  document.body.appendChild(modal);
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+}
+function saveReminder(clientId, clientName) {
+  const date = document.getElementById('reminder-date')?.value;
+  const note = document.getElementById('reminder-note')?.value;
+  if (!date) { showToast(t('toast_select_date'), 'warn'); return; }
+  try {
+    const reminders = _getReminders();
+    reminders.push({ id: Date.now().toString(36), client_id: clientId, client_name: clientName, note: note || null, remind_at: new Date(date).toISOString(), done: false });
+    _saveReminders(reminders);
+    document.getElementById('reminder-modal')?.remove();
+    showToast(t('toast_reminder_saved'), 'success');
+    renderPendingReminders();
+  } catch (err) {
+    console.error('[reminders] save:', err);
+    showToast(t('toast_reminder_err'), 'error');
+  }
+}
+function renderPendingReminders() {
+  if (!tierSystem.isPro()) return;
+  const container = document.getElementById('pending-reminders');
+  if (!container) return;
+  try {
+    const now = Date.now();
+    const data = _getReminders().filter(function(r) { return !r.done && new Date(r.remind_at).getTime() <= now + 24*60*60*1000; })
+      .sort(function(a,b) { return new Date(a.remind_at) - new Date(b.remind_at); }).slice(0, 5);
+    if (!data.length) { container.hidden = true; return; }
+    container.hidden = false;
+    container.innerHTML = '<div class="reminders-header">\u23f0 Seguimientos pendientes</div>' +
+      data.map(function(r) {
+        return '<div class="reminder-item">' +
+          '<div class="reminder-item__client">' + esc(r.client_name) + '</div>' +
+          '<div class="reminder-item__time">' + new Date(r.remind_at).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' }) + '</div>' +
+          (r.note ? '<div class="reminder-item__note">' + esc(r.note) + '</div>' : '') +
+          '<button class="btn btn-ghost btn-xs" onclick="markReminderDone(\'' + r.id + '\')">\u2713 Hecho</button></div>';
+      }).join('');
+  } catch (err) { console.error('[reminders] render:', err); }
+}
+function markReminderDone(id) {
+  var reminders = _getReminders().map(function(r) { return r.id === id ? Object.assign({}, r, { done: true }) : r; });
+  _saveReminders(reminders);
+  renderPendingReminders();
+}
+// ═══════════════════════════════════════════════════════════════════════
+// F6: ONBOARDING CHECKLIST
+// ═══════════════════════════════════════════════════════════════════════
+function renderOnboardingChecklist() {
+  const dismissed = localStorage.getItem('aiws_ob_dismissed');
+  const el = document.getElementById('onboarding-checklist');
+  if (!el || dismissed) { if(el) el.style.display='none'; return; }
+  const cfg = getCFG();
+  const clients = getCRMData();
+  const hasApiKey = !!(cfg.apiKey || cfg.provider);
+  const hasClient = Object.keys(clients).length > 0;
+  const hasProposal = Object.keys(clients).some(id => (clients[id].propuestas||[]).length > 0);
+  const steps = [
+    { id: 'ob-step-apikey', done: hasApiKey },
+    { id: 'ob-step-client', done: hasClient },
+    { id: 'ob-step-proposal', done: hasProposal },
+  ];
+  const doneCount = steps.filter(s => s.done).length;
+  // If all done, auto-dismiss after a short delay
+  if (doneCount === 3) {
+    el.style.display = 'block';
+    setTimeout(function(){ dismissOnboardingChecklist(); }, 3000);
+  }
+  steps.forEach(function(s) {
+    const stepEl = document.getElementById(s.id);
+    if (!stepEl) return;
+    const check = stepEl.querySelector('.ob-check');
+    if (s.done) {
+      check.style.background = 'var(--green)';
+      check.style.borderColor = 'var(--green)';
+      check.textContent = '✓';
+      check.style.color = '#fff';
+      stepEl.style.opacity = '0.6';
+    } else {
+      check.style.background = 'var(--bg3)';
+      check.style.borderColor = 'var(--border2)';
+      check.textContent = '';
+      check.style.color = 'var(--bg)';
+      stepEl.style.opacity = '1';
+    }
+  });
+  document.getElementById('ob-progress').style.width = Math.round((doneCount / 3) * 100) + '%';
+  el.style.display = doneCount < 3 ? 'block' : 'block';
+}
+function dismissOnboardingChecklist() {
+  localStorage.setItem('aiws_ob_dismissed', '1');
+  var el = document.getElementById('onboarding-checklist');
+  if (el) el.style.display = 'none';
+}
+// ═══════════════════════════════════════════════════════════════════════
+// M7: CONVERSION TRACKING
+// ═══════════════════════════════════════════════════════════════════════
+function trackConversion(event) {
+  if (typeof window.molvicTrack === 'function') {
+    window.molvicTrack(event);
+  }
+}
+// ═══════════════════════════════════════════════════════════════════════
+// D7: DATA EXPORT/IMPORT
+// ═══════════════════════════════════════════════════════════════════════
+function exportAllData() {
+  try {
+    var data = {};
+    var prefix = S.key('');
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k && k.startsWith(prefix)) {
+        data[k] = localStorage.getItem(k);
+      }
+    }
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'aiworksuite-backup-' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast('Backup descargado correctamente', 'success');
+  } catch (e) {
+    showToast('Error al exportar datos', 'error');
+  }
+}
+function importAllData(file) {
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      var count = 0;
+      Object.keys(data).forEach(function(k) {
+        localStorage.setItem(k, data[k]);
+        count++;
+      });
+      showToast('Importados ' + count + ' registros. Recargando...', 'success');
+      setTimeout(function(){ location.reload(); }, 1500);
+    } catch (err) {
+      showToast('Archivo inválido', 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+// ═══════════════════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════════════════
+loadTheme();
+loadLang();
+applyTranslations();
+checkSession();
+
+// ═══════════════════════════════════════════════════════════════════════
+// STATS COUNTER — IntersectionObserver + easing animation
+// ═══════════════════════════════════════════════════════════════════════
+(function(){
+  var observed = false;
+  function easeOut(t){ return 1 - Math.pow(1 - t, 3); }
+  function animateCounter(el, target, suffix, duration){
+    var start = null;
+    function step(ts){
+      if(!start) start = ts;
+      var progress = Math.min((ts - start) / duration, 1);
+      el.textContent = Math.floor(easeOut(progress) * target) + suffix;
+      if(progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  function runCounters(){
+    if(observed) return;
+    observed = true;
+    document.querySelectorAll('[data-target]').forEach(function(el){
+      var target = parseInt(el.getAttribute('data-target'), 10);
+      var suffix = el.getAttribute('data-suffix') || '';
+      animateCounter(el, target, suffix, 1500);
+    });
+  }
+  var section = document.getElementById('land-stats-section');
+  if(section && 'IntersectionObserver' in window){
+    new IntersectionObserver(function(entries, obs){
+      if(entries[0].isIntersecting){ runCounters(); obs.disconnect(); }
+    }, {threshold: 0.3}).observe(section);
+  }
+})();
+// ═══════════════════════════════════════════════════════════════════════
+// WEB VITALS — D5
+// ═══════════════════════════════════════════════════════════════════════
+(function(){
+  if(typeof window.molvicTrack!=='function')return;
+  function sendVital(metric){
+    try{window.molvicTrack('web_vital',{name:metric.name,value:Math.round(metric.name==='CLS'?metric.value*1000:metric.value),rating:metric.rating});}catch(e){}
+  }
+  var s=document.createElement('script');
+  s.src='https://unpkg.com/web-vitals@4/dist/web-vitals.iife.js';
+  s.onload=function(){
+    if(!window.webVitals)return;
+    webVitals.onCLS(sendVital);webVitals.onINP(sendVital);webVitals.onLCP(sendVital);webVitals.onTTFB(sendVital);
+  };
+  document.head.appendChild(s);
+})();

@@ -67,6 +67,20 @@ export async function onRequestPost(context) {
     return new Response('Bad Request', { status: 400 });
   }
 
+  // Sanitizar mensajes: validar estructura y limitar longitud
+  const ALLOWED_ROLES = ['user', 'system', 'assistant'];
+  const MAX_MSG_LENGTH = 6000;
+  const sanitizedMessages = [];
+  for (const msg of body.messages) {
+    if (!msg || typeof msg.content !== 'string' || !ALLOWED_ROLES.includes(msg.role)) {
+      return new Response('Bad Request: invalid message format', { status: 400 });
+    }
+    sanitizedMessages.push({
+      role: msg.role,
+      content: msg.content.slice(0, MAX_MSG_LENGTH),
+    });
+  }
+
   // Sanitizar: solo whitelist de modelos y cap de tokens
   const model = ALLOWED_MODELS.includes(body.model)
     ? body.model
@@ -86,7 +100,7 @@ export async function onRequestPost(context) {
       body: JSON.stringify({
         model,
         max_tokens,
-        messages: body.messages,
+        messages: sanitizedMessages,
       }),
     });
   } catch {

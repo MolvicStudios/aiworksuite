@@ -3,9 +3,17 @@
  * Validates a Lemon Squeezy license key (public LS endpoint, no API key needed)
  */
 
+const ALLOWED_ORIGINS = [
+  'https://aiworksuite.pro',
+  'https://www.aiworksuite.pro',
+];
+
 export async function onRequestPost({ request }) {
+  const origin = request.headers.get('Origin') || '';
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+
   const corsHeaders = {
-    'Access-Control-Allow-Origin':  '*',
+    'Access-Control-Allow-Origin':  allowedOrigin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Content-Type':                 'application/json',
@@ -55,10 +63,13 @@ export async function onRequestPost({ request }) {
   }
 }
 
-export async function onRequestOptions() {
+export async function onRequestOptions({ request }) {
+  const origin = request.headers.get('Origin') || '';
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+
   return new Response(null, {
     headers: {
-      'Access-Control-Allow-Origin':  '*',
+      'Access-Control-Allow-Origin':  allowedOrigin,
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     }

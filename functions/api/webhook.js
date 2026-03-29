@@ -58,14 +58,9 @@ export async function onRequestPost({ request, env }) {
   return new Response('OK', { status: 200 });
 }
 
+// Webhook is server-to-server (Lemon Squeezy) — no CORS needed
 export async function onRequestOptions() {
-  return new Response(null, {
-    headers: {
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    }
-  });
+  return new Response(null, { status: 405 });
 }
 
 async function verifySignature(body, signature, secret) {
